@@ -1,0 +1,12 @@
+#! /bin/bash
+
+SRCDIR=$HOME/bin/default_interDyMFoam
+
+if [ -d "constant" ] || [ -d "system" ]; then
+    echo; echo "[constant|system] directory exist... abort"; echo
+    exit 1;
+fi
+
+cp -r ${SRCDIR}/{constant,system} .
+
+
