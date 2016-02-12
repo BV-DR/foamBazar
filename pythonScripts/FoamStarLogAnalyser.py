@@ -39,7 +39,8 @@ class FoamStarLogAnalyser(FoamLogAnalyzer):
         self.addAnalyzer("DeltaT",      GeneralDeltaTLineAnalyzer(doTimelines=doTimelines,doFiles=doFiles,singleFile=singleFile,startTime=startTime,endTime=endTime))
         courantExpression="^Courant Number mean: (.+) max: (\S+).*$"
         self.addAnalyzer("Courant",GeneralSimpleLineAnalyzer("courant",courantExpression,titles=["mean","max"],doTimelines=doTimelines,doFiles=doFiles,singleFile=singleFile,startTime=startTime,endTime=endTime))
-
+        alphaExpression= "^Phase-1 volume fraction = (.+)  Min\(alpha.water\) = (.+)  Max\(alpha.water\) = (.+)"
+        self.addAnalyzer("Alpha",GeneralSimpleLineAnalyzer("alpha",alphaExpression,titles=["mean" , "min" , "max"],doTimelines=doTimelines,doFiles=doFiles,singleFile=singleFile,startTime=startTime,endTime=endTime))
         #self.addAnalyzer("Iterations",GeneralLinearSolverIterationsLineAnalyzer(doTimelines=doTimelines,doFiles=doFiles,singleFile=singleFile,startTime=startTime,endTime=endTime))
 
 
@@ -77,17 +78,21 @@ class LogAnalysis( object) :
             try  :
                data = np.loadtxt( fname  )
             except :
-               data = np.loadtxt( join( fname) , skiprows = 2 )
+               data = np.loadtxt( fname, skiprows = 2 )
+	    with open( fname, "r") as lf : labels = lf.readline().strip().split()[1:]
          else :
             print f , "does not exists"
+	    print "Available quantities are : " , os.listdir(self.outputPath)
             return
          if iteration :  #Plot versus iteration
-            ax.plot( data[:,c] )
+            ax.plot( data[:,c] , label = labels[c] )
+	    ax.set_xlabel("Iteration")
          else :          #Plot versus time
-            ax.plot( data[:,0] , data[:,c] )
-
+            ax.plot( data[:,0] , data[:,c] , label = labels[c]  )
+	    ax.set_xlabel("Time (s)")
+	 ax.set_title( "{} - {}".format(os.path.basename(f) , labels[c] ) )
       plt.show()
-      
+
 
 if __name__ == "__main__" :
 
