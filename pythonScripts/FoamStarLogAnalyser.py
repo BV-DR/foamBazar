@@ -99,12 +99,16 @@ if __name__ == "__main__" :
    import argparse
    parser = argparse.ArgumentParser(description='FoamStar log parser')
    parser.add_argument( '-plot' ,     help='Quantity to plot' , type = str,  default = "none")
-   parser.add_argument( '-col' ,      help='Column to plot' , type = int,  default = 1)
-   parser.add_argument( '-update',    help='update the log information' , action="store_true")
+   parser.add_argument( '-col' ,      help='Column to plot' , type = str,  default = "1")
+   parser.add_argument( '-noUpdate',  help='Use previously parsed log information' , action="store_true")
    parser.add_argument( '-ouputDir',  help='Directory to store parsed information' , type = str,  default = "none")
    parser.add_argument( '-iteration', help='Plot versus iteration (instead of time)' , action="store_true")
    parser.add_argument( "logfile" )
    args = parser.parse_args()
    a = LogAnalysis( args.logfile , args.ouputDir )
-   if args.update : a.analyse()
-   if args.plot != "none" : a.plot(  [(args.plot , args.col)] , iteration = args.iteration)
+   if not args.noUpdate : a.analyse()
+
+   col = [int(s) for s  in args.col.split(",")]
+   if args.plot != "none" : a.plot(  [ (args.plot , c)  for c in col ] , iteration = args.iteration)
+
+
