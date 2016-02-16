@@ -20,6 +20,8 @@ class GeneralExecutionLineAnalyzer_foamStar(GeneralExecutionLineAnalyzer):
        GeneralExecutionLineAnalyzer.__init__(self,*args, **kwargs)
        timeExpression = "^ExecutionTime = (.+) s  ClockTime = (.+) s  CurrExecTime = (.+) s \((.+)\)$"
        self.exp=re.compile(timeExpression)
+       self.titles = ["Cumulated" , "DeltaT"]
+       self.hasClock = True
        
 class FoamStarLogAnalyser(FoamLogAnalyzer):
     """
@@ -98,8 +100,8 @@ if __name__ == "__main__" :
 
    import argparse
    parser = argparse.ArgumentParser(description='FoamStar log parser')
-   parser.add_argument( '-plot' ,     help='Quantity to plot' , type = str,  default = "none")
-   parser.add_argument( '-col' ,      help='Column to plot' , type = str,  default = "1")
+   parser.add_argument( '-plot' ,     help='Quantity to plot' , type = str,  default = "courant")
+   parser.add_argument( '-col' ,      help='Column to plot (use "," as separator)' , type = str,  default = "2")
    parser.add_argument( '-noUpdate',  help='Use previously parsed log information' , action="store_true")
    parser.add_argument( '-ouputDir',  help='Directory to store parsed information' , type = str,  default = "none")
    parser.add_argument( '-iteration', help='Plot versus iteration (instead of time)' , action="store_true")
