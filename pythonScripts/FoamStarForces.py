@@ -16,8 +16,8 @@ if __name__ == "__main__" :
       Example of use :
 
       FoamStarForces forces.dat                          #->plot all the forces components
-      FoamStarForces forces.dat -indexName Fx Fy         #->plot the selected componets, based on labels
-      FoamStarForces forces.dat -index     0  1          #->plot the selected componets, based on indexes
+      FoamStarForces forces.dat -indexName Fx Fy         #->plot the selected components, based on labels
+      FoamStarForces forces.dat -index     0  1          #->plot the selected components, based on indexes
 
    """
    import argparse
