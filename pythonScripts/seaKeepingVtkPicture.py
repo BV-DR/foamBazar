@@ -51,10 +51,7 @@ def getMeshPicture(meshFile,  camPosition , targetPosition , pictureFile, timeLi
    elif timeList == "latest-1" :
       timeList = [getAvailableTimeData( caseDir , parallel )[-2]]
 
-
    print (timeList)
-
-
 
    #--- Read the openFoam file
    vtk_r = vtk.vtkPOpenFOAMReader()
@@ -242,14 +239,14 @@ if __name__ == "__main__" :
    """
    import argparse
    parser = argparse.ArgumentParser(description='openFoam vtk picture')
-   parser.add_argument( '-case' ,   help='Quantity to plot' , type = str,  default = ".")
-   parser.add_argument( '-time'  ,  help='Time to plot (use "," as separator)' , type = str,  default = "0")
-   parser.add_argument( '-output' ,  help='Picture to generate' , type = str,  default = "none.png")
-   parser.add_argument( '-interactive' ,  help='Picture to generate' , action="store_true")
+   parser.add_argument( '-case' , '-c'      , help='Quantity to plot' , type = str,  default = ".")
+   parser.add_argument( '-time' , '-t'      , help='Time to plot (use "," as separator)' , type = str,  default = "0")
+   parser.add_argument( '-output' , '-o'    , help='Picture to generate' , type = str,  default = "none.png")
+   parser.add_argument( '-interactive', '-i', help='Interactive 3D view' , action="store_true")
    args = parser.parse_args()
-   
+
    if args.time not in ['all' , "latest", "latest-1"] : args.time = [float(i) for i in args.time.split(',')]
-   
+
    getMeshPicture( args.case, startInteractive = args.interactive,
                    camPosition = (600 , 600 , 300) , targetPosition =  (0.0 ,0.0 , 0.0),
                    timeList = args.time,  pictureFile = args.output , scale = [1.,1.,1.])
