@@ -22,6 +22,9 @@ class GeneralExecutionLineAnalyzer_foamStar(GeneralExecutionLineAnalyzer):
        self.exp=re.compile(timeExpression)
        self.titles = ["Cumulated" , "DeltaT"]
        self.hasClock = True
+       self.lastClock=0.
+       self.clock=0.
+       self.firstClock=0.
        
 class FoamStarLogAnalyser(FoamLogAnalyzer):
     """
