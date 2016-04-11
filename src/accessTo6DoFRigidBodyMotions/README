@@ -1,0 +1,4 @@
+Add-on to OpenFOAM enabling to plot sixDoFRigidMotion at run-time.
+
+Necessitates to do one minor modification in OpenFOAM core library:
+> in sixDoFRigidBodyMotionSolver.H, change "private" members to "protected" and recompile
