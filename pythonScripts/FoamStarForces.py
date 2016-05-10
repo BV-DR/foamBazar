@@ -27,7 +27,8 @@ if __name__ == "__main__" :
    parser.add_argument('-index',  nargs='+', type = int , help='Index to plot' )
    args = parser.parse_args()
 
-   a = ts.read( args.forceFile , reader = "openFoamReader" , data = "total") 
+   a = ts.read( args.forceFile , reader = "openFoamReader" , field = "total") 
+   #a = ts.read( args.forceFile , reader = "openFoamReader" , total) 
 
    if args.indexName :
       a.plotTS( [a.columnTitles.index( s ) for s in args.indexName] )
