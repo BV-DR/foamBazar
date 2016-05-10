@@ -4,9 +4,9 @@
 """
 
 try :
-   from pyWave import ts
+   from TimeDomain import TimeSignals as ts
 except ImportError as  e:
-   print "Can not load pyWave, please add 'shared-code/Python' (from repo http://svn-drsvn.eua.bvcorp.corp/dr/shared-code) to your PYTHON_PATH\n"
+   print "Can not load TimeSignals, please add 'shared-code/Python' (from repo http://svn-drsvn.eua.bvcorp.corp/dr/shared-code) to your PYTHON_PATH\n"
    raise Exception(e)
 
 
@@ -27,7 +27,7 @@ if __name__ == "__main__" :
    parser.add_argument('-index',  nargs='+', type = int , help='Index to plot' )
    args = parser.parse_args()
 
-   a = ts.read( args.forceFile , reader = "openFoamReader" , total = True)
+   a = ts.read( args.forceFile , reader = "openFoamReader" , data = "total") 
 
    if args.indexName :
       a.plotTS( [a.columnTitles.index( s ) for s in args.indexName] )
