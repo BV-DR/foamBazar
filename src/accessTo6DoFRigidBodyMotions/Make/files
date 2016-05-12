@@ -1,0 +1,7 @@
+sixDoFRigidBodyMotionSolverBis/sixDoFRigidBodyMotionSolverBis.C
+
+functionObjects/access6DoFRigidBodyMotions/access6DoFRigidBodyMotions.C
+functionObjects/access6DoFRigidBodyMotions/access6DoFRigidBodyMotionsFunctionObject.C
+
+LIB = $(FOAM_USER_LIBBIN)/libAccess6DoFRigidBodyMotions
+
