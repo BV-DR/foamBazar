@@ -24,8 +24,8 @@ class TransportProperties(WriteParameterFile) :
 
       self['"'+air[version]+'"'] = {
                                   "transportModel" : "Newtonian",
-                                  "nu"             : "nu [0 2 -1 0 0 0 0] ".format(nuAir),
-                                  "rho"            : "rho [1 -3 0 0 0 0 0] 1".format(rhoAir)
+                                  "nu"             : "nu [0 2 -1 0 0 0 0] {}".format(nuAir),
+                                  "rho"            : "rho [1 -3 0 0 0 0 0] {}".format(rhoAir)
                                }
 
       self[r"sigma"] = "sigma [1 0 -2 0 0 0 0] {}".format(sigma)

@@ -18,13 +18,18 @@ class GeneralExecutionLineAnalyzer_foamStar(GeneralExecutionLineAnalyzer):
 
    def __init__(self,*args, **kwargs) :
        GeneralExecutionLineAnalyzer.__init__(self,*args, **kwargs)
-       timeExpression = "^ExecutionTime = (.+) s  ClockTime = (.+) s  CurrExecTime = (.+) s \((.+)\)$"
-       self.exp=re.compile(timeExpression)
+       self.hasClock = False  #Does not work with foamExtend
+       if self.hasClock :
+          timeExpression = "^ExecutionTime = (.+) s  ClockTime = (.+) s  CurrExecTime = (.+) s \((.+)\)$"
+          self.lastClock=0.
+          self.clock=0.
+          self.firstClock=0.
+       else :
+          timeExpression = "^ExecutionTime = (.+) s  ClockTime = (.+) s.*"
        self.titles = ["Cumulated" , "DeltaT"]
-       self.hasClock = True
-       self.lastClock=0.
-       self.clock=0.
-       self.firstClock=0.
+       self.exp=re.compile(timeExpression)
+
+
        
 class FoamStarLogAnalyser(FoamLogAnalyzer):
     """
