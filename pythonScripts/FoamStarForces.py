@@ -28,7 +28,6 @@ if __name__ == "__main__" :
    args = parser.parse_args()
 
    a = ts.read( args.forceFile , reader = "openFoamReader" , field = "total") 
-   #a = ts.read( args.forceFile , reader = "openFoamReader" , total) 
 
    if args.indexName :
       a.plotTS( [a.columnTitles.index( s ) for s in args.indexName] )
