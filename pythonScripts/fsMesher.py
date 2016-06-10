@@ -17,7 +17,7 @@ import sys, argparse, configparser
 
 # sose: 2016-june-03
 # FIXME: There are still many conditions inwhich this script will fail
-# FIXME: add a sanity check for input paramter(s)
+# FIXME: add a sanity check for input parameter(s)
 # FIXME: add parallel suuport for refineMesh
 # FIXME: adjust the number of box automatically
 # FIXME: add user defined local refinement based on a stl-file
@@ -31,9 +31,11 @@ import sys, argparse, configparser
 
 DEBUG = False
 NPROCS = 4
-DEFAULT_SHIP_STL = ['./ship.stl']
+DEFAULT_SHIP_STL = 'ship.stl'
+DEFAULT_CFG_FILE = 'fsMesher.cfg'
 DEFAULT_PARAMS = {
 'heading' : 180,
+'draft' : None,
 'side' : 'port',
 'domain' : [-3.0,2.5, -2.0,2.0, -1.5,0.5],
 'LOA' : None,
@@ -46,8 +48,10 @@ DEFAULT_PARAMS = {
 'cellBuffer' : 4,
 'refBow' : True,
 'refStern' : True,
+'refSurfExtra' : None,
 'refFS' : True, 
-'shipBL' : [3, 1.3, 0.7, 0.7]
+'shipBL' : [3, 1.3, 0.7, 0.7],
+'noLayers' : []
 }
 
 # domain = [Xmin,Xmax, Ymin,Ymax, Zmin,Zmax]
@@ -59,13 +63,32 @@ class UserInput(object):
     def __init__(self, shipStl, opts=DEFAULT_PARAMS):
         # construct ship.stl and compute bounding box(es)
         if not isinstance(shipStl, list):
-            shipStl = [shipStl]        
-        createShipStl(shipStl, 'ship.stl')
-        shipPatches = findSTLPatches('./constant/triSurface/ship.stl')
-        print "Found patches in ship.stl: ", shipPatches
-        shipBB = findBoundingBox('ship.stl')
-        if rotateStl('ship.stl', opts['heading'], 'ship.stl'):
-            shipBBRot = findBoundingBox('ship.stl')
+            shipStl = [shipStl]           
+        filename = './constant/triSurface/'+DEFAULT_SHIP_STL
+        # note: we always overwrite existing file, because we cannot check
+        #       the validity of the existing file
+        createShipStl(shipStl, filename, overwrite=True)
+        shipPatches = findSTLPatches(filename)
+        print "Found patches in stl: ", shipPatches
+        shipBB = findBoundingBox(filename)
+        
+        if opts['draft'] is not None:
+            draft = math.fabs(float(opts['draft']))
+            move = -shipBB[2] - draft
+            translateStl(filename, [0.0,0.0,move], filename)
+            shipBB[2] += move
+            shipBB[5] += move
+
+        if opts['refSurfExtra'] is not None:
+            nameOnly = os.path.basename(opts['refSurfExtra'])
+            surfFile = "./constant/triSurface/"+nameOnly
+            print "Create stl: "+surfFile
+            runCommand("cp -f "+opts['refSurfExtra']+" "+surfFile)
+            if opts['draft'] is not None:
+                translateStl(surfFile, [0.0,0.0,move], surfFile)
+        
+        if rotateStl(filename, opts['heading'], filename):
+            shipBBRot = findBoundingBox(filename)
         else:
             shipBBRot = shipBB
 
@@ -94,10 +117,15 @@ class UserInput(object):
         
         locationInMesh = [0.5*(domain[1]+shipBBRot[3]), 0.5*(domain[3]+domain[2]), 0.5*(domain[5]+domain[4])]
 
+        # cut the cell ratio to the closest of 2^n
+        fsCellRatio = opts['fsCellRatio']
+
         self.shipStl = list(shipStl)
         self.shipPatches = list(shipPatches)
+        self.noLayers = opts['noLayers']
         self.shipBB = list(shipBB)
         self.shipBBRot = list(shipBBRot)
+        self.draft = opts['draft']
         self.heading = opts['heading']
         self.side = opts['side']
         self.LOA = LOA
@@ -105,7 +133,7 @@ class UserInput(object):
         self.fsZmin = fs[0]
         self.fsZmax = fs[1]
         self.fsdZ = fsdZ
-        self.fsCellRatio = opts['fsCellRatio']
+        self.fsCellRatio = fsCellRatio
         self.refBoxType = opts['refBoxType']
         self.refBoxData = list(opts['refBoxData'])
         self.refBoxGrad = opts['refBoxGrad']
@@ -113,6 +141,7 @@ class UserInput(object):
         self.cellBuffer = opts['cellBuffer']
         self.refBow = refBow
         self.refStern = refStern
+        self.refSurfExtra = opts['refSurfExtra']
         self.refFS = refFS
         self.cellWidth = None
         self.zCellSize = None
@@ -142,6 +171,7 @@ def cmdOptions(argv):
     global CMD_autoPatch
     global CMD_setSet
     global CMD_refineMesh
+    global CMD_surfaceFeatureExtract
     global CMD_snappyHexMesh
     global CMD_decomposePar
     # default global parameters
@@ -156,8 +186,9 @@ def cmdOptions(argv):
     CMD_autoPatch = 'autoPatch -overwrite 80'
     CMD_setSet = 'setSet -latestTime'
     CMD_refineMesh = 'refineMesh'
+    CMD_surfaceFeatureExtract = 'surfaceFeatureExtract'
     CMD_snappyHexMesh = 'snappyHexMesh'
-    CMD_decomposePar = 'decomposePar -force -constant -latestTime'
+    CMD_decomposePar = 'decomposePar -force -latestTime'
     #
     parser = argparse.ArgumentParser()
     parser.add_argument('-d','--debug', action='store_true', help='run in debug mode')
@@ -176,8 +207,8 @@ def cmdOptions(argv):
     args = parser.parse_args()
 
     if args.showConfig:
-        print "\nOutput default parameters to file: ./fsMesher.cfg"
-        subprocess.call('cat << EOF > ./fsMesher.cfg' + defaultParams_contents, shell=True)
+        print "\nOutput default parameters to file:", DEFAULT_CFG_FILE
+        subprocess.call('cat << EOF > '+DEFAULT_CFG_FILE + defaultParams_contents, shell=True)
         raise SystemExit('')
 
     if args.clearZones:
@@ -261,7 +292,6 @@ def cmdOptions(argv):
     pass
 
 def readInputParams(filename):
-    shipStl=DEFAULT_SHIP_STL
     params = dict(DEFAULT_PARAMS)
     config = configparser.ConfigParser()
     config.read(filename)
@@ -271,19 +301,24 @@ def readInputParams(filename):
     
     # read stlFile(s)
     done=False
+    shipStl = []
     i = 0
     while not done:
         try:
             txt = str(config[name]['stlFile'+str(i)])
-            if i==0:
-                shipStl[0]=txt
-            else:
-                shipStl.append(txt)
+            shipStl.append(txt)
             i += 1
         except KeyError:
             done=True
             pass
-    print "    stlFile(s):", shipStl
+    if i is not 0:
+        print "    stlFile(s):", shipStl
+
+    # heading
+    try:
+        txt = str(config[name]['draft'])
+        params['draft'] = math.fabs(float(txt))
+    except KeyError: pass
 
     # heading
     try:
@@ -374,6 +409,13 @@ def readInputParams(filename):
             params['refStern'] = float(txt)
     except KeyError: pass
 
+    # 'refSurfExtra' : stl-file for extra refinement
+    try:
+        txt = str(config[name]['refineSurf'])
+        if txt is not None:
+            params['refSurfExtra'] = txt
+    except KeyError: pass
+
     # 'refFS' : bool, refine free surface in nearField ?
     try:
         txt = config[name].getboolean('refineFS')
@@ -388,9 +430,17 @@ def readInputParams(filename):
             params['shipBL'] = [float(val) for val in txt.split(',')]
     except KeyError: pass
 
+    # 'shipBL' : boundary layer, [nLayers, layerGrowth, finalLayerThickness, minThicknessRatio] 
+    try:
+        txt = config[name]['disableLayers']
+        if not txt==None:
+            params['noLayers'] = [str(val).strip() for val in txt.split(',')]
+    except KeyError: pass
+
     #
     global DEBUG
     global NPROCS
+    global DEFAULT_SHIP_STL    
     global EXEC_BLOCKMESH
     global EXEC_REFINEBOX
     global EXEC_REFINEPROXIMITY
@@ -402,6 +452,7 @@ def readInputParams(filename):
     global CMD_autoPatch
     global CMD_setSet
     global CMD_refineMesh
+    global CMD_surfaceFeatureExtract
     global CMD_snappyHexMesh
     global CMD_decomposePar
 
@@ -422,6 +473,13 @@ def readInputParams(filename):
         txt = config['fsMesher-control']['NPROCS']
         if not txt == None:
             NPROCS = int(txt)
+    except KeyError: pass    
+
+    try:
+        txt = config['fsMesher-control']['DEFAULT_SHIP_STL']
+        if (txt[0] == txt[-1]) and txt.startswith(("'", '"')):
+             txt = txt[1:-1]
+        DEFAULT_SHIP_STL = txt
     except KeyError: pass    
 
     try:
@@ -467,6 +525,13 @@ def readInputParams(filename):
     except KeyError: pass    
 
     try:
+        txt = config['fsMesher-control']['CMD_surfaceFeatureExtract']
+        if (txt[0] == txt[-1]) and txt.startswith(("'", '"')):
+             txt = txt[1:-1]
+        CMD_surfaceFeatureExtract = txt
+    except KeyError: pass
+
+    try:
         txt = config['fsMesher-control']['CMD_snappyHexMesh']
         if (txt[0] == txt[-1]) and txt.startswith(("'", '"')):
              txt = txt[1:-1]
@@ -480,6 +545,7 @@ def readInputParams(filename):
         CMD_decomposePar = txt
     except KeyError: pass    
 
+    DEFAULT_SHIP_STL=os.path.basename(str(DEFAULT_SHIP_STL))
     return shipStl, params
     pass
 
@@ -500,34 +566,45 @@ def rotateLogFile():
 
 def setValue(filename, variable, value):
     subprocess.call('sed -i "s/^'+variable+'[ \t].*;/'+variable+' '+str(value)+';/g" '+filename, shell=True)
-    
+
+# foamFile may be compressed i.e. ".gz"  
+def foamFileExist(filename):
+    found = os.path.isfile(filename)
+    if not found:
+        found = os.path.isfile(filename + '.gz')
+    return found
+
+# foamBlock exists or not?
+def foamBlockExist(filename, blockName):
+    # check one-line format: "name { ... }"
+    cmd="sed -e '/^[ \\t]*[\"]*\<"+blockName+"\>[\"]*[ \\t]*{.\+}/"
+    p = subprocess.Popen(cmd+"{q1}' "+filename, stdout=subprocess.PIPE, shell=True)
+    p.communicate()
+    if p.returncode==0: # not found
+        # check multi-lines format: "name { \newline ... }"
+        cmd="sed -e '/^[ \\t]*[\"]*\<"+blockName+"\>[\"]*[ \\t]*{/,/}/"        
+        p = subprocess.Popen(cmd+"{q1}' "+filename, stdout=subprocess.PIPE, shell=True)
+        p.communicate()
+    if p.returncode==0: # still not found
+        # check multi-lines format: "name \newline { .. }"
+        cmd="sed -e '/^[ \\t]*[\"]*\<"+blockName+"\>[\"]*/,/}/"
+        p = subprocess.Popen(cmd+"{q1}' "+filename, stdout=subprocess.PIPE, shell=True)
+        p.communicate()
+    if p.returncode==0: # still not found
+        return False,cmd
+    return True,cmd
+
 def renameFoamBlock(filename, oldName, newName):
     cmd="sed -i -e '1h;2,$H;$!d;g' -e 's/\<"+oldName+"\>\([ \\n\\t]\+{\)/"+newName+"\\1/' "
     subprocess.call(cmd+filename, shell=True)
     pass
 
 def modifyFoamBlock(filename, blockName, variable, val):
-    #cmd="sed -i -e '1h;2,$H;$!d;g' -e 's/\(\<"+blockName+"\>[ \\n\\t]*{[^\<"+variable+"\>]*\)[^;]*/\\1"+variable+" "+str(val)+"/' "
-    # check one-liner format: "name { ... } "
-    cmd="sed -e '/^[ \\t]*\<"+blockName+"\>[ \\t]*{.\+}/"
-    p = subprocess.Popen(cmd+"{q1}' "+filename, stdout=subprocess.PIPE, shell=True)
-    p.communicate()
-    if p.returncode==0: # not found
-        # check muti-lines format: "name { \newline ... }"
-        cmd="sed -e '/^[ \\t]*\<"+blockName+"\>[ \\t]*{/,/}/"        
-        p = subprocess.Popen(cmd+"{q1}' "+filename, stdout=subprocess.PIPE, shell=True)
-        p.communicate()
-
-    if p.returncode==0: # still not found
-        # check multi-lines format: "name \newline { .. }"
-        cmd="sed -e '/^[ \\t]*\<"+blockName+"\>/,/}/"
-        p = subprocess.Popen(cmd+"{q1}' "+filename, stdout=subprocess.PIPE, shell=True)
-        p.communicate()
-        
-    if p.returncode==1: # found
+    OK,cmd = foamBlockExist(filename, blockName)
+    if OK:
         cmd += "{s/\(\<"+variable+"\>[ \\t]*\)[^;]*/\\1"+str(val)+"/}' -i "
         subprocess.call(cmd+filename, shell=True)
-    else: # still not found
+    else: # not found
         print "modifyFoamBlock: Substitution failed"
         print "filename: ", filename
         print "blockName: ", blockName
@@ -548,22 +625,29 @@ def runCommand(cmd):
         pass
     pass
     
-def createShipStl(shipStl, outputStl):
-    filename = "./constant/triSurface/" + outputStl
-    print "Creating stl: "+filename
-    subprocess.call("mkdir -p $(dirname "+filename+")", shell=True)
-    subprocess.call("rm -fr "+filename, shell=True)
+def createShipStl(shipStl, outputStl, overwrite=False):
+    print "Creating stl: "+outputStl
+    if os.path.isfile(outputStl) & (not overwrite):
+        print "    file already exist ... reuse existing file"
+        return
+
+    subprocess.call("rm -fr "+outputStl, shell=True)
+    if len(shipStl)==0:
+        print "    stlFile not specified ..."
+        raise SystemExit('abort ...')
     foo = 0
     while foo < len(shipStl):
         stlFile = shipStl[foo]
         foo += 1
-        if not stlFile[::-1][0:4][::-1]==".stl":
+        #if not stlFile[::-1][0:4][::-1]==".stl":
+        if not stlFile.endswith('.stl'):
             stlFile = stlFile + '.stl'            
         print "    append: " + stlFile
         if not os.path.isfile(stlFile):
             print "\nFile not found:",stlFile,"\n"
             raise SystemExit('abort ...')
-        runCommand("cat "+ stlFile + " >> constant/triSurface/"+outputStl)
+        subprocess.call("mkdir -p $(dirname "+outputStl+")", shell=True)
+        runCommand("cat "+ stlFile + " >> "+outputStl)
 
 def findSTLPatches(stlFile):
     p = subprocess.Popen("grep '^[ \\t]*\<solid\>' "+stlFile+" | sed 's/solid//g' | tr '\n' ' ' | sed 's/^[ \t]*//;s/ \+/ /g;s/\s*$//g' "  , stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
@@ -574,10 +658,9 @@ def findSTLPatches(stlFile):
     return patches.split(' ')
     
 def findBoundingBox(stlFile, verbose=True):
-    filename = "constant/triSurface/"+stlFile
     if verbose:
-        print "Compute bounding box: " + filename
-    p = subprocess.Popen("surfaceCheck "+filename+" | grep '^Bounding Box :' | sed \"s/.*: (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        print "Compute bounding box: " + stlFile
+    p = subprocess.Popen("surfaceCheck "+stlFile+" | grep '^Bounding Box :' | sed \"s/.*: (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     boundingBox,error = p.communicate()
     if error:
         print 'error: ', error
@@ -588,13 +671,17 @@ def findBoundingBox(stlFile, verbose=True):
         print "   ",boundingBox
     return boundingBox 
 
-def rotateStl(geometry, heading, outputGeometry):
-    filename = "./constant/triSurface/"+geometry
-    outputGeometry = " ./constant/triSurface/"+outputGeometry
+def translateStl(inputStl, val, outputStl):
+    val = "("+str(val[0])+" "+str(val[1])+" "+str(val[2])+")"
+    print "Translate stl by "+val+": " + inputStl
+    subprocess.call("surfaceTransformPoints -translate '"+val+"' " + inputStl + " " + outputStl + " > /dev/null", shell=True)
+    return True
+
+def rotateStl(inputStl, heading, outputStl):
     yaw = heading-180.0
     if str(yaw) == '0.0': return False
-    print "Rotate stl (0 0 " + str(yaw) + "): " + filename
-    subprocess.call("surfaceTransformPoints -rollPitchYaw '(0 0 "+str(heading-180.0)+")' " + filename + " " + outputGeometry + " > /dev/null", shell=True)
+    print "Rotate stl (0 0 " + str(yaw) + "): " + inputStl
+    subprocess.call("surfaceTransformPoints -rollPitchYaw '(0 0 "+str(heading-180.0)+")' " + inputStl + " " + outputStl + " > /dev/null", shell=True)
     return True
 
 def createBoxStl(BB,name):
@@ -686,7 +773,7 @@ def createBlockMeshDict(data, fileName):
     data.zCellSize = list(dZ)
 
     # horizontal cells for the whole domain    
-    cellWidth = dZ[-2]*data.fsCellRatio;
+    cellWidth = dZ[-2]*data.fsCellRatio
     Xcells = int((XmaxDomain-XminDomain)/cellWidth)
     Ycells = int((YmaxDomain-YminDomain)/cellWidth)
     data.cellWidth = cellWidth
@@ -960,43 +1047,57 @@ def createBackGroundMesh(data):
         for i in range(len(refBoxBB)):
             refBoxBB[i][5] += diff
 
+    #print "debug: refBoxData: ", data.refBoxData
     for BB in refBoxBB:
         refineBox(BB, 'xy')
-        pass
+        pass    
     
-    #print "debug: refBoxData: ", data.refBoxData
+    # this is a point outside ship.stl
+    outsidePoints = [0.5*(shipBBxMin+shipBBxMax), 0.5*(shipBByMin+shipBByMax)+math.fabs(shipBByMin-shipBByMax), 0.5*(shipBBzMin+shipBBzMax)]
 
     BB = [-1e6,-1e6,data.fsZmin,1e6,1e6,data.fsZmax]
-    selectProximity('new', "ship.stl", distance)
+    selectProximity('new', DEFAULT_SHIP_STL, distance, outsidePoints=outsidePoints)
     refineProximity('xy')
     #
     distance *= 0.5
-    selectProximity('new', "ship.stl", distance, BB)
+    selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
     refineProximity('xy')
     BB = [-1e6,-1e6,-1e6,1e6,1e6,data.fsZmin]
-    selectProximity('new', "ship.stl", distance, BB)
+    selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
     refineProximity('xyz')
     BB = [-1e6,-1e6,data.fsZmax,1e6,1e6,1e6]
-    selectProximity('new', "ship.stl", distance, BB)
+    selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
     refineProximity('xyz')
     #
     distance *= 0.5
     if bool(data.refBow):
         BB = [shipBBxMax-data.refBow,-1e6,-1e6,1e6,1e6,shipBBzMax-data.fsdZ*data.cellBuffer]
-        selectProximity('new', "ship.stl", distance, BB)
+        selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
         refineProximity('xyz')
+        if data.refSurfExtra is not None:
+            nameOnly = os.path.basename(data.refSurfExtra)
+            BB = [shipBBxMax-data.refBow+0.5*data.fsdZ*data.cellBuffer,-1e6,-1e6,1e6,1e6,shipBBzMax-1.5*data.fsdZ*data.cellBuffer]
+            selectProximity('new', nameOnly, 0.5*distance, BB=BB, outsidePoints=outsidePoints)
+            refineProximity('xyz')
+        
     if bool(data.refStern):
         BB = [-1e6,-1e6,-1e6,shipBBxMin+data.refStern,1e6,shipBBzMax-data.fsdZ*data.cellBuffer]
-        selectProximity('new', "ship.stl", distance, BB)
+        selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
         refineProximity('xyz')
+        if data.refSurfExtra is not None:
+            nameOnly = os.path.basename(data.refSurfExtra)
+            BB = [-1e6,-1e6,-1e6,shipBBxMin+data.refStern-0.5*data.fsdZ*data.cellBuffer,1e6,shipBBzMax-1.5*data.fsdZ*data.cellBuffer]
+            selectProximity('new', nameOnly, 0.5*distance, BB=BB, outsidePoints=outsidePoints)
+            refineProximity('xyz')
+
     if bool(data.refFS):
         BB = [shipBBxMin+data.refStern,-1e6,data.fsZmin,shipBBxMax-data.refBow,1e6,data.fsZmax]
-        selectProximity('new', "ship.stl", distance, BB)
+        selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
         refineProximity('z')
 
 def createSnappyMesh(data):
     filename='./system/snappyHexMeshDict'
-    snappyMesh_template(filename, data.shipPatches)
+    snappyMesh_template(filename, data.shipPatches, noLayers=data.noLayers)
     setValue(filename,"locationInMeshX",data.locationInMesh[0])
     setValue(filename,"locationInMeshY",data.locationInMesh[1])
     setValue(filename,"locationInMeshZ",data.locationInMesh[2])
@@ -1082,17 +1183,20 @@ def selectBoxToCell(BB):
         runCommand('rm -f .tmp_setSet')
 
 #surfaceToCell<surface> <outsidePoints> <cut> <inside> <outside> <near> <curvature>
-def selectProximity(opts, stlFile, distance, BB=[0]):
-    tmp = findBoundingBox(stlFile, False)
-    tmp = [0.5*(tmp[0]+tmp[3]), 0.5*(tmp[1]+tmp[4])+math.fabs(tmp[1]-tmp[4]), 0.5*(tmp[2]+tmp[5])]
-    outsidePoints = " (("+str(tmp[0])+" "+str(tmp[1])+" "+str(tmp[2])+"))"
+def selectProximity(opts, stlFile, distance, BB=[0], outsidePoints=None):
+    stlFile = './constant/triSurface/'+stlFile
+    if outsidePoints==None:
+        tmp = findBoundingBox(stlFile, False)
+        tmp = [0.5*(tmp[0]+tmp[3]), 0.5*(tmp[1]+tmp[4])+math.fabs(tmp[1]-tmp[4]), 0.5*(tmp[2]+tmp[5])]
+        outsidePoints = " (("+str(tmp[0])+" "+str(tmp[1])+" "+str(tmp[2])+"))"
+    else:
+        outsidePoints = " (("+str(outsidePoints[0])+" "+str(outsidePoints[1])+" "+str(outsidePoints[2])+"))"
     includeCutCells=' yes'
     includeInside=' yes'
     includeOutside=' no'
     curvature=' -1e6'
-    stlFile = '\\"./constant/triSurface/'+stlFile+'\\"'
     distance = " " + str(distance)
-    cmd = 'cellSet c0 '+opts+' surfaceToCell '+ stlFile + outsidePoints + includeCutCells + includeInside + includeOutside + distance + curvature
+    cmd = 'cellSet c0 '+opts+' surfaceToCell \\"'+ stlFile +'\\"'+ outsidePoints + includeCutCells + includeInside + includeOutside + distance + curvature
     if len(BB)==6:
         BBtxt = '('+str(BB[0])+' '+str(BB[1])+' '+str(BB[2])+') ('+str(BB[3])+' '+str(BB[4])+' '+str(BB[5])+')'
         cmd += "\n" + 'cellSet c0 subset boxToCell '+BBtxt
@@ -1220,25 +1324,48 @@ def refineMesh_template(filename, dirString):
     subprocess.call('sed -i "s/^directions.*;/directions ('+directions+' );/" '+filename, shell=True)
     pass
     
-def snappyMesh_template(filename, shipPatches):
-    subprocess.call('mkdir -p $(dirname '+filename+")", shell=True)
-    if os.path.isfile(filename):
-        # don't overwrite existing file
-        return
-    subprocess.call('cat << EOF > '+filename + snappyHexMeshDict_contents, shell=True)
-    # add ship_patches to snappyHexMeshDict
-    # get line number at "//ADD_SHIP_PATCHES_HERE"
-    p = subprocess.Popen("grep -n '//ADD_SHIP_PATCHES_HERE' "+filename, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    line,error = p.communicate()
-    line = line.split(":")
-    line = int(line[0])+1
-    if (len(shipPatches)>1):
-        for val in shipPatches:
-            subprocess.call('sed -i "'+str(line)+'i\        ship_'+str(val)+'  { nSurfaceLayers \$SHIP_BL_layers; }" '+filename, shell=True)
+def snappyMesh_template(filename, shipPatches, noLayers=None):
+    # don't overwrite existing file
+    if not os.path.isfile(filename):
+        print "Creating:",filename
+        subprocess.call('mkdir -p $(dirname '+filename+")", shell=True)
+        subprocess.call('cat << EOF > '+filename + snappyHexMeshDict_contents, shell=True)
+        renameFoamBlock(filename, "DEFAULT_SHIP_STL", '\\"'+DEFAULT_SHIP_STL+'\\"')
+        # add ship_patches to snappyHexMeshDict
+        # get line number at "//ADD_SHIP_PATCHES_HERE"
+        p = subprocess.Popen("grep -n '//ADD_SHIP_PATCHES_HERE' "+filename, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        line,error = p.communicate()
+        line = line.split(":")
+        line = int(line[0])+1
+        if (len(shipPatches)>1):
+            if noLayers==None: noLayers = []
+            if len(noLayers)>0: print "    disable layers on patch(es):",noLayers
+            for val in shipPatches:
+                if val in noLayers: continue
+                subprocess.call('sed -i "'+str(line)+'i\        ship_'+str(val)+'  { nSurfaceLayers \$SHIP_BL_layers; }" '+filename, shell=True)
+                line += 1
+        else:
+            subprocess.call('sed -i "'+str(line)+'i\        ship { nSurfaceLayers \$SHIP_BL_layers; }" '+filename, shell=True)
             line += 1
+
+    # "snappyHexMeshDict" already exists, check whether or not the "geometry" is OK
     else:
-        subprocess.call('sed -i "'+str(line)+'i\        ship { nSurfaceLayers \$SHIP_BL_layers; }" '+filename, shell=True)
-        line += 1    
+        print "Reuse existing file:",filename
+        OK,cmd = foamBlockExist(filename, DEFAULT_SHIP_STL)
+        if not OK:
+            print "\n    Warning: geomtry definition not found for:",DEFAULT_SHIP_STL
+            print "\n    Please review:",filename
+            print "\n"
+            
+    eMeshFile=os.path.splitext(DEFAULT_SHIP_STL)[0] if DEFAULT_SHIP_STL.endswith('.stl') else DEFAULT_SHIP_STL
+    if not foamFileExist('./constant/triSurface/'+eMeshFile+'.eMesh'):
+        print "\nExtract surface features from file: ./constant/triSurface/"+DEFAULT_SHIP_STL
+        subprocess.call('cat << EOF > ./system/surfaceFeatureExtractDict' + surfaceFeatureExtractDict_contents, shell=True)
+        subprocess.call('sed -i "s/^ship.stl/'+DEFAULT_SHIP_STL+'/" '+filename, shell=True)
+        runCommand(CMD_surfaceFeatureExtract + CMD_keepLog)
+    else:
+        print "Reuse existing file: "+'./constant/triSurface/'+eMeshFile+'.eMesh'
+    
     pass
 
 #*** These are templates files ************************************************* 
@@ -1255,6 +1382,7 @@ FoamFile
 /*
 *   created by fsMesher on $(hostname) @ $(date)
 */
+
 fastMerge yes;
 convertToMeters 1;
 
@@ -1322,6 +1450,44 @@ writeMesh       no;
 EOF
 '''
 
+surfaceFeatureExtractDict_contents = '''
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  3.0.x                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      surfaceFeatureExtractDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+/*
+*   created by fsMesher on $(hostname) @ $(date)
+*/
+
+ship.stl
+{
+    extractionMethod    extractFromSurface;
+    writeObj            true;    
+    extractFromSurfaceCoeffs
+    {
+        // Mark edges whose adjacent surface normals are at an angle less
+        // than includedAngle as features
+        // - 0  : selects no edges
+        // - 180: selects all edges
+        includedAngle   150;
+    }
+}
+
+// ************************************************************************* //
+EOF
+'''
+
 controlDict_contents='''
 FoamFile
 {
@@ -1335,6 +1501,7 @@ FoamFile
 /*
 *   created by fsMesher on $(hostname) @ $(date)
 */
+
 application     foamStar;
 
 startFrom       latestTime;
@@ -1510,7 +1677,7 @@ solvers
 
     p_rghFinal
     {
-        $p_rgh;
+        \$p_rgh;
         relTol          0;
     }
 
@@ -1611,10 +1778,15 @@ FoamFile
 locationInMeshX moin;
 locationInMeshY moin;
 locationInMeshZ moin;
+
 SHIP_BL_layers 3;
 SHIP_BL_layerGrowth 1.3;
 SHIP_BL_finalLayerThickness 0.7;
 SHIP_BL_minThickness 0.289;
+
+SHIP_EDGE_LVL 0;
+SHIP_HULL_LVL_MIN 0;
+SHIP_HULL_LVL_MAX 0;
 
 castellatedMesh moin;
 snap            moin;
@@ -1622,7 +1794,7 @@ addLayers       moin;
 
 geometry
 {
-    ship.stl { type triSurfaceMesh; name ship; patchInfo { type wall; } }
+    DEFAULT_SHIP_STL { type triSurfaceMesh; name ship; patchInfo { type wall; } }
 };
 
 castellatedMeshControls
@@ -1630,18 +1802,18 @@ castellatedMeshControls
     maxLocalCells 10000000;
     maxGlobalCells 100000000;
     minRefinementCells 0;
-    nCellsBetweenLevels 4;
+    nCellsBetweenLevels 1;
 
     locationInMesh (\$locationInMeshX \$locationInMeshY \$locationInMeshZ); 
     
     features
     (
-        // { file "ship.eMesh"; level 1; }
+        { file "ship.eMesh"; level \$SHIP_EDGE_LVL; }
     );
 
     refinementSurfaces
     {
-        ship { level (0 0); }
+        ship { level (\$SHIP_HULL_LVL_MIN \$SHIP_HULL_LVL_MAX); }
     }
 
     resolveFeatureAngle 15;
@@ -1655,12 +1827,12 @@ castellatedMeshControls
 
 snapControls
 {
-    nSmoothPatch 5;
-    tolerance 2.0;
-    nSolveIter 10;
+    nSmoothPatch 3;
+    tolerance 0.75;
+    nSolveIter 100;
     nRelaxIter 5;
-    nFeatureSnapIter 2;
-    implicitFeatureSnap true;
+    nFeatureSnapIter 10;
+    implicitFeatureSnap false;
     explicitFeatureSnap true;
     multiRegionFeatureSnap true;
 }
@@ -1680,26 +1852,26 @@ addLayersControls
 
     featureAngle 60;
     nRelaxIter 5;
-    nSmoothSurfaceNormals 2;
-    nSmoothNormals 2;
+    nSmoothSurfaceNormals 1;
+    nSmoothNormals 3;
     nSmoothThickness 10;
     maxFaceThicknessRatio 0.5;
     maxThicknessToMedialRatio 0.3;
     minMedianAxisAngle 90;
     nBufferCellsNoExtrude 0;
-    nLayerIter 10;
+    nLayerIter 50;
     nRelaxedIter 20;
     nMedialAxisIter 10;
 }
-
 meshQualityControls
+
 {
     maxNonOrtho 65;
     maxBoundarySkewness 20;
     maxInternalSkewness 4;
-    maxConcave 180; //80;
+    maxConcave 80;
     minVol 1e-13;
-    minTetQuality 0;
+    minTetQuality 1e-15;
     minArea -1;
     minTwist 0.02;
     minDeterminant 0.001;
@@ -1709,8 +1881,7 @@ meshQualityControls
     minVolCollapseRatio 0.1;
     //
     nSmoothScale 4;
-    errorReduction 0.8;
-    nSmoothScale 4;
+    errorReduction 0.75;
     //
     relaxed
     {
@@ -1730,9 +1901,17 @@ defaultParams_contents='''
 
 # Only stl in ASCII format. File(s) "stlFile#" will be merged into "constant/triSurface/ship.stl"
 # Supports multiple stlFile(s): stlFile0, stlFile1, stlFile2, ..., etc.
-# Patch names will be "ship_<stl's solid name>"
-stlFile0 = ../kcs-hull.stl
-stlFile1 = ../kcs-deck.stl
+# Patch names will be "ship_<stl solid name>"
+stlFile0 = ./kcs-hull.stl
+stlFile1 = ./kcs-deck.stl
+
+# extra refinement in bow/stern areas with strong curvatures
+refineSurf = ./kcs-curves.stl
+
+# draft (measured from keel)
+# if defined, ship.stl will be moved into position
+# if "None" or "not defined", no operation will be performed to ship.stl
+draft = None
 
 # 180 deg is headsea
 heading = 180
@@ -1801,6 +1980,11 @@ refineFS = True
 # auto: 3, 1.3, 0.7, 0.7
 layers = auto
 
+# by default we add layers to all ship patches "ship_<stl solid name>"
+# use "disableLayers" option to disable layer cell on specific patch e.g. deck
+# (comma separated list of <stl solid name>)
+disableLayers = deck
+
 # these are optional settings for fsMesher.py
 [fsMesher-control]
 
@@ -1815,6 +1999,9 @@ EXEC_REFINEPROXIMITY = True
 EXEC_SNAP = True
 EXEC_ADDLAYERS = True
 
+# main stl-filename in "./constant/triSurface/"
+DEFAULT_SHIP_STL = ship.stl
+
 # Self-explained settings ... 
 # log-file for foam tools is defined in CMD_keepLog.
 # output from python script is flushed to stdOut
@@ -1825,7 +2012,7 @@ CMD_autoPatch = 'autoPatch -overwrite 80'
 CMD_setSet = 'setSet -latestTime'
 CMD_refineMesh = 'refineMesh'
 CMD_snappyHexMesh = 'snappyHexMesh'
-CMD_decomposePar = 'decomposePar -force -constant -latestTime'
+CMD_decomposePar = 'decomposePar -force -latestTime'
 
 EOF
 '''
