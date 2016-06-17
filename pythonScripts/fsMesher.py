@@ -14,6 +14,7 @@
 import os, subprocess, time, math
 import numpy as np
 import sys, argparse, configparser
+import pprint
 
 # sose: 2016-june-03
 # FIXME: There are still many conditions inwhich this script will fail
@@ -52,6 +53,18 @@ DEFAULT_PARAMS = {
 'refFS' : True, 
 'shipBL' : [3, 1.3, 0.7, 0.7],
 'noLayers' : []
+}
+
+dataRefineProximity = {
+'direction': 'xyz',
+'stlFile': 'ship.stl',
+'outsidePoints': [0.0, 0.0, 0.0],
+'includeCutCells': True,
+'includeInside': True,
+'includeOutside': False,
+'curvature': -1e6,
+'distance': 0.0,
+'boundingBox': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 }
 
 # domain = [Xmin,Xmax, Ymin,Ymax, Zmin,Zmax]
@@ -1018,8 +1031,11 @@ def createBackGroundMesh(data):
     shipBByMax = data.shipBBRot[4]
     shipBBzMax = data.shipBBRot[5]
 
+    # number of level(s) for uniform 'xy'-refinement
+    nxy = int(math.log(math.fabs(float(data.fsCellRatio)), float(2))) - 1
+
     # refine free surface (using proximity method)
-    distance = data.fsdZ*data.cellBuffer*2.0*(nRefBox-1.0 + float(bool(data.refBow) | bool(data.refStern) | bool(data.refFS)))    
+    distance = data.fsdZ*data.cellBuffer*2.0*(nxy-1.0 + nRefBox-1.0 + float(bool(data.refBow) | bool(data.refStern) | bool(data.refFS)))
     
     lastInnerBox = refBoxBB[-1]
     if lastInnerBox[0] > (shipBBxMin - distance - data.cellWidth*data.cellBuffer/math.pow(2.0, float(nRefBox))):
@@ -1055,11 +1071,12 @@ def createBackGroundMesh(data):
     # this is a point outside ship.stl
     outsidePoints = [0.5*(shipBBxMin+shipBBxMax), 0.5*(shipBByMin+shipBByMax)+math.fabs(shipBByMin-shipBByMax), 0.5*(shipBBzMin+shipBBzMax)]
 
+    for i in range(nxy):
+        selectProximity('new', DEFAULT_SHIP_STL, distance, outsidePoints=outsidePoints)
+        refineProximity('xy')
+        distance *= 0.5
+
     BB = [-1e6,-1e6,data.fsZmin,1e6,1e6,data.fsZmax]
-    selectProximity('new', DEFAULT_SHIP_STL, distance, outsidePoints=outsidePoints)
-    refineProximity('xy')
-    #
-    distance *= 0.5
     selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
     refineProximity('xy')
     BB = [-1e6,-1e6,-1e6,1e6,1e6,data.fsZmin]
@@ -2017,6 +2034,35 @@ CMD_decomposePar = 'decomposePar -force -latestTime'
 EOF
 '''
 
+def computeProximityData(data):
+    print "debug: computeProximityData()"
+
+    # cell data
+    cSize = data.fsdZ
+    cBuffer = data.cellBuffer
+    nlevel = int(math.log(math.fabs(float(data.fsCellRatio)), float(2)))
+
+    shipBBxMin = data.shipBBRot[0]
+    shipBByMin = data.shipBBRot[1]
+    shipBBzMin = data.shipBBRot[2]
+    shipBBxMax = data.shipBBRot[3]
+    shipBByMax = data.shipBBRot[4]
+    shipBBzMax = data.shipBBRot[5]
+    outsidePoints = [0.5*(shipBBxMin+shipBBxMax), 0.5*(shipBByMin+shipBByMax)+math.fabs(shipBByMin-shipBByMax), 0.5*(shipBBzMin+shipBBzMax)]
+    
+    proxData = []
+    n = nlevel
+    while n>=1:
+        n -= 1
+        rData = dict(dataRefineProximity)
+        rData['direction'] = 'xy'
+        rData['stlFile'] = str(DEFAULT_SHIP_STL)
+        rData['outsidePoints'] = list(outsidePoints)
+
+   
+    print cSize,cBuffer, nlevel
+    pprint.pprint(rData)
+    pass
 
 #*** Main execution start here *************************************************
 if __name__ == "__main__":
