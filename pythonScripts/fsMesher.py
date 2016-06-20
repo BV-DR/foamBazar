@@ -7,7 +7,7 @@
 # Author:   Sopheak Seng                                                #
 # Org.:     Bureau Veritas, (HO, France)                                #
 # Email:    sopheak.seng@bureauveritas.com                              #
-# Project:  An adaptation of CRS Parametric mesh generation tool of     #
+# Project:  A derivative of the CRS Parametric mesh generation tool of  #
 #           S. Tornros (Caterpillar Propulsion, tornros_simon@cat.com)  #
 #########################################################################
 
@@ -87,6 +87,7 @@ class UserInput(object):
         
         if opts['draft'] is not None:
             draft = math.fabs(float(opts['draft']))
+            print "Set draft:",draft
             move = -shipBB[2] - draft
             translateStl(filename, [0.0,0.0,move], filename)
             shipBB[2] += move
@@ -330,7 +331,8 @@ def readInputParams(filename):
     # heading
     try:
         txt = str(config[name]['draft'])
-        params['draft'] = math.fabs(float(txt))
+        if not txt=='None':
+            params['draft'] = math.fabs(float(txt))
     except KeyError: pass
 
     # heading
@@ -1086,29 +1088,36 @@ def createBackGroundMesh(data):
     selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
     refineProximity('xyz')
     #
+    XmaxDomain = data.domain[1]
     distance *= 0.5
     if bool(data.refBow):
-        BB = [shipBBxMax-data.refBow,-1e6,-1e6,1e6,1e6,shipBBzMax-data.fsdZ*data.cellBuffer]
+        # align cutting locations
+        refBow = shipBBxMax-data.refBow
+        refBow = XmaxDomain-math.ceil((XmaxDomain-refBow)/data.fsdZ)*data.fsdZ
+        BB = [refBow,-1e6,-1e6,1e6,1e6,shipBBzMax-data.fsdZ*data.cellBuffer]
         selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
         refineProximity('xyz')
         if data.refSurfExtra is not None:
             nameOnly = os.path.basename(data.refSurfExtra)
-            BB = [shipBBxMax-data.refBow+0.5*data.fsdZ*data.cellBuffer,-1e6,-1e6,1e6,1e6,shipBBzMax-1.5*data.fsdZ*data.cellBuffer]
+            BB = [refBow+0.5*data.fsdZ*data.cellBuffer,-1e6,-1e6,1e6,1e6,shipBBzMax-1.5*data.fsdZ*data.cellBuffer]
             selectProximity('new', nameOnly, 0.5*distance, BB=BB, outsidePoints=outsidePoints)
             refineProximity('xyz')
         
     if bool(data.refStern):
-        BB = [-1e6,-1e6,-1e6,shipBBxMin+data.refStern,1e6,shipBBzMax-data.fsdZ*data.cellBuffer]
+        # align cutting locations
+        refStern = shipBBxMin+data.refStern
+        refStern = XmaxDomain-math.floor((XmaxDomain-refStern)/data.fsdZ)*data.fsdZ
+        BB = [-1e6,-1e6,-1e6,refStern,1e6,shipBBzMax-data.fsdZ*data.cellBuffer]
         selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
         refineProximity('xyz')
         if data.refSurfExtra is not None:
             nameOnly = os.path.basename(data.refSurfExtra)
-            BB = [-1e6,-1e6,-1e6,shipBBxMin+data.refStern-0.5*data.fsdZ*data.cellBuffer,1e6,shipBBzMax-1.5*data.fsdZ*data.cellBuffer]
+            BB = [-1e6,-1e6,-1e6,refStern-0.5*data.fsdZ*data.cellBuffer,1e6,shipBBzMax-1.5*data.fsdZ*data.cellBuffer]
             selectProximity('new', nameOnly, 0.5*distance, BB=BB, outsidePoints=outsidePoints)
             refineProximity('xyz')
 
-    if bool(data.refFS):
-        BB = [shipBBxMin+data.refStern,-1e6,data.fsZmin,shipBBxMax-data.refBow,1e6,data.fsZmax]
+    if bool(data.refFS) & (bool(data.refBow) | bool(data.refStern)):
+        BB = [refStern,-1e6,data.fsZmin,refBow,1e6,data.fsZmax]
         selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
         refineProximity('z')
 
@@ -1166,7 +1175,6 @@ def createSnappyMesh(data):
     else:
         print "snappyHexMesh: add layers ... skip"
         pass
-    	
     pass
 
 def run_setSet():
@@ -1927,7 +1935,7 @@ refineSurf = ./kcs-curves.stl
 
 # draft (measured from keel)
 # if defined, ship.stl will be moved into position
-# if "None" or "not defined", no operation will be performed to ship.stl
+# if "None", no operation will be performed to ship.stl
 draft = None
 
 # 180 deg is headsea
