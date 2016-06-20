@@ -109,15 +109,13 @@ class UserInput(object):
         LOA = shipBB[3]-shipBB[0] if opts['LOA']==None else opts['LOA']
         fs = [0.02*LOA, 0.01*LOA] if opts['fs']==None else opts['fs']
         fsdZ = fs[1]/3 if opts['fsdZ']==None else opts['fsdZ']
-
-        if opts['refBow']==None:
-            refBow=0
-        elif opts['refBow']==True:
+        
+        refBow=0
+        if opts['refBow']==True:
             refBow=0.20*LOA
 
-        if opts['refStern']==None:
-            refStern=0
-        elif opts['refStern']==True:
+        refStern=0
+        if opts['refStern']==True:
             refStern=0.20*LOA
         
         refFS = bool(opts['refFS'])
@@ -1089,32 +1087,37 @@ def createBackGroundMesh(data):
     refineProximity('xyz')
     #
     XmaxDomain = data.domain[1]
-    distance *= 0.5
+    # align cutting locations
+    refBow = data.refBow if bool(data.refBow) else 0.2*(shipBBxMax-shipBBxMin)
+    refBow = shipBBxMax-refBow 
+    refBow = XmaxDomain-math.ceil((XmaxDomain-refBow)/data.fsdZ)*data.fsdZ
     if bool(data.refBow):
-        # align cutting locations
-        refBow = shipBBxMax-data.refBow
-        refBow = XmaxDomain-math.ceil((XmaxDomain-refBow)/data.fsdZ)*data.fsdZ
+        distance *= 0.5
         BB = [refBow,-1e6,-1e6,1e6,1e6,shipBBzMax-data.fsdZ*data.cellBuffer]
         selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
         refineProximity('xyz')
-        if data.refSurfExtra is not None:
-            nameOnly = os.path.basename(data.refSurfExtra)
-            BB = [refBow+0.5*data.fsdZ*data.cellBuffer,-1e6,-1e6,1e6,1e6,shipBBzMax-1.5*data.fsdZ*data.cellBuffer]
-            selectProximity('new', nameOnly, 0.5*distance, BB=BB, outsidePoints=outsidePoints)
-            refineProximity('xyz')
-        
+
+    if data.refSurfExtra is not None:
+        nameOnly = os.path.basename(data.refSurfExtra)
+        BB = [refBow+0.5*data.fsdZ*data.cellBuffer,-1e6,-1e6,1e6,1e6,shipBBzMax-1.5*data.fsdZ*data.cellBuffer]
+        selectProximity('new', nameOnly, 0.5*distance, BB=BB, outsidePoints=outsidePoints)
+        refineProximity('xyz')
+
+    # align cutting locations
+    refStern = data.refStern if bool(data.refStern) else 0.2*(shipBBxMax-shipBBxMin)
+    refStern = shipBBxMin+refStern
+    refStern = XmaxDomain-math.floor((XmaxDomain-refStern)/data.fsdZ)*data.fsdZ        
     if bool(data.refStern):
-        # align cutting locations
-        refStern = shipBBxMin+data.refStern
-        refStern = XmaxDomain-math.floor((XmaxDomain-refStern)/data.fsdZ)*data.fsdZ
+        if not bool(data.refBow):
+            distance *= 0.5
         BB = [-1e6,-1e6,-1e6,refStern,1e6,shipBBzMax-data.fsdZ*data.cellBuffer]
         selectProximity('new', DEFAULT_SHIP_STL, distance, BB=BB, outsidePoints=outsidePoints)
         refineProximity('xyz')
-        if data.refSurfExtra is not None:
-            nameOnly = os.path.basename(data.refSurfExtra)
-            BB = [-1e6,-1e6,-1e6,refStern-0.5*data.fsdZ*data.cellBuffer,1e6,shipBBzMax-1.5*data.fsdZ*data.cellBuffer]
-            selectProximity('new', nameOnly, 0.5*distance, BB=BB, outsidePoints=outsidePoints)
-            refineProximity('xyz')
+    if data.refSurfExtra is not None:
+        nameOnly = os.path.basename(data.refSurfExtra)
+        BB = [-1e6,-1e6,-1e6,refStern-0.5*data.fsdZ*data.cellBuffer,1e6,shipBBzMax-1.5*data.fsdZ*data.cellBuffer]
+        selectProximity('new', nameOnly, 0.5*distance, BB=BB, outsidePoints=outsidePoints)
+        refineProximity('xyz')
 
     if bool(data.refFS) & (bool(data.refBow) | bool(data.refStern)):
         BB = [refStern,-1e6,data.fsZmin,refBow,1e6,data.fsZmax]
