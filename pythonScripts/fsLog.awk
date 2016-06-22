@@ -1,9 +1,26 @@
 #! /usr/bin/awk -f
 
+#########################################################################
+# Filename: fsLog.awk                                                   #
+# Date:     2016-June-22                                                #
+# Version:  1.                                                          #
+# Author:   Sopheak Seng                                                #
+# Org.:     Bureau Veritas, (HO, France)                                #
+# Email:    sopheak.seng@bureauveritas.com                              #
+# Project:  This awk-script prepares data in log-files for further      #
+#           analyses. Data for each log file are kept in sub-folders    #
+#           ./fsLog_<log-file>/   Data from stdin are kept in ./fsLog/  #
+#           WARNING: files in existing sub-folders will be overwritten. #
+#########################################################################
+
 BEGIN {
     nSteps=0
     Time=0
     piping=0
+}
+
+END {
+    newLineInFiles()
 }
 
 # create folder for each log-file
@@ -247,9 +264,5 @@ function extract(line,columnSel,outVar,a,b)
     name="fluidForce_moment_z"
     checkFile(name, header)
     printf "\t" val[8] >> files[name]
-}
-
-END {
-    newLineInFiles()
 }
 
