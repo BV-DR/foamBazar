@@ -13,9 +13,10 @@
 import re, os, sys, time, math, glob, shlex, subprocess, argparse, configparser
 import warnings
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tkr
-import matplotlib.animation as animation
+import matplotlib.animation as anim
 
 import pprint
 from StringIO import StringIO
@@ -23,6 +24,7 @@ from subprocess import PIPE
 from subprocess import Popen
 
 DEBUG = False
+VERBOSE = False
 
 # with "cat, tail, head" we can manage partial data efficiently (important for large data sets)
 TRIMINSECOND = [0, 0]   # 0: trim lines, 1: trim second, 2: trim at absolute time positions 
@@ -77,8 +79,8 @@ KEYWORD_OPTS = {
 CONTROL_OPTS = {
 'plot' : ['co', 'res', 'cont', 'ph', 'f', 'm', 't', 'nIter'],
 'col' : [-1],           # plot the last column (not use when "iter == True")
-'iter' : False,         # show each iteration or not?
-'keepAlive' : False,    # keep the windows open and update regularly
+'showIter' : False,     # show each iteration or not?
+'updateInterval' : 0,   # keep the windows open and update regularly
 'keyOpts' : dict(KEYWORD_OPTS) # which varname to plot?
 }
 
@@ -99,11 +101,14 @@ DATA = {
 
 # this is a template for each data set
 PLOTME = {
-'fname' : "",   # filename
-'title' : "",   # title (from data file)
-'cmd' : "",     # command line to extract data
-'data' : [],    # data to plot
-'axis' : [],    # axis [x0,x1, y0,y1]
+'fname' : "",           # filename
+'title' : "",           # title (from data file)
+'cmd' : "",             # command line to extract data
+'curLine': None,        # keep track of lines read from file
+'lastModified': 0,      # keep track of last modified time
+'data' : [],            # data to plot
+'xlim' : [],            # axis [x0,x1]
+'ylim' : [],            # axis [y0,y1]
 'xlabel' : "t [s]",
 'ylabel' : ""
 }
@@ -156,20 +161,29 @@ def getlogdir(name):
     if os.path.isfile(name):
         fname = os.path.basename(name)
         # where is data folder?
-        logdir = os.path.dirname(name) + "/fsLog_" + fname + "/"
+        logdir = os.path.dirname(name) + "./fsLog_" + fname + "/"
         if not os.path.isdir(logdir):
             logdir = "./fsLog_" + fname + "/"
             if not os.path.isdir(logdir):
                 # data folder not found ... create from log-file using fsLog.awk
                 runCommand([CMD_fsLogAwk, name])
-    elif not os.path.isdir(name):
-        print "log-file/folder not found:",name
-        raise SystemExit('abort ...')
+        return logdir
+
+    # name is neither a file or a folder
+    # we check try to add prefix: fsLog_
+    if not os.path.isdir(name):
+        fname = os.path.basename(name)
+        logdir = os.path.dirname(name) + "./fsLog_" + fname + "/"
+        if not os.path.isdir(logdir):
+            print "log-file/folder not found:",name
+            raise SystemExit('abort ...')
+        return logdir
+      
+    # name is a folder, just proceed
     
     # add trailing slash "/"
     if not logdir[-1]=="/":
         logdir = logdir + "/"
-        
     return logdir
 
 def filesOnly(names):
@@ -193,9 +207,10 @@ def checkAvailable(data):
 def cmdOptions(argv):
     parser = argparse.ArgumentParser(formatter_class=SmartFormatter)
     parser.add_argument('-d', '--debug', action='store_true', help='Run in DEBUG mode')
-    parser.add_argument('logfile', nargs='?', help='Read data from file/folder. Log-file, if given in its raw format, will be piped through "fsLog.awk". By default the data is read from: ./fsLog/')
-    parser.add_argument('-p', '--plot', metavar='KEY', dest='plot', type=str, help='R|Quantities to plot (comma separated keywords). KEY can\nbe the exact file name, or the follwing pre-defined\nkeywords. ' + "Default: " + re.sub(r'[ \'\[\]]', '', str(CONTROL_OPTS['plot']))  + INFO_PLOTKEYS)
-    parser.add_argument('-v','--var', dest='var', type=str, help='R|Name of each selected variable (comma separated names).\nAvail. names are shown in file names after the first\nunderscore, e.g.: "final,Ux,Uz" will select both files\n"Res_final_Ux" and "Res_final_Uz". Plot keyword can be\nspecified using ":" as the separator. Defaults are:\n'
+    parser.add_argument('-v', '--verbose', action='store_true', help='Show more comprehensive info while running')
+    parser.add_argument('logfile', nargs='?', help='Read data from log-file/folder. Log-file, if given in its raw format, will be piped through "fsLog.awk". By default the data is read from: ./fsLog/')
+    parser.add_argument('-p', '--plot', metavar='KEY', dest='plot', type=str, help='R|Quantities to plot (comma separated keywords). KEY can\nbe the exact name of the data file, or the follwing\npre-defined keywords. ' + "Default: " + re.sub(r'[ \'\[\]]', '', str(CONTROL_OPTS['plot']))  + INFO_PLOTKEYS)
+    parser.add_argument('-w','--with', metavar='VAR',dest='withvar', type=str, help='R|Name of each selected variable (comma separated names).\nAvail. names are shown in file names after the first\nunderscore, e.g.: "final,Ux,Uz" will select both files\n"Res_final_Ux" and "Res_final_Uz". Plot keyword can be\nspecified using ":" as the separator. Defaults are:\n'
         'co:max,interface\n'
         'ph:min,max\n'
         'res:fsi,init,Ux,Uy,Uz,prgh,fsi\n'
@@ -204,23 +219,28 @@ def cmdOptions(argv):
         't:curr,meshUpdate\n'
         'f:relax,x,y,z\n'
         'm:relax,x,y,z')
-    parser.add_argument('-c','--column', dest='col', help='Column(s) to plot againt time (not use when option --iter is set). The first column is 1. The last column is -1 or 0 (default). (FIXME: not yet implemented) Use negative int to count from the last column. Use comma to define multiple columns.')
+    parser.add_argument('-c','--column', dest='col', help='Column(s) to plot againt time (not use when option --iter is set). The first column is 1. The last column is 0 (default). Use comma to define multiple columns.')
     parser.add_argument('-i','--iter', dest='iter', action='store_true', help='Show values at each iteration')
-    parser.add_argument('-k','--keep-alive', dest='keepAlive', action='store_true', help='Keep the plot windows open and update regularly')
+    parser.add_argument('-u','--update', nargs='?', const=30, default=None, metavar='N', dest='updateInterval', action='store', type=float, help='Update the plot every N seconds (default: 30)')
     parser.add_argument('-t','--trim', metavar='M,N', dest='trim', help='Trim data M lines HEAD and N lines tail, e.g.: -t 2,3 will trim HEAD 2 lines and TAIL 3 lines. Use "s" to trim in second, e.g. -t 0.2s,2s will trim HEAD 0.2 sec and TAIL 2 sec. Use "S" to trim at absolute time positions. Without "s" or "S" only int is allowed.')
     parser.add_argument('-l','--limit', metavar='N', dest='limit', help='Limit the total number of data points to N. Use "s" to set the limit in second, e.g.: --limit 5s will plot only the last 5 sec. of data')
+    parser.add_argument('-a','--axis', metavar='val', dest='axis', help='Set axis range xlim and/or ylim. The format is [x.y]:min,max e.g.: -a y:-1.5,2 If not defined the axes are compute automatically.')
 
-    #FIXME: add option to output data to files
-    #FIXME: add option to overwrite ylim
+    #FIXME: add option to output data to files/png/raw
     #FIXME: add option to define line thickness
-    #FIXME: add option to define line marker (reduced marker)
+    #FIXME: add option to define line style/marker (reduced marker)
 
     # get the template
     data = dict(DATA)
     args = parser.parse_args()
+
     if args.debug:
         global DEBUG
         DEBUG=True
+        pass
+    if args.debug:
+        global VERBOSE
+        VERBOSE=True
         pass
     if args.logfile!=None:
         logfile = str(args.logfile)
@@ -229,9 +249,9 @@ def cmdOptions(argv):
     if args.plot!=None:
         data['opts']['plot'] = [str(val) for val in args.plot.split(",")]
         pass
-    if args.var!=None:
+    if args.withvar!=None:
         plot = data['opts']['plot']
-        var = [str(val) for val in args.var.split(",")]
+        var = [str(val) for val in args.withvar.split(",")]
         reset = {}
         key=None
         for i in var:
@@ -273,10 +293,10 @@ def cmdOptions(argv):
         if not len(data['opts']['col']): data['opts']['col']=[-1]
         pass
     if args.iter:
-        data['opts']['iter'] = True
+        data['opts']['showIter'] = True
         pass
-    if args.keepAlive:
-        data['opts']['keepAlive'] = True
+    if args.updateInterval!=None:
+        data['opts']['updateInterval'] = args.updateInterval
     if args.trim!=None:
         global TRIMINSECOND
         global TRIMHEADTAIL
@@ -314,7 +334,6 @@ def cmdOptions(argv):
             TRIMINSECOND = list(sec)
             TRIMHEADTAIL = list(tmp)
         pass
-    
     if args.limit!=None:
         global LIMITSAMPLEPOINTS
         global LIMITSAMPLEINSECOND
@@ -339,6 +358,28 @@ def cmdOptions(argv):
             LIMITSAMPLEINSECOND = sec
             LIMITSAMPLEPOINTS = tmp
         pass
+    if args.axis!=None:
+        global PLOTME
+        word={'x':'xlim','y':'ylim'}
+        def invalidOption():
+            print "Invalid option(s): --axis",args.axis
+            raise SystemExit('abort ...')
+        txt = args.axis.split(",")
+        if not (len(txt)==2 or len(txt)==4): invalidOption()
+        while len(txt):
+            j=txt[0].split(":")
+            if (len(j)!=2) or (not j[0] in word): invalidOption()
+            if (j[1]=="") or (txt[1]==""): invalidOption()
+            key=word[j[0]]
+            try:
+                minval = float(j[1])
+                maxval = float(txt[1])
+                if (minval>=maxval): raise 
+            except:
+                invalidOption()
+            PLOTME[key]=[minval, maxval]
+            del txt[0],txt[0]
+        pass
 
     data = checkAvailable(data)    
     return data
@@ -346,11 +387,11 @@ def cmdOptions(argv):
 # prepare cmd to read data
 def prepareData(fname, opts):
     plotme = dict(PLOTME)
-    if opts['iter']:
+    if opts['showIter']:
         # read all data including iter.        
         # awk 'NR==1{t=$1;next}{dt=$1-t;t=$1}' # this will compute deltaT
         # awk 'NR==1{t=$1;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2;i<=NF;i++) print t+0.5*dt*(i-2),$i}' fsLog/nIter_PIMPLE
-        cmd = "awk 'NR==1{t=$1;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2;i<=NF;i++) print t+0.5*dt*(i-2),$i}' "
+        cmd = "awk 'NR==1{t=$1;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2;i<=NF;i++) print t+0.75*dt*(i-2),$i}' "
         pass
     else:
         # read only specific col(s)
@@ -379,27 +420,27 @@ def prepareData(fname, opts):
 
 def numpyArrayFromTXTfile(cmd, dtype=float):
     if DEBUG:
-        t0=time.time()
         print "DEBUG:",cmd
+        t0=time.time()
     txt=shlex.split(cmd)
     mycmd=[]
     p=[]
-    for val in txt:
-        if (val=='|'): # open a new pipe
+    for cmdarg in txt:
+        if (cmdarg=='|'): # open a new pipe
             if len(mycmd)==0:
                 print "cmd invalid:",cmd
                 raise SystemExit('abort ...')
             addPipe(p, mycmd)
             mycmd=[]
         else:
-            mycmd.append(val)
+            mycmd.append(cmdarg)
             
     if len(mycmd)==0:
         print "cmd invalid:",cmd
         raise SystemExit('abort ...')
     addPipe(p, mycmd)
 
-    # direct piping is way faster than StringIO
+    # using pipe is way faster than StringIO
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning, append=1)
         val = np.loadtxt(p[-1].stdout, dtype=dtype)
@@ -410,16 +451,7 @@ def numpyArrayFromTXTfile(cmd, dtype=float):
             print "cmd:",cmd
             print err
             raise SystemExit("cmd failed to execute ... abort")
-
-    #txt,err = p[-1].communicate()
-    #if err:
-    #    print "cmd:",cmd
-    #    print "error:",err
-    #    raise SystemExit('abort ...')
-    #if (len(txt)==0): return np.array([])
-    #fakeStream = StringIO(txt)
-    #val = np.loadtxt(fakeStream, dtype=dtype)
-    
+   
     if DEBUG: print "DEBUG: timing",time.time()-t0
     return val
 
@@ -446,19 +478,40 @@ def countLinesToPosition(val, fname, fromTail=False):
     if not count: count = 0
     return int(count)
 
-def readData(plotme):
-    # FIXME: check timeStamp on files and update only when neccessary
+def countHeaderLines(fname):
+    cmd="awk 'FNR==1 {count=0;} !NF || /^[ \t]*#/ {count+=1; next;} {print NR-1; exit;}' " + fname
+    count = numpyArrayFromTXTfile(cmd, dtype=int)
+    if DEBUG: print "DEBUG: header lines:",count
+    return 0 if count.size==0 else count
+
+def fileHasBeenModified(fname, lastModified):
+    oldtime = lastModified
+    lastModified = os.path.getmtime(fname);
+    return lastModified>oldtime, lastModified
+    
+# At the first call full data will be loaded
+# At subquence call(s), we read and append the latest data only
+def readData(plotme, latestOnly=True, verbose=True):
+    needUpdate,plotme['lastModified'] = fileHasBeenModified(plotme['fname'], plotme['lastModified'])
+    needUpdate = needUpdate or (not latestOnly)
+    if needUpdate==False: return False,0
     global TRIMHEADTAIL
     global TRIMINSECOND
     global LIMITSAMPLEPOINTS
     global LIMITSAMPLEINSECOND
     fname = plotme['fname']
     cmd = plotme['cmd']
-    head = TRIMHEADTAIL[0]
-    headInSec = TRIMINSECOND[0]
+    if not latestOnly or (plotme['curLine']==None):
+        plotme['curLine']==None
+        head = TRIMHEADTAIL[0]
+        headInSec = TRIMINSECOND[0]
+    else:
+        head = plotme['curLine']
+        headInSec = 0   # trim to current line
     tail = TRIMHEADTAIL[1]
     tailInSec = TRIMINSECOND[1]
-    print "Read data:",fname
+    if verbose: print "Read data:",fname
+    nHeaderLines = countHeaderLines(fname)
     if (head>0 or tail>0):
         if headInSec:
             if headInSec==1:
@@ -467,10 +520,10 @@ def readData(plotme):
             else:
                 info="trim HEAD at "+str(head)+" sec"
                 head=countLinesToPosition(head, fname)
-            print info,"("+str(head)+" lines)"
+            if verbose: print info,"("+str(head)+" lines)"
         else:
-            head += 2   # we always have one header line in data files
-            print "trim HEAD "+str(head)+" lines"
+            head += nHeaderLines + 1
+            if verbose: print "trim HEAD "+str(head)+" lines"
         #
         if tailInSec:
             if tailInSec==1:
@@ -479,36 +532,59 @@ def readData(plotme):
             else:
                 info="trim TAIL at "+str(tail)+" sec"
                 tail=countLinesToPosition(tail, fname, fromTail=True)
-            print info,"("+str(tail)+" lines)"
+            if verbose: print info,"("+str(tail)+" lines)"
         else:
-            print "trim TAIL "+str(tail)+" lines"
+            if verbose: print "trim TAIL "+str(tail)+" lines"
 
     cmd = "head -n-"+str(int(tail))+" "+fname+" | tail -n+"+str(int(head))+" | "+cmd
-    plotme['data'] = numpyArrayFromTXTfile(cmd)
-    
+
+    foundNewData=True
+    startIndex = 0
+    if (plotme['curLine']==None):
+        plotme['data'] = numpyArrayFromTXTfile(cmd)
+        plotme['curLine'] = int(head) + len(plotme['data']) - nHeaderLines + 1
+        if DEBUG: print "DEBUG: cururent Line",plotme['curLine']
+    else:
+        newdata = numpyArrayFromTXTfile(cmd)
+        if newdata.size:
+            startIndex=len(plotme['data'])
+            plotme['data'] = np.append(plotme['data'], newdata, axis=0)
+            plotme['curLine'] += len(newdata)
+            if DEBUG: print "DEBUG: cururent Line",plotme['curLine']
+        else:
+            # same old data, nothing else to do ...
+            foundNewData=False
+            return foundNewData,startIndex
+
     # data is loaded quick enough, so we simply cut the data afterward 
     limit = LIMITSAMPLEPOINTS
     limitInSec = LIMITSAMPLEINSECOND
     if (limit>0):
+        alldata = plotme['data']
+        oldSize = len(alldata)
+        idx = int(limit)
         if (limitInSec):
-            idx = np.where((plotme['data'][-1,0]-plotme['data'][:,0])<=limit)[0]
-            if not len(idx):
+            idx = np.where((alldata[-1,0]-alldata[:,0])<=limit)[0]
+            idx = len(idx)
+            if not idx:
                 plotme['data']=[]
             else:
-                plotme['data'] = plotme['data'][-len(idx):,:]
+                plotme['data'] = alldata[-idx:,:]
             print "limit data points to",limit,"sec"
             pass
         else:
-            plotme['data'] = plotme['data'][-limit:,:]
-            print "limit data points to",limit,"lines"
+            plotme['data'] = alldata[-idx:,:]
+            print "limit data points to",idx,"lines"
             pass
-    # we can't seem to plot a dot, report empty when we have 1 data  
-    if len(plotme['data'])<=1: plotme['data'] = []
+        print startIndex, oldSize, idx
+        startIndex = max([0, startIndex - oldSize + min([oldSize,idx])])
+        print startIndex, len(alldata[-idx:,:])
+
     if not len(plotme['data']):
         print "cmd:",cmd
         print "Warning: cmd returns no data ... skip"
-
-    return 
+        
+    return foundNewData, startIndex
 
 # load data into np.array for plot, return data
 def createArray(data):
@@ -528,11 +604,13 @@ def createArray(data):
             pass
         else:
             # try to read data directly from file
-            fname = data['logdir'] + key
-            if not os.path.isfile(fname):
+            if os.path.isfile(key):
+                fname = key
+            elif os.path.isfile(data['logdir'] + os.path.basename(key)):
+                fname = data['logdir'] + os.path.basename(key)
+            else:
                 print "Data file not found:",fname
                 raise SystemExit('abort ...')
-            print "Read data from file:",fname  
             data['plotme'].append(prepareData(fname, plotOpts))
     return data
 
@@ -560,34 +638,68 @@ def setPlotAxes(ax, plotme, check=False):
     if (math.fabs(yspan)<1e-16) : yspan=1e-14
     xlim = [xmin-0.01*xspan, xmax + 0.01*xspan]
     ylim = [ymin-0.01*yspan, ymax + 0.01*yspan]
-    ax.set_xlim(xlim[0],xlim[1])
-    ax.set_ylim(ylim[0],ylim[1])
+    if len(plotme['xlim'])==2:
+        ax.set_xlim(plotme['xlim'][0],plotme['xlim'][1])
+    else:
+        ax.set_xlim(xlim[0],xlim[1])
+    if len(plotme['ylim'])==2:
+        ax.set_ylim(plotme['ylim'][0],plotme['ylim'][1])
+    else:
+        ax.set_ylim(ylim[0],ylim[1])
     pass
 
 def showPlot(data):
+    global DEBUG
+    global VERBOSE
     createArray(data)
 
-    fig,ax=plt.subplots()
-
-    plotOK = False    
-    for item in data['plotme']:
-        readData(item)
-        if len(item['data'])==0: continue
-        xdata = item['data'][:,0]
-        ydata = item['data'][:,1]
-        name = item['title'] + " last: " + "{:.2e}".format(ydata[-1])
-        setPlotAxes(ax, item, plotOK)
-        plt.plot(xdata, ydata, label=name, marker='')
-        plotOK=True
-
-    if plotOK:
-        ax.yaxis.set_major_formatter(tkr.FormatStrFormatter('%.2e'))
-        ax.grid()    
-        plt.legend(loc=2)
-        plt.show()
+    nrows=1
+    ncols=1
+    plot_number=1
+    
+    if data['opts']['updateInterval'] >= 6.666e-2: # no more than 15 fps
+        updateInterval=data['opts']['updateInterval']*1e3 # values in millisec.
     else:
-        print "Warning: nothing to plot ... skip"
-        
+        updateInterval=1e15  # practically never update
+   
+    fig=plt.figure()
+    ax=fig.add_subplot(nrows,ncols,plot_number)
+    plt.ioff()  # don't show the plot until we call plt.show()
+    ax.grid(True)
+    ax.yaxis.set_major_formatter(tkr.FormatStrFormatter('%.2e'))
+    lines = [None] * len(data['plotme'])
+    verbose = [True] * len(data['plotme'])
+    def update(frame):
+        if DEBUG: print "DEBUG: frame",frame
+        for i,item in enumerate(data['plotme']):
+            foundNewData,startIndex = readData(item, verbose=(DEBUG or verbose[i]))
+            if (not foundNewData or item['data'].ndim==1): continue
+            name = item['title'] + " last: " + "{:.2e}".format(item['data'][:,1][-1])
+            setPlotAxes(ax, item)
+            xdata = item['data'][startIndex:,0]
+            ydata = item['data'][startIndex:,1]
+            if lines[i]==None:
+                if DEBUG: print "DEBUG: create Line2D",i
+                lines[i], = plt.plot(xdata, ydata, label=name, marker='o')
+            else:
+                hl=lines[i]
+                hl.set_label(name)
+                if startIndex>0:
+                    if DEBUG: print "DEBUG: append to Line2D ",i,":", startIndex, xdata, 
+                    hl.set_xdata(np.append(hl.get_xdata(), xdata))
+                    hl.set_ydata(np.append(hl.get_ydata(), ydata))
+                else:
+                    if DEBUG: print "DEBUG: reset Line2D",i
+                    hl.set_xdata(xdata)
+                    hl.set_ydata(ydata)
+            if not VERBOSE: verbose[i]=False
+            plt.legend(loc=0)
+            plt.draw()
+        pass
+
+    a = anim.FuncAnimation(fig, update, repeat=False, interval=updateInterval)
+    plt.show()
+
     return data
 
 #*** Main execution start here *************************************************
