@@ -67,7 +67,7 @@ INFO_PLOTKEYS = '''
 KEYWORD_OPTS = {
 'Courant' : ['max','interface'],
 'Phase' : ['min','max'],
-'Res': ['fsi','init', 'Ux', 'Uy', 'Uz', 'prgh', 'fsi'],
+'Res': ['fsi','init', 'Ux', 'Uy', 'Uz', 'prgh'],
 'nIter': ['Ux','Uy','Uz','PIMPLE','prgh'],
 'contErr': ['cumu'],
 'fluidForce': ['relax','x','y','z'],
@@ -79,7 +79,7 @@ KEYWORD_OPTS = {
 CONTROL_OPTS = {
 'plot' : ['co', 'res', 'cont', 'ph', 'f', 'm', 't', 'nIter'],
 'col' : [-1],               # plot the last column (not use when "iter == True")
-'showIter' : 0,             # show each iteration or not? 0: no, 1: yes, 2: plot continuously connected lines
+'showIter' : None,          # show iter. or not? None: no, -1: show as line segment, 0: show as connected lines, n>0: ignore the first n values
 'updateInterval' : 1e15,    # keep the windows open and update regularly (value in seconds)
 'keyOpts' : deepcopy(KEYWORD_OPTS) # which varname to plot?
 }
@@ -230,7 +230,7 @@ def cmdOptions(argv):
     parser.add_argument('-u','--update', metavar='n', nargs='?', const=30, default=None, dest='updateInterval', action='store', type=float, help='Update each data set every N seconds, (default: 30). We are checking file time stamp. The minimum update interval is limited to 0.1 s (i.e. 10 fps)')
     parser.add_argument('-t','--trim', metavar='m,n', dest='trim', help='Trim data M lines HEAD and N lines tail, e.g.: -t 2,3 will trim HEAD 2 lines and TAIL 3 lines. Use "s" to trim in second, e.g. -t 0.2s,2s will trim HEAD 0.2 sec and TAIL 2 sec. Use "S" to trim at absolute time positions. Without "s" or "S" only int is allowed.')
     parser.add_argument('--limit', metavar='n', dest='limit', help='Limit the total number of data points to N. Use "s" to set the limit in second, e.g.: --limit 5s will plot only the last 5 sec. of data')
-    parser.add_argument('-i','--iter', nargs='?', const='split', default=None, metavar='cont', dest='iter', action='store', help='Show values at each iteration. By default iterations between each time step are shown as separated line segments. With option "-i cont" all values are shown in one continuous line. ')
+    parser.add_argument('-i','--iter', nargs='?', const=-1, default=None, metavar='n', type=int, dest='iter', action='store', help='Show values at each iteration, optionally ignore the first "n" value(s). By default if "n" is not set the iterations between each time step are shown as separated line segments. With "n" set to 0 (i.e. --iter 0) all values are shown in one continuous line')
     parser.add_argument('-a','--axis', metavar='val', dest='axis', help='Set axis range xlim and/or ylim. The format is [x.y]:min,max e.g.: -a y:-1.5,2  or -a y:-1.5,2,x:0,14')
     parser.add_argument('-l','--line', metavar='key', dest='line', type=str, help='Set line propreties: style (key s), linewidth (key w), marker (key m). Any line style supported by matplotlib can be used here, e.g.: "-" solid, "--" dashed, ":" dotted, "-." dash-dotted, "x" marker, "o" marker, etc. For multiple lines use comma e.g.: -l s:-,--,w:0.5,1')
     parser.add_argument('-o','--output', metavar='prefix', dest='output', type=str, help='Output each data set to file')
@@ -308,10 +308,11 @@ def cmdOptions(argv):
         if not len(data['opts']['col']): data['opts']['col']=[-1]
         pass
     if args.iter!=None:
-        data['opts']['showIter'] = 2 if (args.iter=='cont') else 1
-        pass    
+        data['opts']['showIter'] = 0 if (args.iter==0) else args.iter
+        pass
     if args.updateInterval!=None:
         data['opts']['updateInterval'] = args.updateInterval
+        pass
     if args.trim!=None:
         txt = args.trim.split(",")
         allGood = True
@@ -434,19 +435,7 @@ def cmdOptions(argv):
 # prepare cmd to read data
 def prepareData(fname, opts):
     plotme = deepcopy(PLOTME)
-    if opts['showIter']==1: # plot iter.(s) using disconnected lines
-        # read all data including iter.        
-        # awk 'NR==1{t=$1;next}{dt=$1-t;t=$1}' # this will compute deltaT
-        # awk 'NR==1{t=$1;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2;i<=NF;i++) print t+0.5*dt*(i-2),$i}' fsLog/nIter_PIMPLE
-        cmd = "awk 'FNR==1{t=$1;c=0.75;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2;i<NF;i++) {print t+c*dt*(i-2),$i}; print t+c*dt*(NF-2),\"nan\"}' "
-        print "disconnected"
-        pass
-    elif opts['showIter']==2: # plot iter.(s) using one continuous line
-        # read all data including iter.        
-        cmd = "awk 'FNR==1{t=$1;c=0.75;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2;i<NF;i++) print t+c*dt*(i-2),$i}' "
-        print "continuous"
-        pass
-    else:
+    if opts['showIter']==None:
         # read only specific col(s)
         # cmd = "awk '/#/{next;} (NF>=???) {print $1,$?,$?,...}' "
         cmd = 'print $1'
@@ -457,6 +446,16 @@ def prepareData(fname, opts):
         if (maxCol>0): cmd = "(NF>=" + str(maxCol) + ") " + cmd 
         cmd = "awk '/#/{next;} " + cmd + "'" 
         pass
+    elif opts['showIter']<0: # plot iter.(s) using disconnected lines
+        # read all data including iter.        
+        cmd = "awk 'FNR==1{t=$1;c=0.75;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2;i<NF;i++) {print t+c*dt*(i-2),$i}; print t+c*dt*(NF-2),\"nan\"}' "
+        pass
+    elif opts['showIter']==0: # plot iter.(s) using one continuous line
+        cmd = "awk 'FNR==1{t=$1;c=0.75;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2;i<NF;i++) print t+c*dt*(i-2),$i}' "
+        pass
+    else: # ignore the first "n" values and plot iter.(s) using disconnected lines
+        n = str(abs(int(opts['showIter'])))
+        cmd = "awk 'FNR==1{t=$1;c=0.75;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2+"+n+";i<NF;i++) {print t+c*dt*(i-2),$i}; print t+c*dt*(NF-2),\"nan\"}' "
 
     p = Popen(["head","-n1",fname], stdout=PIPE, stderr=PIPE)
     txt,err = p.communicate()
@@ -745,8 +744,8 @@ def showPlot(data):
     ncols=1
     plot_number=1
     
-    # no more than 10 fps
-    updateInterval = min([data['opts']['updateInterval'], 0.1])
+    # no more than 10 fps (i.e. 0.2 sec update interval)
+    updateInterval = max([data['opts']['updateInterval'], 0.1])
     updateInterval *= 1e3 # value in millisec. (required by FuncAnimation)
 
     fig=plt.figure()
@@ -761,7 +760,9 @@ def showPlot(data):
         for i,item in enumerate(data['plotme']):
             foundNewData,startIndex = readData(item, verbose=(DEBUG or VERBOSE))
             if (not foundNewData or item['data'].ndim==1): continue
-            name = item['title'] + " last: " + "{:.2e}".format(item['data'][:,1][-1])
+            lastValue = item['data'][:,1][-1]
+            if np.isnan(lastValue): lastValue=item['data'][:,1][-2]
+            name = item['title'] + " last: " + "{:.2e}".format(lastValue)
             setPlotAxes(ax, item, check=nLines[0])
             # startIndex seems to be unneccessary 
             #xdata = item['data'][startIndex:,0]
