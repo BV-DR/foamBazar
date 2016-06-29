@@ -17,6 +17,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tkr
 import matplotlib.animation as anim
+from copy import deepcopy
 
 import pprint
 from StringIO import StringIO
@@ -51,14 +52,14 @@ KEYWORD = {
 
 # this is for printing usage info with "--help" option 
 INFO_PLOTKEYS = '''
-    [co] Courant number (files: Courant_*)
-    [ph] Phase fraction (files: Phase_*)
-    [res] Residual (files: Res_*)
-    [nIter] No. Iterations (files: nIter_*)
-    [cont] Continuity error (files: contErr_*)
-    [t] timing data (files: timing_*)
-    [f] fluid forces (files: fluidForce_*)
-    [m] fluid forces (files: fluidMoment_*)
+[co] Courant number (files: Courant_*)
+[ph] Phase fraction (files: Phase_*)
+[res] Residual (files: Res_*)
+[nIter] No. Iterations (files: nIter_*)
+[cont] Continuity error (files: contErr_*)
+[t] timing data (files: timing_*)
+[f] fluid forces (files: fluidForce_*)
+[m] fluid forces (files: fluidMoment_*)
 '''
 
 # By default, we select only these quantities
@@ -78,10 +79,10 @@ KEYWORD_OPTS = {
 # 'plot' contains a list of keywords which represent a group of data to plot
 CONTROL_OPTS = {
 'plot' : ['co', 'res', 'cont', 'ph', 'f', 'm', 't', 'nIter'],
-'col' : [-1],           # plot the last column (not use when "iter == True")
-'showIter' : False,     # show each iteration or not?
-'updateInterval' : 0,   # keep the windows open and update regularly
-'keyOpts' : dict(KEYWORD_OPTS) # which varname to plot?
+'col' : [-1],               # plot the last column (not use when "iter == True")
+'showIter' : 0,             # show each iteration or not? 0: no, 1: yes, 2: plot continuously connected lines
+'updateInterval' : 1e15,    # keep the windows open and update regularly (value in seconds)
+'keyOpts' : deepcopy(KEYWORD_OPTS) # which varname to plot?
 }
 
 # file(s) are loaded in "def checkAvailable(data):"
@@ -96,7 +97,21 @@ DATA = {
 'fluidForce' : [],      # names of files: "fluidForce_<name>"
 'fluidMoment' : [],      # names of files: "fluidMoment_<name>"
 'timing' : [],          # names of files: "timing_<name>"
-'opts' : dict(CONTROL_OPTS) # what to plot, how to plot, ..., etc ...
+'opts' : deepcopy(CONTROL_OPTS) # what to plot, how to plot, ..., etc ...
+}
+
+LINEPROPERTYCOUNTER = {
+'marker': 0,
+'style': 0,
+'width':0,
+'color':0
+}
+
+LINEPROPERTY = {
+'marker' : None,    # line marker
+'style' : None,     # line style
+'width' : None,     # line width
+'color' : None      # line color
 }
 
 # this is a template for each data set
@@ -110,7 +125,8 @@ PLOTME = {
 'xlim' : [],            # axis [x0,x1]
 'ylim' : [],            # axis [y0,y1]
 'xlabel' : "t [s]",
-'ylabel' : ""
+'ylabel' : "",
+'line' : deepcopy(LINEPROPERTY)
 }
 
 # for a nicer output of "usage info" in argparser
@@ -131,7 +147,7 @@ def addPipe(p, cmd):
             p.append(Popen(cmd, stdin=prev.stdout, stdout=PIPE, stderr=PIPE))
             prev.stdout.close()
     except OSError as e:
-        print "cmd:",' '.join(cmd)
+        print ("cmd:",' '.join(cmd))
         print e
         raise SystemExit('cmd failed to execute ... abort')
         pass
@@ -208,38 +224,38 @@ def cmdOptions(argv):
     parser = argparse.ArgumentParser(formatter_class=SmartFormatter)
     parser.add_argument('-d', '--debug', action='store_true', help='Run in DEBUG mode')
     parser.add_argument('-v', '--verbose', action='store_true', help='Show more comprehensive info while running')
-    parser.add_argument('logfile', nargs='?', help='Read data from log-file/folder. Log-file, if given in its raw format, will be piped through "fsLog.awk". By default the data is read from: ./fsLog/')
-    parser.add_argument('-p', '--plot', metavar='KEY', dest='plot', type=str, help='R|Quantities to plot (comma separated keywords). KEY can\nbe the exact name of the data file, or the follwing\npre-defined keywords. ' + "Default: " + re.sub(r'[ \'\[\]]', '', str(CONTROL_OPTS['plot']))  + INFO_PLOTKEYS)
-    parser.add_argument('-w','--with', metavar='VAR',dest='withvar', type=str, help='R|Name of each selected variable (comma separated names).\nAvail. names are shown in file names after the first\nunderscore, e.g.: "final,Ux,Uz" will select both files\n"Res_final_Ux" and "Res_final_Uz". Plot keyword can be\nspecified using ":" as the separator. Defaults are:\n'
-        'co:max,interface\n'
-        'ph:min,max\n'
-        'res:fsi,init,Ux,Uy,Uz,prgh,fsi\n'
-        'nIter:Ux,Uy,Uz,PIMPLE,prgh\n'
-        'cont:cumu\n'
-        't:curr,meshUpdate\n'
-        'f:relax,x,y,z\n'
-        'm:relax,x,y,z')
-    parser.add_argument('-c','--column', dest='col', help='Column(s) to plot againt time (not use when option --iter is set). The first column is 1. The last column is 0 (default). Use comma to define multiple columns.')
-    parser.add_argument('-i','--iter', dest='iter', action='store_true', help='Show values at each iteration')
-    parser.add_argument('-u','--update', nargs='?', const=30, default=None, metavar='N', dest='updateInterval', action='store', type=float, help='Update the plot every N seconds (default: 30)')
-    parser.add_argument('-t','--trim', metavar='M,N', dest='trim', help='Trim data M lines HEAD and N lines tail, e.g.: -t 2,3 will trim HEAD 2 lines and TAIL 3 lines. Use "s" to trim in second, e.g. -t 0.2s,2s will trim HEAD 0.2 sec and TAIL 2 sec. Use "S" to trim at absolute time positions. Without "s" or "S" only int is allowed.')
-    parser.add_argument('-l','--limit', metavar='N', dest='limit', help='Limit the total number of data points to N. Use "s" to set the limit in second, e.g.: --limit 5s will plot only the last 5 sec. of data')
-    parser.add_argument('-a','--axis', metavar='val', dest='axis', help='Set axis range xlim and/or ylim. The format is [x.y]:min,max e.g.: -a y:-1.5,2 If not defined the axes are compute automatically.')
-
+    parser.add_argument('logfile', metavar='logfile|folder',nargs='?', help='Read data from log-file/folder. Log-file, if given in its raw format, will be piped through "fsLog.awk". By default the data is read from: ./fsLog/')
+    parser.add_argument('-p', '--plot', metavar='key', dest='plot', type=str, help='R|Quantities to plot (comma separated keywords). KEY can\nbe the exact name of the data file, or the follwing\npre-defined keywords. ' + "Default: " + re.sub(r'[ \'\[\]]', '', str(CONTROL_OPTS['plot']))  + INFO_PLOTKEYS)
+    parser.add_argument('-w','--with', metavar='var', dest='withvar', type=str, help='Name of each selected variable (comma separated names). Avail. names are shown in file names after the first underscore, e.g.: "final,Ux,Uz" will select both files "Res_final_Ux" and "Res_final_Uz". Plot keyword can be specified using ":", e.g. -w res:fsi,init,Uz')
+    parser.add_argument('-c','--column', metavar='n', dest='col', help='Column(s) to plot againt time (not use when option --iter is set). The first column is 1. The last column is 0 (default). Use comma to define multiple columns.')
+    parser.add_argument('-u','--update', metavar='n', nargs='?', const=30, default=None, dest='updateInterval', action='store', type=float, help='Update each data set every N seconds, (default: 30). We are checking file time stamp. The minimum update interval is limited to 0.1 s (i.e. 10 fps)')
+    parser.add_argument('-t','--trim', metavar='m,n', dest='trim', help='Trim data M lines HEAD and N lines tail, e.g.: -t 2,3 will trim HEAD 2 lines and TAIL 3 lines. Use "s" to trim in second, e.g. -t 0.2s,2s will trim HEAD 0.2 sec and TAIL 2 sec. Use "S" to trim at absolute time positions. Without "s" or "S" only int is allowed.')
+    parser.add_argument('--limit', metavar='n', dest='limit', help='Limit the total number of data points to N. Use "s" to set the limit in second, e.g.: --limit 5s will plot only the last 5 sec. of data')
+    parser.add_argument('-i','--iter', nargs='?', const='split', default=None, metavar='cont', dest='iter', action='store', help='Show values at each iteration. By default iterations between each time step are shown as separated line segments. With option "-i cont" all values are shown in one continuous line. ')
+    parser.add_argument('-a','--axis', metavar='val', dest='axis', help='Set axis range xlim and/or ylim. The format is [x.y]:min,max e.g.: -a y:-1.5,2  or -a y:-1.5,2,x:0,14')
+    parser.add_argument('-l','--line', metavar='key', dest='line', type=str, help='Set line propreties: style (key s), linewidth (key w), marker (key m). Any line style supported by matplotlib can be used here, e.g.: "-" solid, "--" dashed, ":" dotted, "-." dash-dotted, "x" marker, "o" marker, etc. For multiple lines use comma e.g.: -l s:-,--,w:0.5,1')
+    parser.add_argument('-o','--output', metavar='prefix', dest='output', type=str, help='Output each data set to file')
+    
     #FIXME: add option to output data to files/png/raw
-    #FIXME: add option to define line thickness
-    #FIXME: add option to define line style/marker (reduced marker)
-
+    
     # get the template
-    data = dict(DATA)
+    data = deepcopy(DATA)
     args = parser.parse_args()
 
+    global DEBUG
+    global VERBOSE
+    global TRIMINSECOND
+    global TRIMHEADTAIL
+    global LIMITSAMPLEPOINTS
+    global LIMITSAMPLEINSECOND
+    global PLOTME
+    global LINEPROPERTY
+    
     if args.debug:
-        global DEBUG
         DEBUG=True
+        VERBOSE=True
         pass
-    if args.debug:
-        global VERBOSE
+    if args.verbose:
         VERBOSE=True
         pass
     if args.logfile!=None:
@@ -292,14 +308,12 @@ def cmdOptions(argv):
             data['opts']['col'].append(i)
         if not len(data['opts']['col']): data['opts']['col']=[-1]
         pass
-    if args.iter:
-        data['opts']['showIter'] = True
-        pass
+    if args.iter!=None:
+        data['opts']['showIter'] = 2 if (args.iter=='cont') else 1
+        pass    
     if args.updateInterval!=None:
         data['opts']['updateInterval'] = args.updateInterval
     if args.trim!=None:
-        global TRIMINSECOND
-        global TRIMHEADTAIL
         txt = args.trim.split(",")
         allGood = True
         sec=list(TRIMINSECOND)
@@ -335,8 +349,6 @@ def cmdOptions(argv):
             TRIMHEADTAIL = list(tmp)
         pass
     if args.limit!=None:
-        global LIMITSAMPLEPOINTS
-        global LIMITSAMPLEINSECOND
         val = args.limit
         sec=LIMITSAMPLEINSECOND
         tmp=LIMITSAMPLEPOINTS
@@ -359,7 +371,6 @@ def cmdOptions(argv):
             LIMITSAMPLEPOINTS = tmp
         pass
     if args.axis!=None:
-        global PLOTME
         word={'x':'xlim','y':'ylim'}
         def invalidOption():
             print "Invalid option(s): --axis",args.axis
@@ -380,18 +391,61 @@ def cmdOptions(argv):
             PLOTME[key]=[minval, maxval]
             del txt[0],txt[0]
         pass
+    if args.line!=None:
+        word={'s':'style', 'w':'width', 'm':'marker', 'c':'color'}
+        wtype={'style':str, 'width':float, 'marker':str, 'color':str}
+        def invalidOption(info=''):
+            if info!='': print info
+            print "Invalid option(s): --line",args.line
+            raise SystemExit('abort ...')
+        def addvalue(key, value, dtype=None):
+            if key==None: invalidOption()
+            LINEPROPERTY[key].append(value)
+            pass       
+        txt = args.line.split(",")
+        key = None
+        for val in txt:
+            j=val.split(":")
+            if len(j)>2: invalidOption()
+            if len(j)==2:
+                if (j[0]=='' and j[1]==''):
+                    addvalue(key, ":")
+                    continue
+                if not j[0] in word: invalidOption("unknown keyword")
+                key=word[j[0]]
+                if LINEPROPERTY[key]==None: LINEPROPERTY[key]=[]
+                addvalue(key, j[1])
+            elif len(j)==1:
+                addvalue(key,j[0])
+            else:
+                invalidOption("this should never happed")
+        for key in LINEPROPERTY:
+            if LINEPROPERTY[key]!=None:
+                LINEPROPERTY[key]=map(wtype[key],LINEPROPERTY[key])
+        pass
+
+    if args.output!=None:
+        print args
+        print "output each data set to file: ... not yet implemented ... abort ..."
+        raise SystemExit
 
     data = checkAvailable(data)    
     return data
 
 # prepare cmd to read data
 def prepareData(fname, opts):
-    plotme = dict(PLOTME)
-    if opts['showIter']:
+    plotme = deepcopy(PLOTME)
+    if opts['showIter']==1: # plot iter.(s) using disconnected lines
         # read all data including iter.        
         # awk 'NR==1{t=$1;next}{dt=$1-t;t=$1}' # this will compute deltaT
         # awk 'NR==1{t=$1;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2;i<=NF;i++) print t+0.5*dt*(i-2),$i}' fsLog/nIter_PIMPLE
-        cmd = "awk 'NR==1{t=$1;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2;i<=NF;i++) print t+0.75*dt*(i-2),$i}' "
+        cmd = "awk 'FNR==1{t=$1;c=0.75;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2;i<NF;i++) {print t+c*dt*(i-2),$i}; print t+c*dt*(NF-2),\"nan\"}' "
+        print "disconnected"
+        pass
+    elif opts['showIter']==2: # plot iter.(s) using one continuous line
+        # read all data including iter.        
+        cmd = "awk 'FNR==1{t=$1;c=0.75;next} (NF>1) {dt=($1-t)/(NF-1);t=$1; for (i=2;i<NF;i++) print t+c*dt*(i-2),$i}' "
+        print "continuous"
         pass
     else:
         # read only specific col(s)
@@ -415,6 +469,16 @@ def prepareData(fname, opts):
     plotme['title'] = txt
     plotme['fname']=fname
     plotme['cmd']=cmd
+
+    # set line properties
+    # the global has a list of all user-defined properties, and we just rotate them
+    global LINEPROPERTYCOUNTER
+    for key in LINEPROPERTY:
+        if LINEPROPERTY[key]!=None:
+            i = LINEPROPERTYCOUNTER[key]
+            plotme['line'][key]=LINEPROPERTY[key][i]
+            if len(LINEPROPERTY[key])>1:
+                LINEPROPERTYCOUNTER[key] = (i+1) % len(LINEPROPERTY[key])
 
     return plotme
 
@@ -548,6 +612,7 @@ def readData(plotme, latestOnly=True, verbose=True):
         newdata = numpyArrayFromTXTfile(cmd)
         if newdata.size:
             startIndex=len(plotme['data'])
+            if newdata.ndim==1: newdata=np.array([newdata])
             plotme['data'] = np.append(plotme['data'], newdata, axis=0)
             plotme['curLine'] += len(newdata)
             if DEBUG: print "DEBUG: cururent Line",plotme['curLine']
@@ -570,19 +635,17 @@ def readData(plotme, latestOnly=True, verbose=True):
                 plotme['data']=[]
             else:
                 plotme['data'] = alldata[-idx:,:]
-            print "limit data points to",limit,"sec"
+            if verbose: print "limit data points to",limit,"sec"
             pass
         else:
             plotme['data'] = alldata[-idx:,:]
-            print "limit data points to",idx,"lines"
+            if verbose: print "limit data points to",idx,"lines"
             pass
-        print startIndex, oldSize, idx
         startIndex = max([0, startIndex - oldSize + min([oldSize,idx])])
-        print startIndex, len(alldata[-idx:,:])
 
     if not len(plotme['data']):
-        print "cmd:",cmd
-        print "Warning: cmd returns no data ... skip"
+        if verbose: print "cmd:",cmd
+        if verbose: print "Warning: cmd returns no data ... skip"
         
     return foundNewData, startIndex
 
@@ -612,15 +675,18 @@ def createArray(data):
                 print "Data file not found:",fname
                 raise SystemExit('abort ...')
             data['plotme'].append(prepareData(fname, plotOpts))
+
     return data
 
 def setPlotAxes(ax, plotme, check=False):
+    xdata=plotme['data'][:,0]
+    ydata=plotme['data'][:,1]
     if not check:
         ax.set_xlabel(plotme['xlabel'])
         ax.set_ylabel(plotme['ylabel'])
         ax.set_title(plotme['title'])
-        xmin,xmax, = min(plotme['data'][:,0]), max(plotme['data'][:,0])
-        ymin,ymax, = min(plotme['data'][:,1]), max(plotme['data'][:,1])
+        xmin,xmax, = min(xdata), max(xdata)
+        ymin,ymax, = min(ydata), max(ydata)
     else:
         if (plotme['xlabel'] != ax.get_xlabel()):
             print "debug: xlabel has changed?"
@@ -630,8 +696,8 @@ def setPlotAxes(ax, plotme, check=False):
             print "ax.get_ylabel():",ax.get_ylabel()
         oldXmin, oldXmax = ax.get_xlim()
         oldYmin, oldYmax = ax.get_ylim()
-        xmin, xmax, = min([oldXmin, min(plotme['data'][:,0])]), max([oldXmax, max(plotme['data'][:,0])])
-        ymin, ymax, = min([oldYmin, max(plotme['data'][:,1])]), max([oldYmax, max(plotme['data'][:,1])])
+        xmin, xmax, = min([oldXmin, min(xdata)]), max([oldXmax, max(xdata)])
+        ymin, ymax, = min([oldYmin, min(ydata)]), max([oldYmax, max(ydata)])
         pass
     xspan, yspan = xmax-xmin, ymax-ymin
     if (math.fabs(xspan)<1e-16) : xspan=1e-14
@@ -653,46 +719,49 @@ def showPlot(data):
     global VERBOSE
     createArray(data)
 
+    # FIXME: can we do subplot? rather not manually, it makes the user-interface very complex
     nrows=1
     ncols=1
     plot_number=1
     
-    if data['opts']['updateInterval'] >= 6.666e-2: # no more than 15 fps
-        updateInterval=data['opts']['updateInterval']*1e3 # values in millisec.
-    else:
-        updateInterval=1e15  # practically never update
-   
+    # no more than 10 fps
+    updateInterval = min([data['opts']['updateInterval'], 0.1])
+    updateInterval *= 1e3 # value in millisec. (required by FuncAnimation)
+
     fig=plt.figure()
     ax=fig.add_subplot(nrows,ncols,plot_number)
     plt.ioff()  # don't show the plot until we call plt.show()
     ax.grid(True)
     ax.yaxis.set_major_formatter(tkr.FormatStrFormatter('%.2e'))
     lines = [None] * len(data['plotme'])
-    verbose = [True] * len(data['plotme'])
+    nLines = [0]    # we must use list here to keep nLines known in "def update"
     def update(frame):
         if DEBUG: print "DEBUG: frame",frame
         for i,item in enumerate(data['plotme']):
-            foundNewData,startIndex = readData(item, verbose=(DEBUG or verbose[i]))
+            foundNewData,startIndex = readData(item, verbose=(DEBUG or VERBOSE))
             if (not foundNewData or item['data'].ndim==1): continue
             name = item['title'] + " last: " + "{:.2e}".format(item['data'][:,1][-1])
-            setPlotAxes(ax, item)
-            xdata = item['data'][startIndex:,0]
-            ydata = item['data'][startIndex:,1]
+            setPlotAxes(ax, item, check=nLines[0])
+            # startIndex seems to be unneccessary 
+            #xdata = item['data'][startIndex:,0]
+            #ydata = item['data'][startIndex:,1]
+            xdata = item['data'][:,0]
+            ydata = item['data'][:,1]
             if lines[i]==None:
                 if DEBUG: print "DEBUG: create Line2D",i
-                lines[i], = plt.plot(xdata, ydata, label=name, marker='o')
+                linemarker = item['line']['marker']
+                linestyle = item['line']['style']
+                linewidth = item['line']['width']
+                linecolor = item['line']['color']
+                lines[i], = plt.plot(xdata,ydata,label=name,marker=linemarker)
+                nLines[0]+=1
+                if linestyle!=None: lines[i].set_linestyle(linestyle)
+                if linewidth!=None: lines[i].set_linewidth(linewidth)
+                if linecolor!=None: lines[i].set_color(linecolor)
             else:
-                hl=lines[i]
-                hl.set_label(name)
-                if startIndex>0:
-                    if DEBUG: print "DEBUG: append to Line2D ",i,":", startIndex, xdata, 
-                    hl.set_xdata(np.append(hl.get_xdata(), xdata))
-                    hl.set_ydata(np.append(hl.get_ydata(), ydata))
-                else:
-                    if DEBUG: print "DEBUG: reset Line2D",i
-                    hl.set_xdata(xdata)
-                    hl.set_ydata(ydata)
-            if not VERBOSE: verbose[i]=False
+                lines[i].set_label(name)
+                lines[i].set_xdata(item['data'][:,0])
+                lines[i].set_ydata(item['data'][:,1])
             plt.legend(loc=0)
             plt.draw()
         pass
