@@ -17,9 +17,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tkr
 import matplotlib.animation as anim
-from copy import deepcopy
 
-import pprint
+from copy import deepcopy
 from StringIO import StringIO
 from subprocess import PIPE
 from subprocess import Popen
@@ -679,39 +678,61 @@ def createArray(data):
     return data
 
 def setPlotAxes(ax, plotme, check=False):
+    def setx(xlim):
+        ax.set_xlim(xlim[0],xlim[1])
+    def sety(ylim):
+        ax.set_ylim(ylim[0],ylim[1])
+    def compute(dat):
+        minval = min(dat)
+        maxval = max(dat)
+        span = maxval-minval
+        if (math.fabs(span)<1e-16): span=1e-14
+        return minval,maxval,span
+
+    hasX = False
+    hasY = False
+    if len(plotme['xlim'])==2:
+        setx(plotme['xlim'])
+        hasX = True
+    if len(plotme['ylim'])==2:
+        sety(plotme['ylim'])
+        hasY = True
     xdata=plotme['data'][:,0]
     ydata=plotme['data'][:,1]
+    expand = 0.01   # expand axis by 1%
     if not check:
         ax.set_xlabel(plotme['xlabel'])
         ax.set_ylabel(plotme['ylabel'])
         ax.set_title(plotme['title'])
-        xmin,xmax, = min(xdata), max(xdata)
-        ymin,ymax, = min(ydata), max(ydata)
-    else:
-        if (plotme['xlabel'] != ax.get_xlabel()):
-            print "debug: xlabel has changed?"
-        if (plotme['ylabel'] != ax.get_ylabel()):
-            print "debug: ylabel has changed?"
-            print "plotme['ylabel']:",plotme['ylabel']
-            print "ax.get_ylabel():",ax.get_ylabel()
-        oldXmin, oldXmax = ax.get_xlim()
-        oldYmin, oldYmax = ax.get_ylim()
-        xmin, xmax, = min([oldXmin, min(xdata)]), max([oldXmax, max(xdata)])
-        ymin, ymax, = min([oldYmin, min(ydata)]), max([oldYmax, max(ydata)])
-        pass
-    xspan, yspan = xmax-xmin, ymax-ymin
-    if (math.fabs(xspan)<1e-16) : xspan=1e-14
-    if (math.fabs(yspan)<1e-16) : yspan=1e-14
-    xlim = [xmin-0.01*xspan, xmax + 0.01*xspan]
-    ylim = [ymin-0.01*yspan, ymax + 0.01*yspan]
-    if len(plotme['xlim'])==2:
-        ax.set_xlim(plotme['xlim'][0],plotme['xlim'][1])
-    else:
-        ax.set_xlim(xlim[0],xlim[1])
-    if len(plotme['ylim'])==2:
-        ax.set_ylim(plotme['ylim'][0],plotme['ylim'][1])
-    else:
-        ax.set_ylim(ylim[0],ylim[1])
+        if not hasX:
+            xmin,xmax,xspan = compute(xdata)
+            xlim = [xmin-expand*xspan, xmax+expand*xspan]
+            setx(xlim)
+        if not hasY:
+            ymin,ymax,yspan = compute(ydata)
+            ylim = [ymin-expand*yspan, ymax + expand*yspan]
+            sety(ylim)
+        return
+
+    # check for existing axis
+    if (plotme['xlabel'] != ax.get_xlabel()):
+        print "debug: xlabel has changed?"
+    if (plotme['ylabel'] != ax.get_ylabel()):
+        print "debug: ylabel has changed?"
+        print "plotme['ylabel']:",plotme['ylabel']
+        print "ax.get_ylabel():",ax.get_ylabel()
+    oldXmin, oldXmax = ax.get_xlim()
+    oldYmin, oldYmax = ax.get_ylim()
+    if not hasX:
+        xmin,xmax,xspan = compute(xdata)
+        xmin = xmin-expand*xspan if (xmin<oldXmin) else oldXmin
+        xmax = xmax+expand*xspan if (xmax>oldXmax) else oldXmax
+        setx([xmin,xmax])
+    if not hasY:        
+        ymin,ymax,yspan = compute(ydata)
+        ymin = ymin-expand*yspan if (ymin<oldYmin) else oldYmin
+        ymax = ymax+expand*yspan if (ymax>oldYmax) else oldYmax
+        sety([ymin,ymax])    
     pass
 
 def showPlot(data):
@@ -775,7 +796,6 @@ def showPlot(data):
 if __name__ == "__main__":
     data = cmdOptions(sys.argv)
     showPlot(data)
-    #pprint.pprint(data)
     
     #    filename = "./fsLog/Courant_interface"
     #    data = np.loadtxt(filename, dtype=float)
