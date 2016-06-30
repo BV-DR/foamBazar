@@ -239,7 +239,7 @@ def cmdOptions(argv):
     
     # get the template
     data = deepcopy(DATA)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     global DEBUG
     global VERBOSE
@@ -737,7 +737,7 @@ def setPlotAxes(ax, plotme, check=False):
 def showPlot(data):
     global DEBUG
     global VERBOSE
-    createArray(data)
+    if not len(data['plotme']): createArray(data)
 
     # FIXME: can we do subplot? rather not manually, it makes the user-interface very complex
     nrows=1
@@ -793,15 +793,51 @@ def showPlot(data):
 
     return data
 
+# Load/return data, given a string "args" as it is called from a console
+# e.g.: loadData("log.run -p res -w fsi")
+# The option --update takes no effect here
+# All data are kept in data['plotme'] returned and optionally converted to other type
+def loadData(args, dtype=None):
+    def tryImport(name):
+        try:
+            newmodule = __import__(name)
+        except:
+            print "Failed to import",name,"... please check your installation"
+            raise SystemExit('abort ...')
+        return newmodule
+    data = cmdOptions(shlex.split(args))
+    createArray(data)
+    for i,item in enumerate(data['plotme']):
+        readData(item, verbose=(DEBUG or VERBOSE))
+    if dtype==None: return data
+    if dtype.lower() in ['pd','pandas','dataframe','pandas.dataframe',]:
+        pandas = tryImport('pandas')
+        pd = []
+        for item in data['plotme']:
+            xdata = item['data'][:,0]
+            ydata = item['data'][:,1]
+            title = item['title']
+            pd.append(pandas.DataFrame(ydata, index=xdata, columns=[title]))
+        pd=pandas.concat(pd,axis=1)
+        return pd
+    #if dtype in ['ts','TimeSignals']:
+    #    ts = tryImport('TimeSignals')
+    #    rawdata = []
+    #    x = None
+    #    titles = []
+    #    for item in data['plotme']:
+    #        titles.append(item['title'])
+    #        rawdata.append(item['data'][:,1])
+    #        if x==None: x=item['data'][:,0]
+    #    rawdata = np.array([rawdata[0],rawdata[1]])
+    #    print len(rawdata)
+    #    print len(rawdata[0])
+    #    print len(rawdata[1])
+    #    return ts.TimeSignals(rawdata, xAxis=x, columnTitles=titles)
+    raise SystemExit('Unkown dtype: '+dtype)
+
 #*** Main execution start here *************************************************
 if __name__ == "__main__":
-    data = cmdOptions(sys.argv)
-    showPlot(data)
+    showPlot(cmdOptions(sys.argv[1:]))
     
-    #    filename = "./fsLog/Courant_interface"
-    #    data = np.loadtxt(filename, dtype=float)
-    #    print data[:,0]
-    #    plt.plot(data[:,0], data[:,1])
-    #    plt.show()
-
 
