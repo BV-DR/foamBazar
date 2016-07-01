@@ -797,7 +797,8 @@ def showPlot(data):
 # e.g.: loadData("log.run -p res -w fsi")
 # The option --update takes no effect here
 # All data are kept in data['plotme'] returned and optionally converted to other type
-def loadData(args, dtype=None):
+# 
+def loadData(args, dtype='pandas.dataframe'):
     def tryImport(name):
         try:
             newmodule = __import__(name)
@@ -805,7 +806,8 @@ def loadData(args, dtype=None):
             print "Failed to import",name,"... please check your installation"
             raise SystemExit('abort ...')
         return newmodule
-    data = cmdOptions(shlex.split(args))
+    cmd = shlex.split(args) if isinstance(args, basestring) else args
+    data = cmdOptions(cmd)
     createArray(data)
     for i,item in enumerate(data['plotme']):
         readData(item, verbose=(DEBUG or VERBOSE))

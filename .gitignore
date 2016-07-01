@@ -6,6 +6,9 @@ tmp*
 log.*
 mk
 
+# dont't upload python temparary code
+*.pyc
+
 # editor and misc backup files - anywhere
 *~
 .*~
