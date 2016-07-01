@@ -818,8 +818,10 @@ def loadData(args, dtype='pandas.dataframe'):
         for item in data['plotme']:
             xdata = item['data'][:,0]
             ydata = item['data'][:,1]
-            title = item['title']
+            title = re.sub(r'[ \t]','',item['title'])
             pd.append(pandas.DataFrame(ydata, index=xdata, columns=[title]))
+            pd[-1].index.name = 't'
+            pd[-1].columns.name = 'name'
         pd=pandas.concat(pd,axis=1)
         return pd
     #if dtype in ['ts','TimeSignals']:
