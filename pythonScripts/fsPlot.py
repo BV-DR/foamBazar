@@ -80,7 +80,7 @@ CONTROL_OPTS = {
 'plot' : ['co', 'res', 'cont', 'ph', 'f', 'm', 't', 'nIter'],
 'col' : [-1],               # plot the last column (not use when "iter == True")
 'showIter' : None,          # show iter. or not? None: no, -1: show as line segment, 0: show as connected lines, n>0: ignore the first n values
-'updateInterval' : 1e15,    # keep the windows open and update regularly (value in seconds)
+'updateInterval' : 1e11,    # keep the windows open and update regularly (value in seconds)
 'keyOpts' : deepcopy(KEYWORD_OPTS) # which varname to plot?
 }
 
@@ -605,7 +605,7 @@ def readData(plotme, latestOnly=True, verbose=True):
     if (plotme['curLine']==None):
         plotme['data'] = numpyArrayFromTXTfile(cmd)
         plotme['curLine'] = int(head) + len(plotme['data']) - nHeaderLines + 1
-        if DEBUG: print "DEBUG: cururent Line",plotme['curLine']
+        if DEBUG: print "DEBUG: current Line",plotme['curLine']
     else:
         newdata = numpyArrayFromTXTfile(cmd)
         if newdata.size:
@@ -644,7 +644,10 @@ def readData(plotme, latestOnly=True, verbose=True):
     if not len(plotme['data']):
         if verbose: print "cmd:",cmd
         if verbose: print "Warning: cmd returns no data ... skip"
-        
+
+    if DEBUG:
+        print "DEVUG: foundNewData:",foundNewData
+        print "DEBUG: startIndex:",startIndex
     return foundNewData, startIndex
 
 # load data into np.array for plot, return data
@@ -700,6 +703,7 @@ def setPlotAxes(ax, plotme, check=False):
     ydata=plotme['data'][:,1]
     expand = 0.01   # expand axis by 1%
     if not check:
+        if DEBUG: print "DEBUG: set axis from raw data"
         ax.set_xlabel(plotme['xlabel'])
         ax.set_ylabel(plotme['ylabel'])
         ax.set_title(plotme['title'])
@@ -714,6 +718,7 @@ def setPlotAxes(ax, plotme, check=False):
         return
 
     # check for existing axis
+    if DEBUG: print "DEBUG: set axis, check current axis and raw data"
     if (plotme['xlabel'] != ax.get_xlabel()):
         print "debug: xlabel has changed?"
     if (plotme['ylabel'] != ax.get_ylabel()):
@@ -737,8 +742,11 @@ def setPlotAxes(ax, plotme, check=False):
 def showPlot(data):
     global DEBUG
     global VERBOSE
-    if not len(data['plotme']): createArray(data)
-
+    try:
+        if len(data['plotme']): createArray(data)
+    except KeyError:
+        createArray(data)
+   
     # FIXME: can we do subplot? rather not manually, it makes the user-interface very complex
     nrows=1
     ncols=1
@@ -788,7 +796,7 @@ def showPlot(data):
             plt.draw()
         pass
 
-    a = anim.FuncAnimation(fig, update, repeat=False, interval=updateInterval)
+    a = anim.FuncAnimation(fig, update, init_func=update(0), repeat=False, interval=updateInterval)
     plt.show()
 
     return data
@@ -842,6 +850,7 @@ def loadData(args, dtype='pandas.dataframe'):
 
 #*** Main execution start here *************************************************
 if __name__ == "__main__":
-    showPlot(cmdOptions(sys.argv[1:]))
+    data = cmdOptions(sys.argv[1:])
+    showPlot(data)
     
 
