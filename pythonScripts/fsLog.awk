@@ -22,6 +22,8 @@ function init()
     nSteps=0
     Time=0
     piping=0
+    k=0; for (i in files) k++
+    if (k>0) newLineInFiles()
     delete files
     delete counters
     delete hasNewLines

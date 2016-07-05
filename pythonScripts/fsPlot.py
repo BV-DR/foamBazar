@@ -11,7 +11,7 @@
 #########################################################################
 
 import re, os, sys, time, math, glob, shlex, subprocess, argparse, configparser
-import warnings
+import warnings, pprint
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -22,6 +22,8 @@ from copy import deepcopy
 from StringIO import StringIO
 from subprocess import PIPE
 from subprocess import Popen
+
+
 
 DEBUG = False
 VERBOSE = False
@@ -37,7 +39,8 @@ LIMITSAMPLEPOINTS = 0
 CMD_fsLogAwk = "fsLog.awk"
 
 # A database for keywords defined in argparser
-# The "str" for each key must corresponds to the keywords defined in "DATA"
+# The "str" for each key must corresponds to the keywords defined in the data files.
+# The data files have names following this format: <keyword>_<varname>_<varname>_<varname>_...ect
 KEYWORD = {
 'co' : "Courant",
 'ph' : "Phase",
@@ -50,7 +53,7 @@ KEYWORD = {
 'vol': "Volume"
 }
 
-# this is for printing usage info with "--help" option 
+# this is only for printing usage info with "--help" option 
 INFO_PLOTKEYS = '''
 [co] Courant number (files: Courant_*)
 [ph] Phase fraction (files: Phase_*)
@@ -60,46 +63,23 @@ INFO_PLOTKEYS = '''
 [t] timing data (files: timing_*)
 [f] fluid forces (files: fluidForce_*)
 [m] fluid forces (files: fluidMoment_*)
-[vol] Volume (files: Volume_*)
 '''
 
 # By default, we select only these quantities
 # All are selected, if the list is empty
-# Data files have names following this format: <keyword>_<varname>_<varname>_<varname>_...ect
-KEYWORD_OPTS = {
-'Courant' : ['max','interface'],
-'Phase' : ['min','max'],
-'Res': ['fsi','init', 'Ux', 'Uy', 'Uz', 'prgh'],
-'nIter': ['Ux','Uy','Uz','PIMPLE','prgh'],
-'contErr': ['cumu'],
-'fluidForce': ['relax','x','y','z'],
-'fluidMoment': ['relax','x','y','z'],
-'timing' : ['curr','meshUpdate'],
-'Volume' : ['new','old','change','ratio']
-}
-
 # 'plot' contains a list of keywords which represent a group of data to plot
 CONTROL_OPTS = {
-'plot' : ['co', 'res', 'cont', 'ph', 'f', 'm', 't', 'nIter','vol'],
+'plot' : 'all',
 'col' : [-1],               # plot the last column (not use when "iter == True")
 'showIter' : None,          # show iter. or not? None: no, -1: show as line segment, 0: show as connected lines, n>0: ignore the first n values
 'updateInterval' : 1e11,    # keep the windows open and update regularly (value in seconds)
-'keyOpts' : deepcopy(KEYWORD_OPTS) # which varname to plot?
+'keyOpts' : None            # which varname to plot?
 }
 
 # file(s) are loaded in "def checkAvailable(data):"
 DATA = {
 'logdir' : "./fsLog/",  # default sub-folder to look for data
 'Time' : "Time",        # file name containing time data
-'Courant' : [],         # names of files: "Courant_<name>"
-'Phase' : [],           # names of files: "Phase_<name>"
-'Res' : [],             # names of files: "Res_{init,final}_<name>"
-'nIter' : [],           # names of files: "nIter_<name>"
-'contErr' : [],         # names of files: "contErr_<name>"
-'fluidForce' : [],      # names of files: "fluidForce_<name>"
-'fluidMoment' : [],     # names of files: "fluidMoment_<name>"
-'timing' : [],          # names of files: "timing_<name>"
-'Volume' : [],          # names of files: "Volume_<name>"
 'opts' : deepcopy(CONTROL_OPTS) # what to plot, how to plot, ..., etc ...
 }
 
@@ -218,9 +198,64 @@ def checkAvailable(data):
     if not os.path.isdir(logdir):
         print "Log-data not found in folder:", logdir
         raise SystemExit('abort ...')
-    for key in KEYWORD:
-        keyName = KEYWORD[key]
-        data[keyName] = filesOnly(glob.glob(logdir + keyName + "_*"))    
+
+    # find all keys
+    availKeys = {}
+    plot = data['opts']['plot']
+    if isinstance(plot, basestring):
+        data['opts']['plot']=[]
+        plot=[key for key in KEYWORD]
+    for key in plot:
+        if not key in KEYWORD: continue
+        keyName=KEYWORD[key]
+        availFiles = filesOnly(glob.glob(logdir + keyName + "_*"))
+        if len(availFiles):
+            if not key in data['opts']['plot']: data['opts']['plot'].append(key)
+            data[keyName] = availFiles
+            availFiles = [os.path.basename(fname) for fname in data[keyName]]
+            keys = []
+            for k in availFiles: keys += k.split("_")[1::]
+            availKeys[keyName] = keys
+    # get a uqnie list
+    for keyName in availKeys: availKeys[keyName] = list(set(availKeys[keyName]))
+
+    var = data['opts']['keyOpts']
+    if var==None:
+        data['opts']['keyOpts']=availKeys
+        pass
+    else:
+        def invalidOption(key):
+            print "Invalid option(s): ",key
+            raise SystemExit('abort ...')
+        var = data['opts']['keyOpts']
+        var = [] if var==None else var
+        data['opts']['keyOpts']={}    
+        reset = {}
+        key=None
+        for i in var:
+            j = i.split(":")
+            if len(j)>2: invalidOption(i)
+            if len(j)==2:
+                if j[0] in KEYWORD:
+                    key=KEYWORD[j[0]]
+                    if key in reset: del reset[key]
+                else:
+                    invalidOption(i)
+            i = j[-1]
+            if key==None:
+                for k in plot:
+                    if k in KEYWORD:
+                        k=KEYWORD[k]
+                        if not k in reset:
+                            data['opts']['keyOpts'][k]=[]
+                            reset[k]=True
+                        data['opts']['keyOpts'][k].append(i)
+            else:
+                if not key in reset:
+                    data['opts']['keyOpts'][key]=[]
+                    reset[key]=True
+                data['opts']['keyOpts'][key].append(i)
+                pass
     return data
 
 def cmdOptions(argv):
@@ -243,8 +278,6 @@ def cmdOptions(argv):
     
     # get the template
     data = deepcopy(DATA)
-    args = parser.parse_args(argv)
-
     global DEBUG
     global VERBOSE
     global TRIMINSECOND
@@ -253,6 +286,8 @@ def cmdOptions(argv):
     global LIMITSAMPLEINSECOND
     global PLOTME
     global LINEPROPERTY
+
+    args = parser.parse_args(argv)
     
     if args.debug:
         DEBUG=True
@@ -269,35 +304,7 @@ def cmdOptions(argv):
         data['opts']['plot'] = [str(val) for val in args.plot.split(",")]
         pass
     if args.withvar!=None:
-        plot = data['opts']['plot']
-        var = [str(val) for val in args.withvar.split(",")]
-        reset = {}
-        key=None
-        for i in var:
-            j = i.split(":")
-            if len(j)==2:
-                if j[0] in KEYWORD:
-                    key=KEYWORD[j[0]]
-                    if key in reset:
-                        del reset[key]
-            if len(j)>2:
-                print "Invalid option(s): ",i
-                raise SystemExit('abort ...')
-            i = j[-1]
-            if key==None:
-                for k in plot:
-                    if k in KEYWORD:
-                        k=KEYWORD[k]
-                        if not k in reset:
-                            data['opts']['keyOpts'][k]=[]
-                            reset[k]=True
-                        data['opts']['keyOpts'][k].append(i)
-            else:
-                if not key in reset:
-                    data['opts']['keyOpts'][key]=[]
-                    reset[key]=True
-                data['opts']['keyOpts'][key].append(i)
-                pass
+        data['opts']['keyOpts'] = [str(val) for val in args.withvar.split(",")]
         pass
     if args.col!=None:
         txt = args.col.split(",")
@@ -433,8 +440,7 @@ def cmdOptions(argv):
         print "output each data set to file: ... not yet implemented ... abort ..."
         raise SystemExit
 
-    data = checkAvailable(data)    
-    return data
+    return checkAvailable(data)
 
 # prepare cmd to read data
 def prepareData(fname, opts):
@@ -689,7 +695,6 @@ def createArray(data):
                 print "Data file not found:",fname
                 raise SystemExit('abort ...')
             data['plotme'].append(prepareData(fname, plotOpts))
-
     return data
 
 def setPlotAxes(ax, plotme, check=False):
