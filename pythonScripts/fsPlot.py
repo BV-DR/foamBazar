@@ -502,18 +502,27 @@ def numpyArrayFromTXTfile(cmd, dtype=float):
         raise SystemExit('abort ...')
     addPipe(p, mycmd)
 
-    # using pipe is way faster than StringIO
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=UserWarning, append=1)
-        val = np.loadtxt(p[-1].stdout, dtype=dtype)
+#    using pipe is way faster than StringIO
+#    with warnings.catch_warnings():
+#        warnings.filterwarnings("ignore", category=UserWarning, append=1)
+#        val = np.loadtxt(p[-1].stdout, dtype=dtype)
+#    for proc in p:
+#        err = proc.stderr.readline()
+#        if (err!="" and err[0:16]!="tac: write error"):
+#            print "cmd:",cmd
+#            print err
+#            raise SystemExit("cmd failed to execute ... abort")
 
-    for proc in p:
-        err = proc.stderr.readline()
-        if (err!="" and err[0:16]!="tac: write error"):
-            print "cmd:",cmd
-            print err
-            raise SystemExit("cmd failed to execute ... abort")
-   
+    # slow but stable
+    txt,err = p[-1].communicate()
+    if err:
+        print "cmd:",cmd
+        print "error:",err
+        raise SystemExit('abort ...')
+    if (len(txt)==0): return np.array([])
+    fakeStream = StringIO(txt)
+    val = np.loadtxt(fakeStream, dtype=dtype)
+
     if DEBUG: print "DEBUG: timing",time.time()-t0
     return val
 
@@ -828,24 +837,10 @@ def loadData(args, dtype='pandas.dataframe'):
             ydata = item['data'][:,1]
             title = re.sub(r'[ \t]','',item['title'])
             pd.append(pandas.DataFrame(ydata, index=xdata, columns=[title]))
-            pd[-1].index.name = 't'
+            pd[-1].index.name = 'log'
             pd[-1].columns.name = 'name'
         pd=pandas.concat(pd,axis=1)
         return pd
-    #if dtype in ['ts','TimeSignals']:
-    #    ts = tryImport('TimeSignals')
-    #    rawdata = []
-    #    x = None
-    #    titles = []
-    #    for item in data['plotme']:
-    #        titles.append(item['title'])
-    #        rawdata.append(item['data'][:,1])
-    #        if x==None: x=item['data'][:,0]
-    #    rawdata = np.array([rawdata[0],rawdata[1]])
-    #    print len(rawdata)
-    #    print len(rawdata[0])
-    #    print len(rawdata[1])
-    #    return ts.TimeSignals(rawdata, xAxis=x, columnTitles=titles)
     raise SystemExit('Unkown dtype: '+dtype)
 
 #*** Main execution start here *************************************************

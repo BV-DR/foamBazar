@@ -11,11 +11,21 @@
 #########################################################################
 
 import inspect
-import sys, os, glob, pandas, shlex
+import sys, os, glob, pandas, shlex, datetime
 import numpy as np
 import subprocess, warnings
+from copy import deepcopy 
 from subprocess import PIPE
 from subprocess import Popen
+
+# template for custom metadata to be added to pendas.dataframe
+# this will go to: df.fsData
+FSDATA = {
+'label': None,  # label of this dataframe (user-defined)
+'info' : None,  # info-string
+'module': None, # module used during read operation, e.g.: loadInternalLoads, loadMotionInfo, .., etc
+'args': None    # either a string or dictionary to keep the original input-arguments
+}
 
 def tryImport(name):
     # remove ".py"
@@ -113,10 +123,18 @@ def cmd2numpy(cmd, dtype=float):
     return val
 
 def usage():
-    print "show usage info and available functions here ..."
+    print '''
+# template for loading openfoam data into pandas.dataframe
     
-    avail = [obj for name,obj in inspect.getmembers(sys.modules[__name__]) if (inspect.isfunction(obj))] 
-    print avail
+import sys
+sys.path.append("/home/soseng/OpenFOAM/bv/foamBazar/pythonScripts/")
+import fsData as fs
+from matplotlib import pyplot as plt
+if __name__ == "__main__":
+    log = fs.loadLogData("-p res -w init,Ux,Uy,Uz", logfiles=['log.run','fsLog'])
+    mot = fs.loadMotionInfo("motionInfo", root='./')
+    vbm = fs.loadInternalLoads("vbm", root='./', fnames=['my','fz','acc'])    
+    '''
     pass
 
 def addslash(name):
@@ -184,22 +202,48 @@ def concat_and_merge(data, keep='last'):
     data = data[~data.index.duplicated(keep=keep)]
     return data
 
+def setmetadata(data, label=None, info=None, module=None, args=None):
+    data.fsData = deepcopy(FSDATA)
+    data.fsData['label'] = label
+    data.fsData['info'] = info if info!=None else 'last update: ' + datetime.date.today().strftime("%I:%M%p %B %d, %Y")
+    data.fsData['module'] = module
+    data.fsData['args'] = args if args!=None else {
+        'lastUpdate':datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')
+    }
+
 # load log data given a list of logfiles/folder
 # data will be merged and return as pandas.dataframe
 # cmd: is fsPlot.py command line arguments
 # e.g.: loadLogData('-p res', logfiles=['log.run0','log.run1',''])
 # When overlap, either keep 'last', 'first', or 'False'
-def loadLogData(cmd, logfiles=[], keep='last'):
+def loadLogData(cmd, logfiles=[], root=None, keep='last'):
+    """
+        def loadLogData(cmd, logfiles=[], root=None, keep='last'):
+        
+        load data from log-file(s) given "cmd" to pass to fsPlot.py
+    """
     fsPlot = tryImport('fsPlot.py')
+    allfiles = deepcopy(logfiles) if root==None else [addslash(root) + log for log in logfiles]
     data = []
-    for log in logfiles: data.append(fsPlot.loadData(cmd + ' ' + log, dtype='pandas'))
-    if len(data): data = concat_and_merge(data, keep=keep)
+    for log in allfiles: data.append(fsPlot.loadData(cmd + ' ' + log, dtype='pandas'))
+    if len(data):
+        data = concat_and_merge(data, keep=keep)
+        setmetadata(data, label='logdata', module='loadLogData')
+        data.fsData['args'] = {
+            'cmd':cmd,
+            'logfiles':logfiles,
+            'root':root,
+            'keep':keep,
+            'lastUpdate':datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')
+        }
     return data
 
 # FIXME: save data for a faster reload, check time stamp on file(s) to reload
 def loadMotionInfo(objName, root='./', fname='sixDofDomainBody.dat', keep='last'):
     """
-        load ./postProcessing/<objName>/<time>/<fname>*.dat
+        def loadMotionInfo(objName, root='./', fname='sixDofDomainBody.dat', keep='last'):
+        
+        load data from: ./postProcessing/<objName>/<time>/<fname>*.dat
     """
     dataFiles = postProcessingDatFile(fname, objName=objName, root=root)
     data = []
@@ -208,41 +252,137 @@ def loadMotionInfo(objName, root='./', fname='sixDofDomainBody.dat', keep='last'
         val = cmd2numpy('sed \"/#/d\" ' + f, dtype=float)
         if len(val):
             data.append(pandas.DataFrame(val[:,1:], index=val[:,0], columns=header))
-            data[-1].index.name = "t"
+            data[-1].index.name = "motion"
             data[-1].columns.name = "name"
-    if len(data): data = concat_and_merge(data, keep=keep)
+    if len(data):
+        data = concat_and_merge(data, keep=keep)
+        setmetadata(data, label=objName, module='loadMotionInfo')
+        data.fsData['args'] = {
+            'objName':objName,
+            'root':root,
+            'fname':fname,
+            'keep': keep,
+            'lastUpdate':datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')
+        }
     return data
 
-def loadvbm(objName, root='./', fnames=['my','fz'], keep='last'):
+def loadInternalLoads(objName, root='./', fnames=None, keep='last'):
     """
-        load ./postProcessing/<objName>/<time>/<fname>*.dat
+        def loadInternalLoads(objName, root='./', fnames=None, keep='last'):
+
+        load data from: ./postProcessing/<objName>/<time>/<fname>*.dat
     """
+    def addInfo(data, label, fname):
+        setmetadata(data, label=label, module='loadInternalLoads')
+        data.fsData['args'] = {
+            'objName':objName,
+            'root':root,
+            'fnames':[fname],
+            'keep': keep,
+            'lastUpdate':datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')
+        }
+    def headerxyz(f):
+        header0 = runCommand('sed -n \"/^# t /p\" ' + f).split()[2:]
+        headerx = runCommand('sed -n \"/^# x /p\" ' + f).split()[2:]
+        headery = runCommand('sed -n \"/^# y /p\" ' + f).split()[2:]
+        headerz = runCommand('sed -n \"/^# z /p\" ' + f).split()[2:]
+        header0 = [str(val) for val in header0]
+        headerx = [float(val) for val in headerx]
+        headery = [float(val) for val in headery]
+        headerz = [float(val) for val in headerz]
+        return (header0,headerx,headery,headerz)
+    def appenddata(cmd,header,data):
+        val = cmd2numpy(cmd, dtype=float)
+        if len(val):
+            data.append(pandas.DataFrame(val[:,1:], index=val[:,0], columns=header))
+        pass
+        
+    if fnames==None:
+        fnames = ['my','fz']
+    elif isinstance(fnames,basestring):
+        if fnames.lower() in ['all']:
+            fnames = ['fx','fy','fz','mx','my','mz','fCstr','mCstr','fFluid','mFluid','acc']
+        else:
+            print "loadInternalLoads: unknown options fnames=",fnames
+            raise SystemExit('abort ...')
     allData = []
     for fname in fnames:
-        dataFiles = postProcessingDatFile(fname, objName=objName, root=root)
         if fname in ['fx','fy','fz','mx','my','mz']:
+            dataFiles = postProcessingDatFile(fname, objName=objName, root=root)
             data = []
             for f in dataFiles:
-                header0 = runCommand('sed -n \"/^# t /p\" ' + f).split()[2:]
-                headerx = runCommand('sed -n \"/^# x /p\" ' + f).split()[2:]
-                headery = runCommand('sed -n \"/^# y /p\" ' + f).split()[2:]
-                headerz = runCommand('sed -n \"/^# z /p\" ' + f).split()[2:]
-                header0 = [int(val) for val in header0]
-                headerx = [float(val) for val in headerx]
-                headery = [float(val) for val in headery]
-                headerz = [float(val) for val in headerz]
-                header = [header0, headerx, headery, headerz]
-                val = cmd2numpy('sed \"/#/d\" ' + f, dtype=float)
-                if len(val):
-                    data.append(pandas.DataFrame(val[:,1:], index=val[:,0], columns=header))
-                    data[-1].index.name = fname
-                    data[-1].columns.names = ['n','x','y','z']
+                h0,hx,hy,hz = headerxyz(f)
+                header = [h0, hx, hy, hz]
+                appenddata('sed \"/#/d;s/[()]//g\" '+f,header,data)
             if len(data):
                 data = concat_and_merge(data, keep=keep)
-                data.name = fname
+                addInfo(data, fname, fname)
+                data.index.name = fname
+                data.columns.names = ['n','x','y','z']
                 allData.append(data)
-    return allData
-
+        elif fname in ['fCstr','mCstr','fFluid','mFluid']:
+            dataFiles = postProcessingDatFile(fname, objName=objName, root=root)
+            data = {'x':[],'y':[],'z':[]}
+            for f in dataFiles:
+                h0,hx,hy,hz = headerxyz(f)
+                header = [h0, hx, hy, hz]
+                for i,cmpt in enumerate(['x','y','z']):
+                    appenddata('sed \"/#/d;s/[()]//g\" '+f+' | awk \'{printf (\"%s\",$1); for (i=2+'+str(i)+';i<=NF;i+=3) printf (\" %s\",$i); printf (\"\\n\");}\'',header,data[cmpt])
+            if len(data['x']):
+                data['x'] = concat_and_merge(data['x'], keep=keep)
+                addInfo(data['x'], fname + "x", fname)
+                data['x'].index.name = fname + "(x)"
+                data['x'].columns.names = ['n','x','y','z']
+                allData.append(data['x'])
+            if len(data['y']):
+                data['y'] = concat_and_merge(data['y'], keep=keep)
+                addInfo(data['y'], fname + "y", fname)
+                data['y'].index.name = fname + "(y)"
+                data['y'].columns.names = ['n','x','y','z']
+                allData.append(data['y'])
+            if len(data['z']):
+                data['z'] = concat_and_merge(data['z'], keep=keep)
+                addInfo(data['z'], fname + "z", fname)
+                data['z'].index.name = fname + "(z)"
+                data['z'].columns.names = ['n','x','y','z']
+                allData.append(data['z'])
+        elif fname in ['acc']:
+            dataFiles = postProcessingDatFile(fname, objName=objName, root=root)
+            data = []
+            for f in dataFiles:
+                header=[]
+                for cmpt in runCommand('sed -n \"/^# t /p\" ' + f).split()[2:]:
+                    cmpt = cmpt.split("(")[0]
+                    if cmpt.lower() in ['linacc','angacc','omega']:
+                        header.append(cmpt+'x')
+                        header.append(cmpt+'y')
+                        header.append(cmpt+'z')
+                    elif cmpt in ['R^T']:
+                        header.append('RTxx')
+                        header.append('RTxy')
+                        header.append('RTxz')
+                        header.append('RTyx')
+                        header.append('RTyy')
+                        header.append('RTyz')
+                        header.append('RTzx')
+                        header.append('RTzy')
+                        header.append('RTzz')
+                    else:
+                        print "acc: unknown format:",cmpt
+                        raise SystemExit('abort ...')
+                appenddata('sed \"/#/d;s/[()]//g\" '+f,header,data)
+            if len(data):
+                data = concat_and_merge(data, keep=keep)
+                addInfo(data, fname, fname)
+                data.index.name = fname
+                data.columns.names = ['name']
+                allData.append(data)
+        else:
+            print "unknown data:",fname
+    if len(allData)==1:
+        return allData[0]
+    else:
+        return allData
 
 #*** Main execution start here *************************************************
 if __name__ == "__main__":
