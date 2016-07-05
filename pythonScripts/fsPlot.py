@@ -46,7 +46,8 @@ KEYWORD = {
 'cont' : "contErr",
 'f' : "fluidForce",
 'm' : "fluidMoment",
-'t' : "timing"
+'t' : "timing",
+'vol': "Volume"
 }
 
 # this is for printing usage info with "--help" option 
@@ -59,6 +60,7 @@ INFO_PLOTKEYS = '''
 [t] timing data (files: timing_*)
 [f] fluid forces (files: fluidForce_*)
 [m] fluid forces (files: fluidMoment_*)
+[vol] Volume (files: Volume_*)
 '''
 
 # By default, we select only these quantities
@@ -72,12 +74,13 @@ KEYWORD_OPTS = {
 'contErr': ['cumu'],
 'fluidForce': ['relax','x','y','z'],
 'fluidMoment': ['relax','x','y','z'],
-'timing' : ['curr','meshUpdate']
+'timing' : ['curr','meshUpdate'],
+'Volume' : ['new','old','change','ratio']
 }
 
 # 'plot' contains a list of keywords which represent a group of data to plot
 CONTROL_OPTS = {
-'plot' : ['co', 'res', 'cont', 'ph', 'f', 'm', 't', 'nIter'],
+'plot' : ['co', 'res', 'cont', 'ph', 'f', 'm', 't', 'nIter','vol'],
 'col' : [-1],               # plot the last column (not use when "iter == True")
 'showIter' : None,          # show iter. or not? None: no, -1: show as line segment, 0: show as connected lines, n>0: ignore the first n values
 'updateInterval' : 1e11,    # keep the windows open and update regularly (value in seconds)
@@ -94,8 +97,9 @@ DATA = {
 'nIter' : [],           # names of files: "nIter_<name>"
 'contErr' : [],         # names of files: "contErr_<name>"
 'fluidForce' : [],      # names of files: "fluidForce_<name>"
-'fluidMoment' : [],      # names of files: "fluidMoment_<name>"
+'fluidMoment' : [],     # names of files: "fluidMoment_<name>"
 'timing' : [],          # names of files: "timing_<name>"
+'Volume' : [],          # names of files: "Volume_<name>"
 'opts' : deepcopy(CONTROL_OPTS) # what to plot, how to plot, ..., etc ...
 }
 

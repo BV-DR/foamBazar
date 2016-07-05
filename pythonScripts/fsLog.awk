@@ -13,18 +13,23 @@
 #           WARNING: files in existing sub-folders will be overwritten. #
 #########################################################################
 
-BEGIN {
-    nSteps=0
-    Time=0
-    piping=0
-}
-
 END {
     newLineInFiles()
 }
 
+function init()
+{
+    nSteps=0
+    Time=0
+    piping=0
+    delete files
+    delete counters
+    delete hasNewLines
+}
+
 # create folder for each log-file
 FNR==1 {
+    init()
     # default folder for data from stdin
     logdir="./fsLog/"
     if (FILENAME!="-")
@@ -273,4 +278,56 @@ function extract(line,columnSel,outVar,a,b)
     checkFile(name, header "mz")
     printf "\t" val[8] >> files[name]
 }
+
+######################## navalFoam and swenseFoam ##############################
+#Volume: new = <value> old = <value> change = <value> ratio = <value>
+/^Volume: new = / {
+    header="#Volume "
+    name="Volume_new"
+    checkFile(name, header "(new)")
+    extract($0, "new = ", val)
+    printf "\t" val[1] >> files[name]
+    #
+    name="Volume_old"
+    checkFile(name, header "(old)")
+    extract($0, "old = ", val)
+    printf "\t" val[1] >> files[name]
+    #
+    name="Volume_change"
+    checkFile(name, header "(change)")
+    extract($0, "change = ", val)
+    printf "\t" val[1] >> files[name]
+    #
+    name="Volume_ratio"
+    checkFile(name, header "(ratio)")
+    extract($0, "ratio = ", val)
+    printf "\t" val[1] >> files[name]        
+}
+
+/^Courant Number mean: .* velocity magnitude: / {
+    name="Velocity"
+    checkFile(name, "#Velocity mag.")
+    extract($0, "velocity magnitude: ", val)
+    printf "\t" val[1] >> files[name]
+}
+
+#Liquid phase volume fraction = <value>  Min(alpha1) = <value>  Max(alpha1) = <value>
+/^Liquid phase volume fraction = / {
+    name = "Phase_volume"
+    checkFile(name, "#Phase vol.fraction")
+    extract($0, "volume fraction = ", val)
+    printf "\t" val[1] >> files[name]
+    #
+    name = "Phase_min"
+    checkFile(name, "#alpha (min)")
+    extract($0, "Min(alpha1) = ", val)
+    printf "\t" val[1] >> files[name]
+    #
+    name = "Phase_max"
+    checkFile(name, "#alpha (max-1.0)")
+    extract($0, "Max(alpha1) = ", val)
+    printf "\t" (val[1]-1.0) >> files[name]
+}
+
+
 
