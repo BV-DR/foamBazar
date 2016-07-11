@@ -616,7 +616,8 @@ def readData(plotme, latestOnly=True, verbose=True):
             if verbose: print info,"("+str(tail)+" lines)"
         else:
             if verbose: print "trim TAIL "+str(tail)+" lines"
-
+    else:
+        head += nHeaderLines + 1
     cmd = "head -n-"+str(int(tail))+" "+fname+" | tail -n+"+str(int(head))+" | "+cmd
 
     foundNewData=True
