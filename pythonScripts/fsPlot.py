@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/env upython
 
 #########################################################################
 # Filename: fsPlot.py                                                   #

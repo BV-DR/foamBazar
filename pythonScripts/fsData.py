@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/env upython 
 
 #########################################################################
 # Filename: fsPlot.py                                                   #
@@ -257,6 +257,37 @@ def loadMotionInfo(objName, root='./', fname='sixDofDomainBody.dat', keep='last'
     if len(data):
         data = concat_and_merge(data, keep=keep)
         setmetadata(data, label=objName, module='loadMotionInfo')
+        data.fsData['args'] = {
+            'objName':objName,
+            'root':root,
+            'fname':fname,
+            'keep': keep,
+            'lastUpdate':datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')
+        }
+    return data
+
+def loadWaveProbes(objName, root='./', fname='surfaceElevation.dat', keep='last'):
+    """
+        def loadWaveProbes(objName, root='./', fname='surfaceElevation.dat', keep='last'):
+        
+        load data from: ./postProcessing/<objName>/<time>/<fname>*.dat
+    """
+    dataFiles = postProcessingDatFile(fname, objName=objName, root=root)
+    data = []
+    for f in dataFiles:
+        header0 = runCommand('sed -n \"/^# [Tt]ime /p\" ' + f).split()[2:]
+        headerx = runCommand('sed -n \"/^# x /p\" ' + f).split()[2:]
+        headery = runCommand('sed -n \"/^# y /p\" ' + f).split()[2:]
+        headerz = runCommand('sed -n \"/^# z /p\" ' + f).split()[2:]
+        header = [header0, headerx, headery, headerz]
+        val = cmd2numpy('sed \"/#/d\" ' + f, dtype=float)
+        if len(val):
+            data.append(pandas.DataFrame(val[:,1:], index=val[:,0], columns=header))
+            data[-1].index.name = "wp"
+            data[-1].columns.names = ['name','x','y','z']
+    if len(data):
+        data = concat_and_merge(data, keep=keep)
+        setmetadata(data, label=objName, module='loadWaveProbes')
         data.fsData['args'] = {
             'objName':objName,
             'root':root,
