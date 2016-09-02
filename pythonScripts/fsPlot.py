@@ -624,7 +624,7 @@ def readData(plotme, latestOnly=True, verbose=True):
     startIndex = 0
     if (plotme['curLine']==None):
         plotme['data'] = numpyArrayFromTXTfile(cmd)
-        plotme['curLine'] = int(head) + len(plotme['data']) - nHeaderLines + 1
+        plotme['curLine'] = int(head) + len(plotme['data']) - (nHeaderLines + 1)
         if DEBUG: print "DEBUG: current Line",plotme['curLine']
     else:
         newdata = numpyArrayFromTXTfile(cmd)
@@ -783,7 +783,7 @@ def showPlot(data):
     lines = [None] * len(data['plotme'])
     nLines = [0]    # we must use list here to keep nLines known in "def update"
     def update(frame):
-        if DEBUG: print "DEBUG: frame",frame
+        if DEBUG: print "DEBUG: frame",frame," obj:",len(data['plotme'])
         for i,item in enumerate(data['plotme']):
             foundNewData,startIndex = readData(item, verbose=(DEBUG or VERBOSE))
             if (not foundNewData or item['data'].ndim==1): continue

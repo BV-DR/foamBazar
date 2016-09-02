@@ -142,6 +142,11 @@ function extract(line,columnSel,outVar,a,b)
 
 #fsi: <iter> residual: <value> (target: <value>)
 /^fsi: / {
+    name = "nIter_fsi"
+    checkFile(name, "#nIter. fsi")
+    extract($0, "fsi: ", val)
+    printf "\t" val[1] >> files[name]
+    #
     name = "Res_fsi"
     checkFile(name, "#Res. fsi")
     extract($0, "residual: ", val)
