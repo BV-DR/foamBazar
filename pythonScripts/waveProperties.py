@@ -183,7 +183,7 @@ if __name__ == "__main__" :
    #relaxOutlet = RelaxZone( name = "outlet"  , relax = True , waveCondition = waveCond , origin = [600, 0, 0] , orientation = [-1 , 0, 0 ], length = 50 )
    relaxOutlet = RelaxZone( name = "outlet"  , relax = True , waveCondition = noWaveCond , origin = [600, 0, 0] , orientation = [-1 , 0, 0 ], length = 50 )
 
-   waveProperties = WaveProperties("waveProperties" , waveCond  ,  relaxZones = (relaxInlet , relaxOutlet) , version = "swenseFoam" )
+   waveProperties = WaveProperties("waveProperties" , waveCond  ,  relaxZones = (relaxInlet , relaxOutlet) , version = "foamStar" )
 
    print waveProperties
 

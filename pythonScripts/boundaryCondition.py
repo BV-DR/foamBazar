@@ -20,6 +20,53 @@ namePatch = {
              "frontBack" : "frontBack" ,   #In case of  2D computation
             }
 
+class BoundaryOmega(WriteParameterFile):
+
+   def __init__(self,  case, symmetryPlane = "yes", wallFunction = False, version = "foamStar", namePatch = namePatch , omega = 2. ) :
+
+      WriteParameterFile.__init__(self,  name = join(case, "0" , "org", "omega")  )
+      self.header["class"] = "volScalarField"
+      self["dimensions"] = Dimension(*[0,0,-1,0,0,0,0])
+      self["internalField"] = "uniform {}".format(omega)
+      self["boundaryField"] = { namePatch["inlet"]         : { "type" : "fixedValue", "value" : omega } ,
+                                namePatch["outlet"]        : { "type" : "fixedValue", "value" : omega } ,
+                                namePatch["side"]        : { "type" : "fixedValue", "value" : omega } ,
+                                namePatch["bottom"]        : { "type" : "fixedValue", "value" : omega  },
+                                namePatch["top"]           : { "type" : "fixedValue", "value" : omega  },
+                                namePatch["structure"]     : { "type" : "zeroGradient"   },
+                                "defaultFaces"     : { "type" : "empty"  },
+                               }
+
+      if wallFunction :
+         self["boundaryField"][ namePatch["structure"]] = { "type" : "omegaWallFunction"   }
+
+      if symmetryPlane == "yes" :
+         self["boundaryField"][namePatch["symmetryPlane"]] = { "type" : "symmetryPlane" }
+
+
+class BoundaryK(WriteParameterFile):
+   def __init__(self,  case, symmetryPlane = "yes", wallFunction = False, version = "foamStar", namePatch = namePatch , k = 0.00015 ) :
+
+      WriteParameterFile.__init__(self,  name = join(case, "0" , "org", "k")  )
+      self.header["class"] = "volScalarField"
+      self["dimensions"] = Dimension(*[0,2, -2,0,0,0,0])
+      self["internalField"] = "uniform {}".format(k)
+      self["boundaryField"] = { namePatch["inlet"]         : { "type" : "fixedValue"  , "value" : k } ,
+                                namePatch["outlet"]        : { "type" : "fixedValue"  , "value" : k } ,
+                                namePatch["side"]        : { "type" : "fixedValue"  , "value" : k } ,
+                                namePatch["bottom"]        : { "type" : "fixedValue"  , "value" : k },
+                                namePatch["top"]           : { "type" : "fixedValue"  , "value" : k },
+                                namePatch["structure"]     : { "type" : "zeroGradient"   },
+                                "defaultFaces"     : { "type" : "empty"  },
+                               }
+
+      if wallFunction :
+         self["boundaryField"][ namePatch["structure"]] = { "type" : "kqRWallFunction"   }
+
+      if symmetryPlane == "yes" :
+         self["boundaryField"][namePatch["symmetryPlane"]] = { "type" : "symmetryPlane" }
+
+
 class BoundaryAlpha(WriteParameterFile) :
    """
       Alpha boundary
@@ -31,16 +78,16 @@ class BoundaryAlpha(WriteParameterFile) :
       self["internalField"] = "uniform 0"
       self["boundaryField"] = { namePatch["inlet"]         : { "type" : waveAlpha[version] , "value" : "uniform 0" } ,
                                 namePatch["outlet"]        : { "type" : waveAlpha[version] , "value" : "uniform 0" } ,
+                                namePatch["side"]          : { "type" : waveAlpha[version] , "value" : "uniform 0" } ,
                                 namePatch["bottom"]        : { "type" : "zeroGradient"  },
                                 namePatch["top"]           : { "type" : "zeroGradient"  },
                                 namePatch["structure"]     : { "type" : "zeroGradient"  },
+
                                 "defaultFaces"     : { "type" : "empty"  },
                                }
 
       if symmetryPlane == "yes" :
          self["boundaryField"][namePatch["symmetryPlane"]] = { "type" : "symmetryPlane" }
-      elif symmetryPlane == "no" :
-         self["boundaryField"][namePatch["side"]] = { "type" : "waveAlpha" }
 
 
 
@@ -56,17 +103,15 @@ class BoundaryVelocity(WriteParameterFile) :
       self["boundaryField"] = {
                                 namePatch["inlet"]         : { "type" : waveVelocity[version] , "value" : "uniform (0 0 0)" } ,
                                 namePatch["outlet"]        : { "type" : waveVelocity[version] , "value" : "uniform (0 0 0)" } ,
+                                namePatch["side"]          : { "type" : waveVelocity[version] , "value" : "uniform (0 0 0)" } ,
                                 namePatch["bottom"]        : { "type" : "slip"  }         ,
                                 namePatch["top"]           : { "type" : "pressureInletOutletVelocity" , "value" : "uniform (0 0 0)"  , "tangentialVelocity" : "uniform ({} 0. 0.)".format(speed) } ,
-                                namePatch["structure"]     : { "type" : "slip"  }  ,
-                                "defaultFaces"     : { "type" : "empty"  },
+                                namePatch["structure"]     : { "type" : "movingWallVelocity"  }  ,
+                                "defaultFaces"             : { "type" : "empty"  },
                               }
+
       if symmetryPlane == "yes" :
          self["boundaryField"][namePatch["symmetryPlane"]] = { "type" : "symmetryPlane" }
-      elif symmetryPlane == "no" :
-         self["boundaryField"][namePatch["side"]] = { "type" : "waveVelocity" , "value" : "uniform (0 0 0)" } ,
-         
-
 
 
 class BoundaryPressure(WriteParameterFile) :
@@ -88,6 +133,7 @@ class BoundaryPressure(WriteParameterFile) :
          self["boundaryField"] = {
                                    namePatch["structure"]      : { "type" : "zeroGradient" },
                                    namePatch["inlet"]          : { "type" : "zeroGradient" },
+                                   namePatch["side"]           : { "type" : "zeroGradient" },
                                    namePatch["outlet"]         : { "type" : "zeroGradient" },
                                    namePatch["bottom"]         : { "type" : "zeroGradient" },
                                    namePatch["top"]            : { "type" : "totalPressure" , "U" :  "U" , "phi" : "phi", "rho" : "rho",    "psi" : "none",   "gamma" :  0,   "p0"    :  "uniform 0",   "value" :  "uniform 0"  }  ,
@@ -96,8 +142,6 @@ class BoundaryPressure(WriteParameterFile) :
 
       if symmetryPlane == "yes" :
          self["boundaryField"][namePatch["symmetryPlane"]] = { "type" : "symmetryPlane" }
-      elif symmetryPlane == "no" :
-         self["boundaryField"][namePatch["side"]] = { "type" : "fixedFluxPressure" , "value" : "uniform 0" } ,
       elif symmetryPlane == "2D" :
          self["boundaryField"][namePatch["frontBack"]] = { "type" : "empty" }
 
@@ -174,5 +218,5 @@ def writeAllBoundaries(case, version , speed = 0.0,  symmetryPlane = "yes" , nam
 
 if __name__ == "__main__" :
 
-   print  BoundaryUinc("test", 0.5)
+   print  BoundaryOmega("test", wallFunction = True)
 
