@@ -1,0 +1,42 @@
+
+{
+    twoPhaseMixture tmp
+    (
+        mesh,
+        IOdictionary
+        (
+            IOobject
+            (
+                "thermophysicalProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE
+            )
+        )
+    );
+
+    volScalarField& alpha1(tmp.alpha1());
+    volScalarField& alpha2(tmp.alpha2());
+    autoPtr<rhoThermo> thermo1(rhoThermo::New(mesh, tmp.phase1Name()));
+    autoPtr<rhoThermo> thermo2(rhoThermo::New(mesh, tmp.phase2Name()));
+    volScalarField& rho1 = thermo1.rho();
+    volScalarField& rho2 = thermo2.rho();
+    volScalarField rho
+    (
+        IOobject
+        (
+            "rho",
+            runTime.timeName(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        alpha1*rho1 + alpha2*rho2
+    );
+
+    p = p_rgh + rgh;
+}
+
+
+
