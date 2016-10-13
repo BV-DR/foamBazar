@@ -24,6 +24,17 @@ def compareCase( dir1 , dir2 , version = "s"  ) :
                 r"0/org/LevelSetDiff" ,
                 r"0/org/pd" ,
                 r"0/org/p_rgh" ,
+                
+                r"0/pd" ,
+                r"0/alpha1" ,
+                r"0/alpha.water" ,
+                r"0/U" ,
+                r"0/UDiff" ,
+                r"0/UInc" ,
+                r"0/LevelSetDiff" ,
+                r"0/pd" ,
+                r"0/p_rgh" ,
+
                 r"constant/RASProperties" ,
                 r"constant/waveProperties" ,
                 r"constant/polyMesh/blockMeshDict" ,
@@ -31,6 +42,7 @@ def compareCase( dir1 , dir2 , version = "s"  ) :
                 r"constant/g" ,
                 r"constant/transportProperties" ,
                 r"system/fvSchemes" ,
+                r"system/decomposeParDict" ,
                 r"system/fvSolution" ,
                 r"system/controlDict" ,
                ]
@@ -115,9 +127,8 @@ if __name__ == "__main__" :
       args = parser.parse_args()
       compareCase(args.file1 ,args.file2)
 
-   file1 = r"\\10.67.24.192\bigr\openFoam\2Dwave\RunFine\revre_CrankNicolson_0.9_Speed_foamExtend0.0"
-   file2 = r"\\10.67.24.192\bigr\openFoam\2Dwave\Run\foamExtend_g1_Speed_0.0"
-   
+   file1 = r"\\10.67.24.192\bigr\openFoam\2Dwave\Run_rev1\g1_foamExtend_Speed_0.0"
+   file2 = r"\\10.67.24.192\bigr\openFoam\2Dwave\Run\g1_foamExtendVuko_Speed_0.0"
 
    #compareFile("t1.txt" , "t2.txt")
    compareCase(file1 ,file2)

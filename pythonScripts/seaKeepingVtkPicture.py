@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 from __future__ import print_function
 import vtk
 import os
@@ -78,7 +78,7 @@ def getMeshPicture(meshFile,  camPosition , targetPosition , pictureFile, timeLi
    isoContour = vtk.vtkContourFilter()
    isoContour.SetInputConnection( aa.GetOutputPort() )
    isoContour.SetValue(0, 0.5)
-   isoContour.SetGenerateTriangles(0)
+   #isoContour.SetGenerateTriangles(0)
    isoContour.SetNumberOfContours(1)
 
    isoContourDataFilter = vtk.vtkCompositeDataGeometryFilter()
@@ -164,7 +164,7 @@ def getMeshPicture(meshFile,  camPosition , targetPosition , pictureFile, timeLi
    renWin.AddRenderer(renderer)
 
    #Avoid displaying interactive window
-   if not startInteractive :
+   if not startInteractive and False  :
       renWin.SetOffScreenRendering(1)
 
    renWin.SetSize(1200, 1000)
@@ -208,10 +208,10 @@ def getMeshPicture(meshFile,  camPosition , targetPosition , pictureFile, timeLi
             vtk_r.Modified()   #Require to update the time step data
    
          renWin.Render()
-         w2if = vtk.vtkWindowToImageFilter()
+         w2if = vtk.vtkRenderLargeImage()
          w2if.SetMagnification(mag)   # => Resoulition of the picture
    
-         w2if.SetInput(renWin)
+         w2if.SetInput(renderer)
          w2if.Update()
          pictureFile =  "{:}_{:03}{:}".format(baseFile, itime , ext)
    
@@ -222,13 +222,6 @@ def getMeshPicture(meshFile,  camPosition , targetPosition , pictureFile, timeLi
 
 
 
-def convert2avi( baseName , clean = False) :
-   import subprocess
-   subprocess.call( [os.path.join( r"C:\Program Files (x86)\ImageMagick-6.8.1-Q16","ffmpeg") ,  "-framerate",  "10",  "-i" ,  baseName+"_%03d.png" ,"-y", "-vcodec",  "mpeg4" ,  baseName+".avi" ] , shell = False   )
-   if clean :
-      #TODO : remove all png files
-      pass
-   return
 
 
 if __name__ == "__main__" :
