@@ -336,5 +336,13 @@ function extract(line,columnSel,outVar,a,b)
     printf "\t" (val[1]-1.0) >> files[name]
 }
 
+/^deltaT =/ {
+    name="timing_deltaT"
+    checkFile(name, "#deltaT")
+    extract($0, "deltaT = ", val)
+    printf "\t" val[1] >> files[name]
+}
+
+
 
 

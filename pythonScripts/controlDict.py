@@ -6,7 +6,7 @@ from compatOF import application
 
 class ControlDict( WriteParameterFile ) :
 
-   def __init__(self , case ,  startTime =0. , endTime = 60. , deltaT =  0.1 , writeInterval = 0.1 , writeProbesInterval = None,  waveProbesList = None, adjustTimeStep = None, forcesPatch = None , version = "foamStar"):
+   def __init__(self , case ,  startTime =0. , endTime = 60. , deltaT = None , autoDeltaTCo = None , writeInterval = 0.1 , writeProbesInterval = None,  waveProbesList = None, adjustTimeStep = None, forcesPatch = None , version = "foamStar"):
 
       WriteParameterFile.__init__(self , join(case , "system" , "controlDict" ))
       self ["startTime"] =  startTime
