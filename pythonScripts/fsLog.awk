@@ -344,5 +344,22 @@ function extract(line,columnSel,outVar,a,b)
 }
 
 
+#    Centre of mass: (0 0 -6.19017294052e-07)
+
+/^    Centre of mass: \(/ {
+    name="motion_xcog"
+    checkFile(name, "#x_cog")
+    extract($0, "mass: ", val)
+    for (i in val) { gsub("[()]","", val[i]) }
+    printf "\t" val[1] >> files[name]
+#
+	name="motion_ycog"
+    checkFile(name, "#y_cog")
+    printf "\t" val[2] >> files[name]
+#
+    name="motion_zcog"
+    checkFile(name, "#z_cog")
+    printf "\t" val[3] >> files[name]
+}
 
 

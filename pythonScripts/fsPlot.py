@@ -50,7 +50,8 @@ KEYWORD = {
 'f' : "fluidForce",
 'm' : "fluidMoment",
 't' : "timing",
-'vol': "Volume"
+'vol': "Volume",
+'mot': "motion"
 }
 
 # this is only for printing usage info with "--help" option 
@@ -63,6 +64,7 @@ INFO_PLOTKEYS = '''
 [t] timing data (files: timing_*)
 [f] fluid forces (files: fluidForce_*)
 [m] fluid forces (files: fluidMoment_*)
+[mot] motion data from sixDofRigidBody (files: motion_*)
 '''
 
 # By default, we select only these quantities
@@ -856,6 +858,7 @@ def loadData(args, dtype='pandas.dataframe'):
 #*** Main execution start here *************************************************
 if __name__ == "__main__":
     data = cmdOptions(sys.argv[1:])
+    print (str(sys.argv[1:]))
     showPlot(data)
     
 
