@@ -1,7 +1,9 @@
 #!/usr/bin/python
 """
-   Plot Fourier output from foamStar
+   Plot Fourier output for foamStar post-processing output files
 """
+
+import matplotlib.pyplot as plt
 
 try :
    from TimeDomain import TimeSignals as ts
@@ -32,9 +34,10 @@ if __name__ == "__main__" :
 
    a = ts.read( args.forceFile , reader = "openFoamReader" , field = "total") 
 
-   slFFT= ts.slidingFFT( a, args.period, signalIndex = args.index[0] )
+   slFFT= ts.slidingFFT( a.iloc[:,args.index], args.period )
 
    if args.harmo :
-      slFFT.plotTS( args.harmo )
+      slFFT.iloc[:,args.harmo].plot()
    else:
-      slFFT.plotTS( "all" )
+      slFFT.plot()
+   plt.show()

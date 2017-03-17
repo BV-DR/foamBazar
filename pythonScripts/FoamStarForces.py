@@ -1,7 +1,9 @@
 #!/usr/bin/python
 """
-   Plot force output from Foam Star
+   Plot force output for foamStar post-processing output files
 """
+
+import matplotlib.pyplot as plt
 
 try :
    from TimeDomain import TimeSignals as ts
@@ -30,8 +32,10 @@ if __name__ == "__main__" :
    a = ts.read( args.forceFile , reader = "openFoamReader" , field = "total") 
 
    if args.indexName :
-      a.plotTS( [a.columnTitles.index( s ) for s in args.indexName] )
+      a[args.indexName].plot()
    elif args.index :
-      a.plotTS( args.index )
+	  a.iloc[:,args.index].plot()
    else:
-      a.plotTS( "all" )
+      a.plot()
+
+   plt.show();
