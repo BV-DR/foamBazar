@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 try :
    from TimeDomain import TimeSignals as ts
 except ImportError as  e:
-   print "Can not load TimeSignals, please add 'shared-code/Python' (from repo http://svn-drsvn.eua.bvcorp.corp/dr/shared-code) to your PYTHON_PATH\n"
+   print "Can not load TimeSignals, please add 'waveTimeFrequencyAnalysis' (from repo https://github.com/cmonroy/waveTimeFrequencyAnalysis.git) to your PYTHON_PATH\n"
    raise Exception(e)
 
 
