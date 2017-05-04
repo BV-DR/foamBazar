@@ -1,0 +1,163 @@
+\documentclass[12pt,a4paper,fleqn]{bv_report}
+
+
+\usepackage{latexsym}
+\usepackage{amsmath}
+%\usepackage{amssymb}
+\usepackage{gensymb}
+\usepackage{graphicx}
+\graphicspath{{Pictures/}}
+\usepackage{subfig}
+\usepackage[skip=0pt]{caption}
+\usepackage{float}
+\usepackage{calc,ifthen,xspace}
+%\usepackage{colortbl}
+%\usepackage{color}
+%\usepackage{xcolor}
+\usepackage{fancyhdr}
+%\usepackage{bbding}
+%\usepackage{wasysym}
+\usepackage{hyperref}
+%
+%\hypersetup{colorlinks, citecolor=black, filecolor=black,  linkcolor=black,  urlcolor=blue}
+
+
+\usepackage{listings}             % Include the listings-package
+\lstdefinestyle{customc}{
+  belowcaptionskip=1\baselineskip,
+  breaklines=true,
+  frame=L,
+  xleftmargin=\parindent,
+  language=C,
+  showstringspaces=false,
+  basicstyle=\footnotesize\ttfamily,
+  keywordstyle=\bfseries\color{green},
+  commentstyle=\itshape\color{purple},
+%  commentstyle=\itshape\color{red},
+  identifierstyle=\color{blue},
+  stringstyle=\color{orange},
+}
+\lstset{language=C++,style=customc}          % Set your language (you can change the language for each code-block optionally)
+\newcommand{\includecode}[2][c]{\lstinputlisting[caption=#2, escapechar=, style=customc]{#2}<!---->}
+
+
+
+%For flowcharts
+\usepackage[latin1]{inputenc}
+\usepackage{color}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+\usepackage{tkz-graph}
+%%%%%%%%%%%
+
+\usepackage{bm}
+
+\setlength{\parindent}{0.0cm}
+\setlength{\parskip}{0.4cm plus3mm minus3mm}
+
+\def\pm{\ ^+_- \ }
+\def\mp{\ ^-_+ \ }
+
+\setlength{\oddsidemargin}{0.00cm}
+\setlength{\topmargin}{-0.50cm}
+\setlength{\textwidth} {16.00cm}
+\setlength{\textheight}{23.20cm}
+
+
+
+\titrerapport{User guide of foamStar}
+\nomaffaire{OpenFOAM}
+\noata{ATA 1350A}
+\nont{NT 3259}
+\reva{0}\datea{March 17th 2017}\writtenbya{Charles Monroy}\objreva{}\checkedbya{}
+%\marineconditions
+
+
+\begin{document}
+
+%\let\start@align@nopar\start@align
+
+\bvpage
+
+\tableofcontents
+
+\clearpage
+
+%\input{macro}
+
+\input{introduction}
+
+\input{installation}
+
+\input{fsMesher}
+
+\input{homerData}
+
+\input{dataSetup}
+
+\input{logAnalyzer}
+
+\input{ligerCluster}
+%\input{equations}
+
+
+%\input{logicalSchemes}
+
+%\input{flowSolver}
+
+%\input{sixDofMechanicalSolver}
+
+%\input{modalMechanicalSolver}
+
+
+%\chapter{Mesh computation}
+
+%\input{FSIinteractions}
+
+
+%\input{schemes}
+
+
+%\input{postProcessing}
+
+
+%}
+
+
+%\begin{lstlisting}
+%#include <stdio.h>
+%#define N 10
+%/* Block
+% * comment */
+%
+%int main()
+%{
+%    int i;
+%
+%    // Line comment.
+%    puts("Hello world!");
+%    
+%    for (i = 0; i < N; i++)
+%    {
+%        puts("LaTeX is also great for programmers!");
+%    }
+%
+%    return 0;
+%}
+%\end{lstlisting}
+
+%\lstinputlisting[caption=alphaCourantNo.H, style=customc]{alphaCourantNo.H}
+
+%\includecode[aa]{alphaCourantNo.H}
+
+%\lstinputlisting{alphaCourantNo.H}
+%\lstinputlisting[language=C++,style=customc]{interDyMFoam.C}
+
+\bibliographystyle{plain}
+
+\bibliography{foamStar_biblio}
+
+
+\end{document}
+
+
