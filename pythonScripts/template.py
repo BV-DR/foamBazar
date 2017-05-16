@@ -14,7 +14,7 @@ import numpy as np
 import sys, argparse, configparser
 import pprint
 
-# abenhamou: 2017-may-02
+# abenhamou: 2017-may-16
 
 DEBUG = False
 DEFAULT_CFG_FILE = 'template.cfg'
@@ -37,7 +37,7 @@ DEFAULT_PARAMS = {
 'outputForces' : False,
 'fsiTol' : 1e-6,
 'hullPatch' : 'ship',
-'donFile' : None,
+'donFile' : 'ship.don',
 'wave' : 'noWaves',
 'waveH' : 1.0,
 'waveT' : 10.0,
@@ -47,6 +47,7 @@ DEFAULT_PARAMS = {
 'waveSeaLvl' : 0,
 'waveStartTime' : 0,
 'waveRampTime' : 0,
+'addDamping' : False,
 'mdFile' : None,
 'modesToUse' : '7',
 'datFile' : None,
@@ -89,6 +90,7 @@ class UserInput(object):
         self.fsiTol         =  opts['fsiTol']
         self.hullPatch      =  opts['hullPatch']
         self.donFile        =  opts['donFile']
+        self.donName        =  (self.donFile.rpartition('/')[-1]).partition('.don')[0]
         self.wave           =  opts['wave']
         self.waveH          =  opts['waveH']
         self.waveT          =  opts['waveT']
@@ -98,6 +100,7 @@ class UserInput(object):
         self.waveSeaLvl     =  opts['waveSeaLvl']
         self.waveStartTime  =  opts['waveStartTime']
         self.waveRampTime   =  opts['waveRampTime']
+        self.addDamping     =  opts['addDamping']
         self.genCase        =  genCase
         self.initCase       =  initCase
         self.EulerCellsDist =  opts['EulerCellsDist']
@@ -124,7 +127,7 @@ def cmdOptions(argv):
     parser.add_argument('-d', dest='directory', help='if used without input file.  Use this option to define new case folder name, default parameters will be used for other purpose, e.g.: template.py -d newCase')
     parser.add_argument('-f', dest='inputfile', help='read parameters from input file. Use this option to edit redefine parameters, e.g.: template.py -f myship.cfg ')
     parser.add_argument('-p','--print-config', dest='showConfig', action='store_true', help='print all available input parameters (including theirs default values) to template.cfg file and exit. Use this option to generate a template for input files for -f')
-    parser.add_argument('-i','-init', dest='initCase', action='store_true', help='enables automatic case initialisation')
+    parser.add_argument('-i','-init', dest='initCase', nargs='?', default='void', help='enables automatic case initialisation (add <directory> if not used with -f or -d option')
     args = parser.parse_args()
     
     if args.showConfig:
@@ -134,14 +137,18 @@ def cmdOptions(argv):
     
     if args.inputfile==None:
         if args.directory==None:
+            print 'args.initCase = ', args.initCase
             if args.initCase==None:
-                subprocess.call('echo "No option provided, please read help using -h"', shell=True)
+                subprocess.call('echo "Please provide case folder to initialize : -i <caseFolder>"', shell=True)
+                raise SystemExit('')
+            elif args.initCase=='void':
+                subprocess.call('echo "No option provided, please une -h for help"', shell=True)
                 raise SystemExit('')
             else:
-                subprocess.call('echo "Initialasing FoamStar case only."', shell=True)
-                inputdata = UserInput(initCase=True)
+                subprocess.call('echo "Initialising FoamStar case for case '+args.initCase+'"', shell=True)
+                inputdata = UserInput(dir=str(args.initCase),initCase=True)
         else:
-            if args.initCase==None:
+            if args.initCase=='void':
                 inputdata = UserInput(dir=str(args.directory),genCase=True)
             else:
                 inputdata = UserInput(dir=str(args.directory),genCase=True,initCase=True)
@@ -150,7 +157,7 @@ def cmdOptions(argv):
         fid = str(args.inputfile)
         subprocess.call('echo "Input data are read from file '+fid+'"', shell=True)
         params = readInputParams(fid)
-        if args.initCase==None:
+        if args.initCase=='void':
             inputdata = UserInput(opts=params,genCase=True)
         else:
             inputdata = UserInput(opts=params,genCase=True,initCase=True)
@@ -158,6 +165,15 @@ def cmdOptions(argv):
         
     return inputdata
     pass
+
+def getBool(string):
+    if string in ['True','true','T','t','1']:
+        return True
+    elif string in ['False','false','F','f','0']:
+        return False
+    else:
+        print 'Invalid boolean entry : '+str(string)
+        raise SystemExit('')
 
 def readInputParams(filename):
     params = dict(DEFAULT_PARAMS)
@@ -248,25 +264,25 @@ def readInputParams(filename):
     # 'outputMotions' : output Motions or not?
     try:
         txt = str(config[name]['outputMotions'])
-        params['outputMotions'] = txt
+        params['outputMotions'] = getBool(txt)
     except KeyError: pass
     
     # 'outputForces' : output Forces or not?
     try:
         txt = str(config[name]['outputForces'])
-        params['outputForces'] = txt
+        params['outputForces'] = getBool(txt)
     except KeyError: pass
     
     # 'outputVBM' : output VBM or not?
     try:
         txt = str(config[name]['outputVBM'])
-        params['outputVBM'] = txt
+        params['outputVBM'] = getBool(txt)
     except KeyError: pass
     
     # 'outputWave' : output Waves or not?
     try:
         txt = str(config[name]['outputWave'])
-        params['outputWave'] = txt
+        params['outputWave'] = getBool(txt)
     except KeyError: pass
     
     # time step
@@ -329,6 +345,11 @@ def readInputParams(filename):
         params['waveRampTime'] = float(txt)
     except KeyError: pass
 
+    # artificial damping for still water case
+    try:
+        txt = str(config[name]['addDamping'])
+        params['addDamping'] = getBool(txt)
+    except KeyError: pass
     # sea level
     try:
         txt = str(config[name]['waveSeaLvl'])
@@ -522,8 +543,7 @@ def caseAlreadyDecomposed():
     pass
 
 def foamCase_template(data):
-    # global NPROCS
-       
+    print 'Create system folder input files'
     #controlDict
     filename = data.caseDir+'/system/controlDict'
     if not os.path.isfile(filename):
@@ -533,31 +553,34 @@ def foamCase_template(data):
         setValue(filename, 'TIME_STEP', data.timeStep)
         setValue(filename, 'WRITE_INTERVAL', data.writeInterval)
         setValue(filename, 'PURGE_WRITE', data.purgeWrite)
-        if not data.outputMotions: setValue(filename, r'motionInfo {', r'//motionInfo {')
-        if not data.outputVBM:
-            setValue(filename, 'INCLUDE_VBM', '')
+        if data.outputMotions:
+            setValue(filename, 'INCLUDE_MOTIONS', r'motionInfo { type motionInfo; }' )
         else:
+            setValue(filename, 'INCLUDE_MOTIONS', '' )
+        if data.outputVBM:
             setValue(filename, 'INCLUDE_VBM', r'#include "vbm.inc"')
             outfile = data.caseDir+'/system/vbm.inc'
             if not os.path.isfile(outfile):
                 subprocess.call('cat << EOF > '+ outfile + vbm_contents, shell=True)
                 setValue(outfile, 'HULL_PATCH', data.hullPatch)
-                setValue(outfile, 'DON_FILENAME', data.donFile)
-        if not data.outputWave:
-            setValue(filename, 'INCLUDE_WAVE', '')
+                setValue(outfile, 'DON_FILENAME', data.donName)
         else:
+            setValue(filename, 'INCLUDE_VBM', '')
+        if data.outputWave:
             setValue(filename, 'INCLUDE_WAVE', r'#include "waveProbe.inc"')
             outfile = data.caseDir+'/system/waveProbe.inc'
             if not os.path.isfile(outfile):
                 subprocess.call('cat << EOF > '+ outfile + waveProbe_contents, shell=True)
-        if not data.outputForces:
-            setValue(filename, 'INCLUDE_FORCES', '')
         else:
+            setValue(filename, 'INCLUDE_WAVE', '')
+        if data.outputForces:
             setValue(filename, 'INCLUDE_FORCES', r'#include "forces.inc"')
             outfile = data.caseDir+'/system/forces.inc'
             if not os.path.isfile(outfile):
                 subprocess.call('cat << EOF > '+ outfile + forces_contents, shell=True)
                 setValue(outfile, 'HULL_PATCH', data.hullPatch)
+        else:
+            setValue(filename, 'INCLUDE_FORCES', '')
 
     #fvSchemes
     filename = data.caseDir+'/system/fvSchemes'
@@ -577,6 +600,7 @@ def foamCase_template(data):
         subprocess.call('cat << EOF > '+ filename + fsHeader + decomposeParDict_contents, shell=True)
         setValue(filename, 'NB_PROCS', data.nProcs)
 
+    print 'Create constant folder input files'
     #waveProperties
     filename = data.caseDir+'/constant/waveProperties'
     if not os.path.isfile('constant/waveProperties'):
@@ -615,7 +639,23 @@ def foamCase_template(data):
     if not os.path.isfile('constant/dynamicMeshDict'):
         subprocess.call('cat << EOF > '+ filename + fsHeader + dynamicMeshDict_contents, shell=True)
         setValue(filename, 'HULL_PATCH', data.hullPatch)
-        
+        if data.addDamping:
+            bBox = findBoundingBox(data.caseDir+'/constant/triSurface/'+data.stlFile,False)
+            LBP = round(0.95*abs(bBox[3]-bBox[0]),2)
+            BC = round(abs(bBox[4]-bBox[1]),2)
+            rc = '\\n'
+            dmp = 'dampingCoeff'                        +rc+ \
+                  '        {'                           +rc+ \
+                  '        type dampingSinkageAndTrim;' +rc+ \
+                  '        heaveDampingCoef 1000;'      +rc+ \
+                  '        pitchDampingCoef 1000;'      +rc+ \
+                  '        Lpp '+str(LBP)+';'           +rc+ \
+                  '        Breadth '+str(BC)+';'        +rc+ \
+                  '        }'
+            setValue(filename, 'SW_DAMPING', dmp)
+        else:
+            setValue(filename, 'SW_DAMPING', '')
+
     #g
     filename = data.caseDir+'/constant/g'
     if not os.path.isfile('constant/g'):
@@ -625,7 +665,18 @@ def foamCase_template(data):
     filename = data.caseDir+'/constant/RASProperties'
     if not os.path.isfile('constant/RASProperties'):
         subprocess.call('cat << EOF > '+ filename + fsHeader + RASProperties_contents, shell=True)
-        
+    
+    #*.flex
+    filename = data.caseDir+'/constant/'+data.donName+'.flex'
+    if not os.path.isfile('constant/'+data.donName+'.flex'):
+        subprocess.call('cat << EOF > '+ filename + flex_contents, shell=True)
+        setValue(filename, 'SHIP_FREQ', data.shipFreq)
+        setValue(filename, 'SHIP_DAMPING', data.shipDamping)
+        dmig_name = ((data.dmigFile).rpartition('/')[-1]).partition('_dmig')[0]
+        setValue(filename, 'DMIG_NAME', dmig_name)
+        setValue(filename, 'HULL_PATCH', data.hullPatch) 
+
+    print 'Create 0 folder input files'
     #alpha water
     filename = data.caseDir+'/0/org/alpha.water'
     if not os.path.isfile('0/org/alpha.water'):
@@ -650,7 +701,17 @@ def foamCase_template(data):
     if not os.path.isfile('0/org/pointDisplacement'):
         subprocess.call('cat << EOF > '+ filename + fsHeader + pointDisplacement_contents, shell=True)
         setValue(filename, 'HULL_PATCH', data.hullPatch)
-        
+    
+    #sixDofDomainBody
+    filename = data.caseDir+'/0/uniform/sixDofDomainBody'
+    if not os.path.isfile('0/uniform/sixDofDomainBody'):
+        subprocess.call('cat << EOF > '+ filename + fsHeader + sixDofDomainBody_contents, shell=True)
+        setValue(filename, 'SHIP_MASS', data.shipMass)
+        setValue(filename, 'SHIP_INERTIA', data.shipInertia)
+        setValue(filename, 'SHIP_COG', data.shipCOG)
+        setValue(filename, 'DON_FILENAME', data.donName)    
+
+    print 'Create other input files'
     #initFlexDict
     filename = data.caseDir+'/initFlexDict'
     if not os.path.isfile('initFlexDict'):
@@ -662,26 +723,7 @@ def foamCase_template(data):
         setValue(filename, 'HMR_SCALE', data.hmrScaling)
         setValue(filename, 'DRAFT', data.draft)
         setValue(filename, 'HULL_PATCH', data.hullPatch)
-        
-    #*.flex
-    filename = data.caseDir+'/constant/'+data.donFile+'.flex'
-    if not os.path.isfile('constant/'+data.donFile+'.flex'):
-        subprocess.call('cat << EOF > '+ filename + flex_contents, shell=True)
-        setValue(filename, 'SHIP_FREQ', data.shipFreq)
-        setValue(filename, 'SHIP_DAMPING', data.shipDamping)
-        dmig_name = ((data.dmigFile).rpartition('/')[-1]).partition('_dmig')[0]
-        setValue(filename, 'DMIG_NAME', dmig_name)
-        setValue(filename, 'HULL_PATCH', data.hullPatch)        
     
-    #sixDofDomainBody
-    filename = data.caseDir+'/0/uniform/sixDofDomainBody'
-    if not os.path.isfile('0/uniform/sixDofDomainBody'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + sixDofDomainBody_contents, shell=True)
-        setValue(filename, 'SHIP_MASS', data.shipMass)
-        setValue(filename, 'SHIP_INERTIA', data.shipInertia)
-        setValue(filename, 'SHIP_COG', data.shipCOG)
-        setValue(filename, 'DON_FILENAME', data.donFile)     
-        
     #cell.Set
     filename = data.caseDir+'/cell.Set'
     if not os.path.isfile('cell.Set'):
@@ -711,6 +753,7 @@ def foamCase_template(data):
         subprocess.call('cat << EOF > '+ filename + run_contents, shell=True)
         setValue(filename, 'CASE_NAME', data.caseDir)
         setValue(filename, 'NB_PROCS', data.nProcs)
+        setValue(filename, 'SOLVER_NAME', data.solver)
         
 def copyMesh(data):
 
@@ -732,14 +775,11 @@ def copyMesh(data):
     subprocess.call('mkdir '+data.caseDir+'/constant/triSurface', shell=True)
     subprocess.call('cp -r '+data.meshDir+'/constant/triSurface/'+data.stlFile+' '+data.caseDir+'/constant/triSurface', shell=True)
     
+    print 'Copy '+data.donName+'.don file'
+    subprocess.call('cp '+data.donFile+' '+data.caseDir+'/.', shell=True)
+    
 def initCase(data):
     string=[]
-    # string.append('setSet -case '+ data.caseDir +' -batch '+ data.caseDir +'/cell.Set')
-    # string.append('setsToZones -case '+ data.caseDir +' -noFlipMap')
-    # string.append('cp -rf '+ data.caseDir +'/0/org/* '+ data.caseDir +'/0/')
-    # string.append('initFlx -case '+ data.caseDir +' '+ data.caseDir +'/initFlexDict')
-    # string.append('initWaveField -case '+ data.caseDir)
-    # string.append('decomposePar -case '+ data.caseDir +'-cellDist')
     string.append('setSet -batch cell.Set')
     string.append('setsToZones -noFlipMap')
     string.append('cp -rf ./0/org/* ./0/')
@@ -750,7 +790,7 @@ def initCase(data):
     process = 'set -x'+rc+'('+rc 
     for s in string: process += s+rc
     process += ') 2>&1 | tee log.init'
-    print process
+    # print process
     
     os.chdir(data.caseDir)
     subprocess.call(process, shell=True)
@@ -827,10 +867,10 @@ libs
 
 functions
 {
-    motionInfo { type motionInfo; }
-    INCLUDE_FORCES
+    INCLUDE_MOTIONS
     INCLUDE_VBM
     INCLUDE_WAVE
+    INCLUDE_FORCES
 }
 
 EOF
@@ -1191,7 +1231,7 @@ relaxationNames (RELAX_DOMAIN);
 
 domainX1Coeffs
 {
-    $mycase
+    \$mycase
     relaxationZone
     {
         zoneName         inletZone;
@@ -1336,16 +1376,7 @@ sixDofDomainFvMeshCoeffs
     {
         gravity { type gravity; value (0 0 -9.81); }
         fluid { type fluidForce; patches (HULL_PATCH); dynRelax off; relaxCoeff 0.5; }
-        //dampingCoeff
-        //{
-        //      type dampingSinkageAndTrim;
-        //        heaveDampingCoef 1000;
-        //        pitchDampingCoef 1000;
-        //        Lpp 281;
-        //        Breadth 26.84;
-        // }
-
-
+        SW_DAMPING
     }
 
     constraints
@@ -1755,7 +1786,7 @@ export FOAM_INST_DIR=/data/I1608251/OpenFOAM;
 source /data/I1608251/OpenFOAM/OpenFOAM-2.4.x/etc/bashrc;
 export LC_ALL=C
 
-mpirun foamStar -parallel
+mpirun SOLVER_NAME -parallel
 
 EOF
 '''
@@ -1764,51 +1795,57 @@ defaultParams_contents='''
 # this [template] header must exist to identify parameters for template.py
 [template]
 
-# caseDir=
-meshDir=mesh
-# meshTime : 'latestTime'
+#Set name of case folder to be created
+caseDir = newCase
+
+#Set location of mesh folder, stl file name and time folder from which it should be retrived ('0.08', '0.09' or 'latestTime')
+meshDir = mesh
+meshTime = latestTime
 stlFile = ship.stl
-nProcs=24
-solver=foamStar
-scheme=Euler
-# meshid
-startTime=latestTime
-endTime=4000
-timeStep=0.05
-writeInterval=40
-purgeWrite=5
-outputVBM=True
+hullPatch = ship
+
+#Set solver parameters 
+solver = foamStar
+nProcs = 24
+scheme = Euler
+
+#Set case control parameters
+startTime = latestTime
+endTime = 4000
+timeStep = 0.05
+writeInterval = 40
+purgeWrite = 5
+outputMotions = True
+outputVBM = True
 outputWave = False
-outputMotions=True
-# fsiTol = 1e-6
-hullPatch=ship
-donFile='IACS4400'
-wave=None
-waveH=1.0
-waveT=10.0
+fsiTol = 1e-6
 
-#Forward velocity (in m/s)
-velocity=0.
+#Set wave properties
+wave = noWave
+depth = 500
+draft = 0
+velocity = 0.0
+waveH = 1.0
+waveT = 10.0
+waveSeaLvl = 0
+waveStartTime = 0
+waveRampTime = 10
+addDamping = False
 
-depth=500
-# draft=0
-# waveSeaLvl=0
-waveStartTime=0
-waveRampTime=10
-
-#cell.Set
-#create selection for Euler cell zone (set 0 if no zone)
-EulerCellsDist = 8
-inletRelaxZone  =  400
+#Set Euler and Relaxation zones (set 0 if no zone)
+EulerCellsDist  = 8
+inletRelaxZone  = 400
 outletRelaxZone = -250
-sideRelaxZone = 250
+sideRelaxZone   = 250
 
+#Set structural data obtained with Homer
 #all path should be written relatively to this input file location
-mdFile = ../homer/ship_md.pch
-modesToUse = 7 8 9
 datFile =  ../homer/ship.dat
+donFile = ../homer/ship.don
 dmigMfile = ../homer/ship_dmig.pch
 dmigKfile = ../homer/ship_dmig.pch
+mdFile = ../homer/ship_md.pch
+modesToUse = 7 8 9
 hmrScaling = 0.1
 
 shipMass = 1000
