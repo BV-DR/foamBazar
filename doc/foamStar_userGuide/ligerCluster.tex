@@ -1,0 +1,58 @@
+\chapter{Using Liger cluster}
+
+
+\section{Running a batch}
+
+A batch "run.sh" for foamStar looks like this:
+\begin{lstlisting}[language=bash]
+#!/bin/bash -l
+#SBATCH -J fs-KCS-pureEuler
+
+# 5 hour wall-clock 
+#SBATCH --account I1608251
+#SBATCH -t 3-00:00:00
+#SBATCH -n 72
+#SBATCH -o log.run-%j
+
+module load gcc/4.9.3 openmpi/1.8.4-gcc lapack/3.6.1/gcc/4.9.3
+export FOAM_INST_DIR=/data/I1608251/OpenFOAM;
+source /data/I1608251/OpenFOAM/OpenFOAM-2.4.x/etc/bashrc;
+export LC_ALL=C
+
+mpirun foamStar -parallel
+\end{lstlisting}
+You have to make sure that you change the name of the job (here "fs-KCS-pureEuler") and the number of processors (here 72) accordingly to your simulation.
+
+To run the batch, the command is:
+\begin{lstlisting}[language=bash]
+  $ sbatch run.sh
+\end{lstlisting}
+
+
+To show the queue:
+\begin{lstlisting}[language=bash]
+  $ squeue
+\end{lstlisting}
+
+And to show only your queue (with your own username):
+\begin{lstlisting}[language=bash]
+  $ squeue | grep userName
+\end{lstlisting}
+
+
+To cancel the job, the command is:
+\begin{lstlisting}[language=bash]
+  $ scancel jobID
+\end{lstlisting}
+
+
+\section{Keeping alive}
+
+You will get disconnected if you are inactive for more than 5 minutes. In order no to lose your connection (your location and your history - note: you can keep your history with screen), you can use a small trick by defining a keepAlive function in your .bashrc.
+
+
+\begin{lstlisting}[language=bash]
+alias keepAlive='while [ true ]; do clc; date; i=$[(RANDOM % 100)+10]; sleep $i; done'
+\end{lstlisting}
+
+You will have to launch "keepAlive" every time you are not working on your session.

@@ -1,0 +1,65 @@
+\chapter{Log analyzer}
+
+\section{Useful shell commands}
+
+\begin{lstlisting}[language=bash]
+  $ grep -E "^Time =|Cour" log.run | less
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash]
+  $ grep -E "^Time =|p_rgh|PIMPLE" log.run | less
+\end{lstlisting}
+
+\section{fsAwk}
+
+You first need to make symbolic links in /bin to python scripts. To do this:
+
+\begin{lstlisting}[]
+  $ cd ~/bin
+  $ ln -s ~/dvt/foamBazar/pythonScripts/fsLog.awk .
+  $ ln -s ~/dvt/foamBazar/pythonScripts/fsPlot.py . 
+\end{lstlisting}
+
+When typing \textit{fsPlot.py} and relative input,it will automatically parse the log file through the script "fsAwk" (if it is not done already). All the possible commands of \textit{fsPlot.py} are listed through the help command.
+\begin{lstlisting}[language=bash]
+  $ fsPlot.py --help
+\end{lstlisting}
+
+Below are some examples, based on a log file called "\textit{log.run}".
+\begin{itemize}
+\item Plot the time history of all the different Courant numbers (max and mean of flow and interface Courant numbers):
+\begin{lstlisting}[language=bash]
+  $ fsPlot.py -p co log.run
+\end{lstlisting}
+
+\item Plot the time history of maximum of flow Courant number:
+\begin{lstlisting}[language=bash]
+  $ fsPlot.py -p co -w max log.run
+\end{lstlisting}
+
+\item Plot the time history of maximum of interface Courant number:
+\begin{lstlisting}[language=bash]
+  $ fsPlot.py -p co -w max,interface log.run
+\end{lstlisting}
+
+\item Plot the time history of the initial residual of Ux:
+\begin{lstlisting}[language=bash]
+  $ fsPlot.py -p res -w init,Ux log.run
+\end{lstlisting}
+
+\item Plot the time history of the force in the z-direction at the final iteration:
+\begin{lstlisting}[language=bash]
+  $ fsPlot.py -p f -w z log.run
+\end{lstlisting}
+
+\item Plot the time history of the force in the z-direction at all iterations:
+\begin{lstlisting}[language=bash]
+  $ fsPlot.py -p f -w z -i
+\end{lstlisting}
+
+\item Plot the time history of the force in the z-direction at all iterations with markers:
+\begin{lstlisting}[language=bash]
+  $ fsPlot.py -p f -w z -i -l s:-,m:x
+\end{lstlisting}
+
+\end{itemize}
