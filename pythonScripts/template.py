@@ -57,16 +57,12 @@ DEFAULT_PARAMS = {
 'inletRelaxZone' : None,
 'outletRelaxZone' : None,
 'sideRelaxZone' : None,
-'shipMass' : None,
-'shipInertia' : None,
-'shipCOG' : None,
-'shipFreq' : None,
 'shipDamping' : None
 }
 
 #*** Data structure for user input data
 class UserInput(object):
-    def __init__(self, dir='', opts=DEFAULT_PARAMS, genCase=False, initCase=False):
+    def __init__(self, dir='', opts=DEFAULT_PARAMS, genCase=False, initCase=False, decomposeCase=False):
     
         if dir=='':
             self.caseDir =  opts['caseDir']
@@ -103,6 +99,7 @@ class UserInput(object):
         self.addDamping     =  opts['addDamping']
         self.genCase        =  genCase
         self.initCase       =  initCase
+        self.decomposeCase  =  decomposeCase
         self.EulerCellsDist =  opts['EulerCellsDist']
         self.inletRelaxZone =  opts['inletRelaxZone']
         self.outletRelaxZone=  opts['outletRelaxZone']
@@ -111,11 +108,12 @@ class UserInput(object):
         self.modesToUse     =  opts['modesToUse']
         self.datFile        =  opts['datFile']
         self.dmigFile       =  opts['dmigFile']
-        self.hmrScaling     =  opts['hmrScaling']
-        self.shipMass       =  opts['shipMass']
-        self.shipInertia    =  opts['shipInertia']
-        self.shipCOG        =  opts['shipCOG']
-        self.shipFreq       =  opts['shipFreq']
+        self.hmrUserOutput  =  opts['hmrUserOutput']
+        self.shipMass       =  0.
+        self.hmrScaling     =  0.
+        self.shipFreq       =  ''
+        self.shipInertia    =  ''
+        self.shipCOG        =  ''
         self.shipDamping    =  opts['shipDamping']
    
 def cmdOptions(argv):
@@ -124,10 +122,11 @@ def cmdOptions(argv):
     CMD_showLog = 'echo "\nlog-file: ./log.template"; tail -45 ./log.tempalte; echo "Please see log-file: ./log.template"'
     #
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', dest='directory', help='if used without input file.  Use this option to define new case folder name, default parameters will be used for other purpose, e.g.: template.py -d newCase')
+    parser.add_argument('-c', dest='case', help='if used without input file.  Use this option to define new case folder name, default parameters will be used for other purpose, e.g.: template.py -c newCase')
     parser.add_argument('-f', dest='inputfile', help='read parameters from input file. Use this option to edit redefine parameters, e.g.: template.py -f myship.cfg ')
     parser.add_argument('-p','--print-config', dest='showConfig', action='store_true', help='print all available input parameters (including theirs default values) to template.cfg file and exit. Use this option to generate a template for input files for -f')
     parser.add_argument('-i','-init', dest='initCase', nargs='?', default='void', help='enables automatic case initialisation (add <directory> if not used with -f or -d option')
+    parser.add_argument('-d', dest='decomposeCase', action='store_true', help='enables case decomposition for parallel run')
     args = parser.parse_args()
     
     if args.showConfig:
@@ -136,8 +135,7 @@ def cmdOptions(argv):
         raise SystemExit('')
     
     if args.inputfile==None:
-        if args.directory==None:
-            print 'args.initCase = ', args.initCase
+        if args.case==None:
             if args.initCase==None:
                 subprocess.call('echo "Please provide case folder to initialize : -i <caseFolder>"', shell=True)
                 raise SystemExit('')
@@ -146,12 +144,12 @@ def cmdOptions(argv):
                 raise SystemExit('')
             else:
                 subprocess.call('echo "Initialising FoamStar case for case '+args.initCase+'"', shell=True)
-                inputdata = UserInput(dir=str(args.initCase),initCase=True)
+                inputdata = UserInput(dir=str(args.initCase),initCase=True,decomposeCase=args.decomposeCase)
         else:
             if args.initCase=='void':
-                inputdata = UserInput(dir=str(args.directory),genCase=True)
+                inputdata = UserInput(dir=str(args.case),genCase=True)
             else:
-                inputdata = UserInput(dir=str(args.directory),genCase=True,initCase=True)
+                inputdata = UserInput(dir=str(args.case),genCase=True,initCase=True,decomposeCase=args.decomposeCase)
     else:
         # here we read all input parameters from files
         fid = str(args.inputfile)
@@ -160,7 +158,7 @@ def cmdOptions(argv):
         if args.initCase=='void':
             inputdata = UserInput(opts=params,genCase=True)
         else:
-            inputdata = UserInput(opts=params,genCase=True,initCase=True)
+            inputdata = UserInput(opts=params,genCase=True,initCase=True,decomposeCase=args.decomposeCase)
         pass
         
     return inputdata
@@ -411,34 +409,10 @@ def readInputParams(filename):
         params['dmigFile'] = txt
     except KeyError: pass
     
-    # hmrScaling
+    # hmrUserOutput
     try:
-        txt = str(config[name]['hmrScaling'])
-        params['hmrScaling'] = float(txt)
-    except KeyError: pass
-    
-    # shipMass
-    try:
-        txt = str(config[name]['shipMass'])
-        params['shipMass'] = float(txt)
-    except KeyError: pass
-    
-    # shipInertia
-    try:
-        txt = str(config[name]['shipInertia'])
-        params['shipInertia'] = txt
-    except KeyError: pass
-    
-    # shipCOG
-    try:
-        txt = str(config[name]['shipCOG'])
-        params['shipCOG'] = txt
-    except KeyError: pass
-    
-    # shipFreq
-    try:
-        txt = str(config[name]['shipFreq'])
-        params['shipFreq'] = txt
+        txt = str(config[name]['hmrUserOutput'])
+        params['hmrUserOutput'] = txt
     except KeyError: pass
     
     # shipDamping
@@ -531,17 +505,57 @@ def findCFDBoundingBox(case, verbose=True):
         print "   ", boundingBox
     return boundingBox 
 
-def caseAlreadyDecomposed():
-    isDecomposed = False
-    nProcs = 1
-    for val in os.listdir('.'):
-        if val.startswith('processor'):
-            isDecomposed=True
-            nProcs = max(nProcs, int(val[9:])+1)
-        pass
-    return isDecomposed, nProcs
-    pass
+def readHomerData(data):
+    print 'Reading data from Homer file : '+data.hmrUserOutput
+    modes2use = [int(i) for i in data.modesToUse.split()]
+    modes2use.sort()
+    
+    freq = []
+    scaling = []
+    inertia = [0.]*6
+    
+    f = open(data.hmrUserOutput,'r')
+    itf = iter(f)
+    for line in itf:
+        if 'Location of center of gravity in global reference' in line:
+            next(itf)
+            pline = next(itf)
+            cog = [float(i) for i in pline.split()]
+            
+        elif 'Mass =' in line:
+            data.shipMass = float(line.split()[2])
+            
+        elif 'Roll Inertia =' in line:
+            inertia[0] = float(line.split()[3])
+            
+        elif 'Pitch Inertia =' in line:
+            inertia[1] = float(line.split()[3])
+        
+        elif 'Yaw Inertia =' in line:
+            inertia[2] = float(line.split()[3])
+            break
+        else:
+            for mode in modes2use:
+                mstr = 'Mode '+str(mode)
+                if mstr in line:
+                    sline = line.split()
+                    scaling.append(float(sline[3]))
+                    freq.append(float(sline[6])**2)
+    f.close()
 
+    data.hmrScaling  = ('{:20.14e}').format(scaling[0])
+    data.shipCOG    =  ('{:20.14e} '*3).format(*cog)
+    data.shipInertia = ('{:20.14e} '*6) .format(*inertia)
+    data.shipFreq    = ('{:20.14e} '*len(freq)).format(*freq)
+
+def checkError(file):
+    error=False
+    with open(file, 'r') as f:
+        for line in f:
+            if 'ERROR' in line: error=True
+    
+    return error
+    
 def foamCase_template(data):
     print 'Create system folder input files'
     #controlDict
@@ -619,9 +633,9 @@ def foamCase_template(data):
         setValue(filename, 'BOUND_X1', bBox[3])
         setValue(filename, 'BOUND_Y1', bBox[4])
         relaxDomain = ''
+        if data.sideRelaxZone   is not None: relaxDomain += 'domainY1 '
         if data.outletRelaxZone is not None: relaxDomain += 'domainX0 '
         if data.inletRelaxZone  is not None: relaxDomain += 'domainX1 '
-        if data.sideRelaxZone   is not None: relaxDomain += 'domainY1 '
         setValue(filename, 'RELAX_DOMAIN', relaxDomain)
     
     #turbulenceProperties
@@ -790,7 +804,21 @@ def initCase(data):
     process = 'set -x'+rc+'('+rc 
     for s in string: process += s+rc
     process += ') 2>&1 | tee log.init'
-    # print process
+    
+    os.chdir(data.caseDir)
+    subprocess.call(process, shell=True)
+    if checkError('log.init'):
+        print "ERROR : Something wrong happend in case initialization, check 'log.init' file"
+        raise SystemExit('')
+    os.chdir('..')
+    
+def decomposeCase(data):
+    string=[]
+    string.append('decomposePar -cellDist')
+    rc = '\n'
+    process = 'set -x'+rc+'('+rc 
+    for s in string: process += s+rc
+    process += ') 2>&1 | tee log.decompose'
     
     os.chdir(data.caseDir)
     subprocess.call(process, shell=True)
@@ -1801,10 +1829,14 @@ caseDir = newCase
 #Set location of mesh folder, stl file name and time folder from which it should be retrived ('0.08', '0.09' or 'latestTime')
 meshDir = mesh
 meshTime = latestTime
+
+#Set name of stl file (should be located in "meshDir/constant/triSurface")
 stlFile = ship.stl
+
+#Set patch name given for hull in boundary file
 hullPatch = ship
 
-#Set solver parameters 
+#Set OpenFOAM solver parameters 
 solver = foamStar
 nProcs = 24
 scheme = Euler
@@ -1845,13 +1877,8 @@ donFile = ../homer/ship.don
 dmigMfile = ../homer/ship_dmig.pch
 dmigKfile = ../homer/ship_dmig.pch
 mdFile = ../homer/ship_md.pch
+hmrUserOutput = ../homer/HmFEM.out
 modesToUse = 7 8 9
-hmrScaling = 0.1
-
-shipMass = 1000
-shipInertia = 1 1 1 0 0 0
-shipCOG =  0. 0. 0.
-shipFreq = 10 10 10
 shipDamping = 0.01 0.01 0.01
 
 EOF
@@ -1863,9 +1890,10 @@ if __name__ == "__main__":
     dat = cmdOptions(sys.argv)
     if dat.genCase:
         copyMesh(dat)
+        readHomerData(dat)
         foamCase_template(dat)
-    if dat.initCase:
-        initCase(dat)
+    if dat.initCase: initCase(dat)
+    if dat.decomposeCase: decomposeCase(dat)
     endTime = time.time()
     print 'Case generation completed in %d minutes' % ((endTime-startTime)/60)
     
