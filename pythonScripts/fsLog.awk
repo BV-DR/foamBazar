@@ -217,6 +217,24 @@ function extract(line,columnSel,outVar,a,b)
     printf "\t" val[1] >> files[name]
 }
 
+#Moving mesh time step continuity errors : sum local = <value>, global = <value>, cumulative = <value>
+/^Moving mesh time step continuity errors :/ {
+    name="contErr_mlocal"
+    checkFile(name, "#contErr (local)")
+    extract($0, "sum local = ", val)
+    printf "\t" val[1] >> files[name]
+    #
+    name="contErr_mglobal"
+    checkFile(name, "#contErr (global)")
+    extract($0, "global = ", val)
+    printf "\t" val[1] >> files[name]
+    #
+    name="contErr_mcumu"
+    checkFile(name, "#contErr (cumul.)")
+    extract($0, "cumulative = ", val)
+    printf "\t" val[1] >> files[name]
+}
+
 #ExecutionTime = <value> s  ClockTime = <value> s  CurrExecTime = <value> s (<value>)
 /^ExecutionTime = / {
     name="timing_exec"
@@ -360,6 +378,34 @@ function extract(line,columnSel,outVar,a,b)
     name="motion_zcog"
     checkFile(name, "#z_cog")
     printf "\t" val[3] >> files[name]
+}
+
+
+#    Orientation: (xx xy xz yx yy yz zx zy zz) 
+/^    Orientation: \(/ {
+    extract($0, "Orientation: ", val)
+    for (i in val) { gsub("[()]","", val[i]) }
+    xx=val[1]; xy=val[2]; xz=val[3];
+    yx=val[4]; yy=val[5]; yz=val[6];
+    zx=val[7]; zy=val[8]; zz=val[9];
+    c2=sqrt(xx*xx+yx*yx);
+    roll=atan2(zy,zz);
+    pitch=atan2(-zx,c2);
+    s1=sin(roll); c1=cos(roll);
+    yaw=atan2(s1*xz-c1*xy,c1*yy-s1*yz);
+    roll=roll*180/3.14159265358979;
+    pitch=pitch*180/3.14159265358979;
+    yaw=yaw*180/3.14159265358979;
+    #
+    name="motion_roll"
+    checkFile(name, "#roll [deg]")
+    printf "\t" roll >> files[name]
+    name="motion_pitch"
+    checkFile(name, "#pitch [deg]")
+    printf "\t" pitch >> files[name]
+    name="motion_yaw"
+    checkFile(name, "#yaw [deg]")
+    printf "\t" yaw >> files[name]
 }
 
 
