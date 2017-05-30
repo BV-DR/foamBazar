@@ -799,7 +799,6 @@ def initCase(data):
     string.append('cp -rf ./0/org/* ./0/')
     string.append('initFlx initFlexDict')
     string.append('initWaveField')
-    string.append('decomposePar -cellDist')
     rc = '\n'
     process = 'set -x'+rc+'('+rc 
     for s in string: process += s+rc
