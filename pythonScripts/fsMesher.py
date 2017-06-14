@@ -7,7 +7,7 @@
 # Author:   Sopheak Seng                                                #
 # Org.:     Bureau Veritas, (HO, France)                                #
 # Email:    sopheak.seng@bureauveritas.com                              #
-# Project:  Parametric mesh generation tool 							#
+# Project:  Parametric mesh generation tool                             #
 #########################################################################
 
 import os, subprocess, time, math
