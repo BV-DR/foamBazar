@@ -7,8 +7,7 @@
 # Author:   Sopheak Seng                                                #
 # Org.:     Bureau Veritas, (HO, France)                                #
 # Email:    sopheak.seng@bureauveritas.com                              #
-# Project:  A derivative of the CRS Parametric mesh generation tool of  #
-#           S. Tornros (Caterpillar Propulsion, tornros_simon@cat.com)  #
+# Project:  Parametric mesh generation tool 							#
 #########################################################################
 
 import os, subprocess, time, math
