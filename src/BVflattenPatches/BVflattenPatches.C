@@ -56,44 +56,22 @@ int main(int argc, char *argv[])
     (
         "planeNormal", "(x y z)", "normal vector of the plane"
     );
-    
+   
     #include "setRootCase.H"
+    
+    if (!args.optionFound("patches")) FatalErrorIn("") << "option -patches not defined" << abort(FatalError);
+    if (!args.optionFound("planeRef")) FatalErrorIn("") << "option -planeRef not defined" << abort(FatalError);
+    if (!args.optionFound("planeNormal")) FatalErrorIn("") << "option -planeNormal not defined" << abort(FatalError);
+    
     #include "createTime.H"
     #include "createPolyMesh.H"   
 
     const polyBoundaryMesh& bMesh = mesh.boundaryMesh();
-    labelHashSet includePatches(bMesh.size());
-    if (args.optionFound("patches"))
-    {
-        includePatches = bMesh.patchSet
-        (
-            wordReList(args.optionLookup("patches")())
-        );
-    }
-    else
-    {
-        FatalErrorIn("") << "option -patches not defined" << abort(FatalError);
-    }
-
-    vector planeRef(0,0,0), planeNormal(0,0,0);
-
-    if (args.optionFound("planeRef"))
-    {
-        planeRef = vector(args.optionLookup("planeRef")());
-    }
-    else
-    {
-        FatalErrorIn("") << "option -planeRef not defined" << abort(FatalError);
-    }
-
-    if (args.optionFound("planeNormal"))
-    {
-        planeNormal = vector(args.optionLookup("planeNormal")());
-    }
-    else
-    {
-        FatalErrorIn("") << "option -planeNormal not defined" << abort(FatalError);
-    }
+    vector planeRef = vector(args.optionLookup("planeRef")());
+    vector planeNormal = vector(args.optionLookup("planeNormal")());
+    labelHashSet includePatches = bMesh.patchSet(wordReList(args.optionLookup("patches")()));
+    
+    Info << "Project mesh point(s) onto plane (ref, normal): " << planeRef << " " << planeNormal << endl;
 
     pointIOField points
     (
@@ -109,13 +87,12 @@ int main(int argc, char *argv[])
         )
     );
 
-    Info << "Project mesh point(s) onto plane (ref, normal): " << planeRef << " " << planeNormal << endl;
-
     forAllConstIter(labelHashSet, includePatches, iter)
     {
         const polyPatch& pp = bMesh[iter.key()];
         const labelList& meshPoints = pp.meshPoints();
-        Info << "patch: " << pp.name() << " (" << pp.nPoints() << ")" << endl;
+        label nPoints(pp.nPoints());
+        Info << "patch: " << pp.name() << " (" << returnReduce(nPoints,sumOp<label>()) << ")" << endl;
         forAll(meshPoints, i)
         {
             point& p(points[meshPoints[i]]);
