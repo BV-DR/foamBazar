@@ -106,6 +106,8 @@ int main(int argc, char *argv[])
     << points.instance()/points.local()/points.filePath().name() << nl << endl;
     points.write();
 
+    Info<< "End\n" << endl;
+    
     return 0;
 }
 
