@@ -49,9 +49,10 @@ DEFAULT_PARAMS = {
 'waveRampTime' : 0,
 'addDamping' : False,
 'mdFile' : None,
-'modesToUse' : '7',
+'modesToUse' : '',
 'datFile' : None,
 'dmigFile' : None,
+'hmrUserOutput' : None,
 'hmrScaling' : 0,
 'EulerCellsDist' : 8,
 'inletRelaxZone' : None,
@@ -534,7 +535,7 @@ def readHomerData(data):
         elif 'Yaw Inertia =' in line:
             inertia[2] = float(line.split()[3])
             break
-        else:
+        elif len(modes2use)>0:
             for mode in modes2use:
                 mstr = 'Mode '+str(mode)
                 if mstr in line:
@@ -543,10 +544,11 @@ def readHomerData(data):
                     freq.append(float(sline[6])**2)
     f.close()
 
-    data.hmrScaling  = ('{:20.14e}').format(scaling[0])
     data.shipCOG    =  ('{:20.14e} '*3).format(*cog)
     data.shipInertia = ('{:20.14e} '*6) .format(*inertia)
-    data.shipFreq    = ('{:20.14e} '*len(freq)).format(*freq)
+    if len(modes2use)>0:
+        data.hmrScaling  = ('{:20.14e}').format(scaling[0])
+        data.shipFreq    = ('{:20.14e} '*len(freq)).format(*freq)
 
 def checkError(file):
     error=False
@@ -681,14 +683,15 @@ def foamCase_template(data):
         subprocess.call('cat << EOF > '+ filename + fsHeader + RASProperties_contents, shell=True)
     
     #*.flex
-    filename = data.caseDir+'/constant/'+data.donName+'.flex'
-    if not os.path.isfile('constant/'+data.donName+'.flex'):
-        subprocess.call('cat << EOF > '+ filename + flex_contents, shell=True)
-        setValue(filename, 'SHIP_FREQ', data.shipFreq)
-        setValue(filename, 'SHIP_DAMPING', data.shipDamping)
-        dmig_name = ((data.dmigFile).rpartition('/')[-1]).partition('_dmig')[0]
-        setValue(filename, 'DMIG_NAME', dmig_name)
-        setValue(filename, 'HULL_PATCH', data.hullPatch) 
+    if len(data.modesToUse)>0:
+        filename = data.caseDir+'/constant/'+data.donName+'.flex'
+        if not os.path.isfile('constant/'+data.donName+'.flex'):
+            subprocess.call('cat << EOF > '+ filename + flex_contents, shell=True)
+            setValue(filename, 'SHIP_FREQ', data.shipFreq)
+            setValue(filename, 'SHIP_DAMPING', data.shipDamping)
+            dmig_name = ((data.dmigFile).rpartition('/')[-1]).partition('_dmig')[0]
+            setValue(filename, 'DMIG_NAME', dmig_name)
+            setValue(filename, 'HULL_PATCH', data.hullPatch) 
 
     print 'Create 0 folder input files'
     #alpha water
@@ -723,20 +726,29 @@ def foamCase_template(data):
         setValue(filename, 'SHIP_MASS', data.shipMass)
         setValue(filename, 'SHIP_INERTIA', data.shipInertia)
         setValue(filename, 'SHIP_COG', data.shipCOG)
-        setValue(filename, 'DON_FILENAME', data.donName)    
-
+        if len(data.modesToUse)>0:
+            rc = '\\n'
+            modal = 'modalData'                                        +rc+ \
+                    '{'                                                +rc+ \
+                    'readFromFile   "constant/'+data.donName+'.flex";' +rc+ \
+                    '}'
+            setValue(filename, 'MODAL_DATA', modal)
+        else:
+            setValue(filename, 'MODAL_DATA', '')
+     
     print 'Create other input files'
     #initFlexDict
-    filename = data.caseDir+'/initFlexDict'
-    if not os.path.isfile('initFlexDict'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + initFlexDict_contents, shell=True)
-        setValue(filename, 'MD_FILE', data.mdFile)
-        setValue(filename, 'MODES_TO_USE', data.modesToUse)
-        setValue(filename, 'DAT_FILE', data.datFile)
-        setValue(filename, 'DMIG_FILE', data.dmigFile)
-        setValue(filename, 'HMR_SCALE', data.hmrScaling)
-        setValue(filename, 'DRAFT', data.draft)
-        setValue(filename, 'HULL_PATCH', data.hullPatch)
+    if len(data.modesToUse)>0:
+        filename = data.caseDir+'/initFlexDict'
+        if not os.path.isfile('initFlexDict'):
+            subprocess.call('cat << EOF > '+ filename + fsHeader + initFlexDict_contents, shell=True)
+            setValue(filename, 'MD_FILE', data.mdFile)
+            setValue(filename, 'MODES_TO_USE', data.modesToUse)
+            setValue(filename, 'DAT_FILE', data.datFile)
+            setValue(filename, 'DMIG_FILE', data.dmigFile)
+            setValue(filename, 'HMR_SCALE', data.hmrScaling)
+            setValue(filename, 'DRAFT', data.draft)
+            setValue(filename, 'HULL_PATCH', data.hullPatch)
     
     #cell.Set
     filename = data.caseDir+'/cell.Set'
@@ -775,7 +787,6 @@ def copyMesh(data):
 
     if data.meshTime=='latestTime':
         timeFolders = getFoamTimeFolders(data.meshDir)
-        print timeFolders
         meshTimeFolder = timeFolders[-1]
     else:
         meshTimeFolder = data.meshTime
@@ -797,7 +808,7 @@ def initCase(data):
     string.append('setSet -batch cell.Set')
     string.append('setsToZones -noFlipMap')
     string.append('cp -rf ./0/org/* ./0/')
-    string.append('initFlx initFlexDict')
+    if len(data.modesToUse)>0: string.append('initFlx initFlexDict')
     string.append('initWaveField')
     rc = '\n'
     process = 'set -x'+rc+'('+rc 
@@ -1159,6 +1170,7 @@ vbm
     donFileName         "DON_FILENAME.don";
     wldFileName         "";
     log true;
+    ySymmetry           yes;
 }
 
 // ************************************************************************* //
@@ -1402,7 +1414,7 @@ sixDofDomainFvMeshCoeffs
     loads
     {
         gravity { type gravity; value (0 0 -9.81); }
-        fluid { type fluidForce; patches (HULL_PATCH); dynRelax off; relaxCoeff 0.5; }
+        fluid { type fluidForce; patches (HULL_PATCH); dynRelax off; relaxCoeff 0.5; ySym yes;}
         SW_DAMPING
     }
 
@@ -1773,10 +1785,7 @@ EulerZYX
     rollPitchYaw (0 0 0);
 }
 
-modalData
-{
-    readFromFile   "constant/DON_FILENAME.flex";
-}
+MODAL_DATA
 
 // ************************************************************************* //
 
