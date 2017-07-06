@@ -1,3 +1,14 @@
+#!/usr/bin/env python
+
+#########################################################################
+# Filename: fsRead.py                                                   #
+# Date:     2017-July-06                                                #
+# Version:  1.                                                          #
+# Author:   Alexis Benhamou                                             #
+# Org.:     Bureau Veritas, (HO, France)                                #
+# Email:    alexis.benhamou@bureauveritas.com                           #
+#########################################################################
+
 import os
 import numpy as np
 import pandas as pd
@@ -24,27 +35,43 @@ dicoPost = {
              "acc" : 'vbm'
              }
 
-def fsRead(case,res):
-    tlist = os.listdir(os.path.join(case,'postProcessing', dicoPost[res]))
-    #sort tlist in ascending order
+#-----------------------------------------------------------------------------#
+#                                   fsRead                                    #
+#-----------------------------------------------------------------------------#
+# This function can be used to read any foamStar output from postProcessing   #
+# folder and store results in a DataFrame. The following options can be used: #
+# - split: set True to parse results when multiple time steps are used in CFD #
+#           case. With this option, the function returns a list of time steps #
+#            and a list of DataFrame (one for each time step.)                #
+# - csv : set True to create a CSV file corresponding to each DataFrame.      #
+#-----------------------------------------------------------------------------#
+
+def fsRead(case,res,split=False,csv=False):
+    #read list of time directories and sort in ascending order
+    tlist = np.array(os.listdir(os.path.join(case,'postProcessing', dicoPost[res])))
+    tlist = tlist[np.argsort(tlist.astype(np.float))]
     ntlist = len(tlist)
     
+    #read of data and remove overlapping parts
     data = [{} for i in range(ntlist)]
-    tdt = np.empty(0)
+    if split: tdt = np.empty(0)
     for t in xrange(ntlist):
         data[t] = ts.read(os.path.join(case,'postProcessing',dicoPost[res],str(tlist[t]),res+'.dat'),reader="openFoamReader")
-        dt = round(data[t].index[-1]- data[t].index[-2],10)
-        tdt = np.append(tdt,dt)
-    print tlist
-    print tdt
-    for idt in np.unique(tdt):
-        dataC = pd.concat([data[i] for i in np.where(tdt==idt)[0]])
-        dataC.set_index(dataC.index.values.round(10),inplace=True)
-        #remove index duplicates (or erase new indexes ??)
-        dataC = dataC.groupby(dataC.index).first()
-        dataC.to_csv(os.path.join(case,res+'_C.csv'),sep=';')
-        #add data to tuple or any other kind of object
+        if t>0: data[t] = data[t][data[t].index>data[t-1].index[-1]]
+        if split:
+            dt = round(data[t].index[-1] - data[t].index[-2],10)
+            tdt = np.append(tdt,dt)
     
-    return dataC
-    
-    
+    #concatenate and store data in pandas DataFrame
+    if split:
+        unik = np.unique(tdt)[::-1]
+        dataT = []
+        for idt in unik:
+            dataTmp = pd.concat([data[t] for t in np.where(tdt==idt)[0]])
+            if csv: dataTmp.to_csv(os.path.join(case,res+'_'+str(idt)+'.csv'),sep=';')
+            dataT.append(dataTmp)
+        return unik, dataT
+    else:
+        dataC = pd.concat([data[i] for i in xrange(ntlist)])
+        if csv: dataC.to_csv(os.path.join(case,res+'.csv'),sep=';')
+        return dataC

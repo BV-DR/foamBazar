@@ -1,7 +1,7 @@
-#!/usr/bin/env upython
+#!/usr/bin/env python
 
 #########################################################################
-# Filename: template.py                                                 #
+# Filename: fsTemplate.py                                               #
 # Date:     2017-May-02                                                 #
 # Version:  1.                                                          #
 # Author:   Alexis Benhamou                                             #
