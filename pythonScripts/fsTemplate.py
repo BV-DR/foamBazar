@@ -64,7 +64,7 @@ DEFAULT_PARAMS = {
 
 #*** Data structure for user input data
 class UserInput(object):
-    def __init__(self, dir='', opts=DEFAULT_PARAMS, genCase=False, initCase=False, decomposeCase=False):
+    def __init__(self, dir='', opts=DEFAULT_PARAMS, genCase=False, initCase=False, decomposeCase=False, disableBound=False):
     
         if dir=='':
             self.caseDir =  opts['caseDir']
@@ -103,6 +103,7 @@ class UserInput(object):
         self.genCase        =  genCase
         self.initCase       =  initCase
         self.decomposeCase  =  decomposeCase
+        self.disableBound   =  disableBound
         self.EulerCellsDist =  opts['EulerCellsDist']
         self.inletRelaxZone =  opts['inletRelaxZone']
         self.outletRelaxZone=  opts['outletRelaxZone']
@@ -128,8 +129,9 @@ def cmdOptions(argv):
     parser.add_argument('-c', dest='case', help='if used without input file.  Use this option to define new case folder name, default parameters will be used for other purpose, e.g.: template.py -c newCase')
     parser.add_argument('-f', dest='inputfile', help='read parameters from input file. Use this option to edit redefine parameters, e.g.: template.py -f myship.cfg ')
     parser.add_argument('-p','--print-config', dest='showConfig', action='store_true', help='print all available input parameters (including theirs default values) to template.cfg file and exit. Use this option to generate a template for input files for -f')
-    parser.add_argument('-i','-init', dest='initCase', nargs='?', default='void', help='enables automatic case initialisation (add <directory> if not used with -f or -d option')
+    parser.add_argument('-i','-init', dest='initCase', nargs='?', default='void', help='enables automatic case initialisation (add <directory> if not used with -f or -c option)')
     parser.add_argument('-d', dest='decomposeCase', action='store_true', help='enables case decomposition for parallel run')
+    parser.add_argument('-n', dest='disableBound', action='store_true', help='disable boundaries editing of mesh folder')
     args = parser.parse_args()
     
     if args.showConfig:
@@ -147,21 +149,21 @@ def cmdOptions(argv):
                 raise SystemExit('')
             else:
                 subprocess.call('echo "Initialising FoamStar case for case '+args.initCase+'"', shell=True)
-                inputdata = UserInput(dir=str(args.initCase),initCase=True,decomposeCase=args.decomposeCase)
+                inputdata = UserInput(dir=str(args.initCase),initCase=True,decomposeCase=args.decomposeCase,disableBound=args.disableBound)
         else:
             if args.initCase=='void':
-                inputdata = UserInput(dir=str(args.case),genCase=True)
+                inputdata = UserInput(dir=str(args.case),genCase=True,disableBound=args.disableBound)
             else:
-                inputdata = UserInput(dir=str(args.case),genCase=True,initCase=True,decomposeCase=args.decomposeCase)
+                inputdata = UserInput(dir=str(args.case),genCase=True,initCase=True,decomposeCase=args.decomposeCase,disableBound=args.disableBound)
     else:
         # here we read all input parameters from files
         fid = str(args.inputfile)
         subprocess.call('echo "Input data are read from file '+fid+'"', shell=True)
         params = readInputParams(fid)
         if args.initCase=='void':
-            inputdata = UserInput(opts=params,genCase=True)
+            inputdata = UserInput(opts=params,genCase=True,disableBound=args.disableBound)
         else:
-            inputdata = UserInput(opts=params,genCase=True,initCase=True,decomposeCase=args.decomposeCase)
+            inputdata = UserInput(opts=params,genCase=True,initCase=True,decomposeCase=args.decomposeCase,disableBound=args.disableBound)
         pass
         
     return inputdata
@@ -821,6 +823,53 @@ def foamCase_template(data):
         setValue(filename, 'NB_PROCS', data.nProcs)
         setValue(filename, 'SOLVER_NAME', data.solver)
         
+def setBoundaries(data,meshTimeFolder):
+    
+    rc = '\n'
+    
+    if not os.path.isfile(data.meshDir+'/'+meshTimeFolder+'/polyMesh/boundary_old'):
+        os.rename(data.meshDir+'/'+meshTimeFolder+'/polyMesh/boundary',data.meshDir+'/'+meshTimeFolder+'/polyMesh/boundary_old')
+    obound = open(data.meshDir+'/'+meshTimeFolder+'/polyMesh/boundary_old','r')
+    nbound = open(data.meshDir+'/'+meshTimeFolder+'/polyMesh/boundary','w')
+    
+    for line in obound:
+        if '10' in line[:4]:
+            nbound.write('7'+rc)
+        elif 'defaultFaces' in line:
+            for _ in xrange(5): obound.next()
+        elif 'domainY1' in line:
+            nbound.write(line)
+            line = obound.next()
+            nbound.write(line)
+            line = obound.next()
+            nbound.write('        type            symmetryPlane;'+rc)
+            nbound.write('        inGroups        1(symmetryPlane)'+rc)
+        elif 'ship_hull' in line:
+            while(not 'nFaces' in line): line = obound.next()
+            nFaces = int(line.split()[-1][:-1])
+            
+            while(not 'startFace' in line): line = obound.next()
+            startFace = int(line.split()[-1][:-1])
+            
+            while(not 'nFaces' in line): line = obound.next()
+            nFaces += int(line.split()[-1][:-1])
+            line = obound.next()
+            
+            while(not 'nFaces' in line): line = obound.next()
+            nFaces += int(line.split()[-1][:-1])
+            line = obound.next()
+            line = obound.next()
+            
+            nbound.write('    ship'+rc)
+            nbound.write('    {'+rc)
+            nbound.write('        type            wall;'+rc)
+            nbound.write('        inGroups        1(wall);'+rc)
+            nbound.write('        nFaces          '+str(nFaces)+';'+rc)
+            nbound.write('        startFace       '+str(startFace)+';'+rc)
+            nbound.write('    }'+rc)
+        else:
+            nbound.write(line)
+    
 def copyMesh(data):
 
     subprocess.call('mkdir -p '+data.caseDir+'/{0/org,0/uniform,constant,system}', shell=True)
@@ -830,8 +879,8 @@ def copyMesh(data):
         meshTimeFolder = timeFolders[-1]
     else:
         meshTimeFolder = data.meshTime
-        
-    timeFolders = getFoamTimeFolders(data.meshDir)
+    
+    if not data.disableBound: setBoundaries(data,meshTimeFolder)
     
     print 'Copy mesh from folder '+meshTimeFolder
     subprocess.call('cp -r '+data.meshDir+'/'+meshTimeFolder+'/polyMesh '+data.caseDir+'/constant', shell=True)
@@ -842,7 +891,7 @@ def copyMesh(data):
     
     print 'Copy '+data.donName+'.don file'
     subprocess.call('cp '+data.donFile+' '+data.caseDir+'/.', shell=True)
-    
+
 def initCase(data):
     string=[]
     string.append('setSet -batch cell.Set')
