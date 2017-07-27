@@ -13,6 +13,7 @@ import os, subprocess, time, math
 import numpy as np
 import sys, argparse, configparser
 import pprint
+from fsTools import *
 
 # abenhamou: 2017-may-16
 
@@ -48,6 +49,7 @@ DEFAULT_PARAMS = {
 'waveStartTime' : 0,
 'waveRampTime' : 0,
 'addDamping' : False,
+'vtkOut' : True,
 'localMotionPts' : [],
 'mdFile' : None,
 'modesToUse' : '',
@@ -99,6 +101,7 @@ class UserInput(object):
         self.waveStartTime  =  opts['waveStartTime']
         self.waveRampTime   =  opts['waveRampTime']
         self.addDamping     =  opts['addDamping']
+        self.vtkOut         =  opts['vtkOut']
         self.localMotionPts =  opts['localMotionPts']
         self.genCase        =  genCase
         self.initCase       =  initCase
@@ -354,6 +357,12 @@ def readInputParams(filename):
         params['addDamping'] = getBool(txt)
     except KeyError: pass
     
+    # output VTK files for modes shapes
+    try:
+        txt = str(config[name]['vtkOut'])
+        params['vtkOut'] = getBool(txt)
+    except KeyError: pass
+    
     # list of local motion points
     try:
         txt = str(config[name]['localMotionPts'])
@@ -444,33 +453,6 @@ def readInputParams(filename):
     
     return params
     pass
-
-def setValue(filename, variable, value):
-    if type(value) is not str: value = str(value)
-    if '"' in value: value = value.replace('"','\\"')
-    if '/' in value: value = value.replace('/','\\/')
-    # print 'sed -i "s/'+variable+'/'+value+'/g" '+filename
-    subprocess.call('sed -i "s/'+variable+'/'+value+'/g" '+filename, shell=True)
-
-# foamFile may be compressed i.e. ".gz"  
-def foamFileExist(filename):
-    found = os.path.isfile(filename)
-    if not found:
-        found = os.path.isfile(filename + '.gz')
-    return found
-
-def runCommand(cmd):
-    try:
-        subprocess.check_call(cmd, shell=True)
-    except subprocess.CalledProcessError:
-        subprocess.call(CMD_showLog, shell=True)
-        raise SystemExit('abort ...')
-        pass
-    except OSError:
-        print cmd
-        raise SystemExit('executable not found ... abort')
-        pass
-    pass
     
 def run_setSet():
     # FIXME: refineMesh is buggy when run in parallel
@@ -482,22 +464,6 @@ def run_setSet():
     #    runCommand('mpirun -np '+str(NPROCS)+' '+ CMD_setSet + ' -parallel -batch .tmp_setSet ' + CMD_keepLog)
     pass
 
-def getFoamTimeFolders(dir,constant=False):
-    found = []
-    for val in os.listdir(dir):
-        try:
-            float(val)
-            found.append(val)
-        except ValueError:
-            pass
-    found.sort(key=float)
-    timeFolders = [dir+'/constant/'] if constant else []
-    if len(found):
-        for val in found:
-            timeFolders.append(val)
-    return timeFolders
-    pass
-    
 def findBoundingBox(stlFile, verbose=True):
     if verbose:
         print "Compute STL bounding box: " + stlFile
@@ -569,14 +535,6 @@ def readHomerData(data):
     if len(modes2use)>0:
         data.hmrScaling  = ('{:20.14e}').format(scaling[0])
         data.shipFreq    = ('{:20.14e} '*len(freq)).format(*freq)
-
-def checkError(file):
-    error=False
-    with open(file, 'r') as f:
-        for line in f:
-            if 'ERROR' in line: error=True
-    
-    return error
     
 def foamCase_template(data):
     print 'Create system folder input files'
@@ -781,6 +739,10 @@ def foamCase_template(data):
             setValue(filename, 'HMR_SCALE', data.hmrScaling)
             setValue(filename, 'DRAFT', data.draft)
             setValue(filename, 'HULL_PATCH', data.hullPatch)
+            if data.vtkOut:
+                setValue(filename, 'VTKOUT', '')
+            else:
+                setValue(filename, 'VTKOUT', 'outputToVTK no;')
             if len(data.localMotionPts)>0:
                 rc = '\\n'
                 lms = '    pointList (localMotion);' + rc + \
@@ -843,7 +805,7 @@ def setBoundaries(data,meshTimeFolder):
             nbound.write(line)
             line = obound.next()
             nbound.write('        type            symmetryPlane;'+rc)
-            nbound.write('        inGroups        1(symmetryPlane)'+rc)
+            nbound.write('        inGroups        1(symmetryPlane);'+rc)
         elif 'ship_hull' in line:
             while(not 'nFaces' in line): line = obound.next()
             nFaces = int(line.split()[-1][:-1])
@@ -1203,7 +1165,7 @@ solvers
 
 PIMPLE
 {
-    EulerCells  EulerCells;
+    //EulerCells  EulerCells;
     momentumPredictor   yes;
     nOuterCorrectors    22;
     fsiTol              FSI_TOL;
@@ -1851,6 +1813,7 @@ FEM_STRUCTURALMESH_VTU
     pchScaleMode  HMR_SCALE;
     pchLengthUnit 1;
     pchMassUnit   1;
+    VTKOUT
 
     patches (HULL_PATCH); ySym (true);
 
