@@ -89,7 +89,7 @@ def setInputs(data):
     if data.SWcase:
         # fvSolution
         filename = data.newDir+'/system/fvSolution'
-        setValue(filename, '//EulerCells  EulerCells;', 'EulerCells  EulerCells;')
+        setValue(filename, r'//EulerCells  EulerCells;', 'EulerCells  EulerCells;')
         # fvSchemes
         filename = data.newDir+'/system/fvSchemes'
         setValue(filename, 'default      Euler;', 'default      CrankNicolson 0.9;')
@@ -100,7 +100,7 @@ def setInputs(data):
     elif data.WVcase:
         # fvSolution
         filename = data.newDir+'/system/fvSolution'
-        setValue(filename, '//EulerCells  EulerCells;', 'EulerCells  EulerCells;')
+        setValue(filename, r'//EulerCells  EulerCells;', 'EulerCells  EulerCells;')
         # fvSchemes
         filename = data.newDir+'/system/fvSchemes'
         setValue(filename, 'default      Euler;', 'default      CrankNicolson 0.9;')
