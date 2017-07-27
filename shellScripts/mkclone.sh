@@ -1,31 +1,46 @@
 #! /bin/bash
-if [ $# -lt 2 ]; then
+
+function usage()
+{
 cat << EOF
-
-clone a foam case
-
-Usage: $0 src-dir targ-dir
-
+Usage: `basename $0` src dest [time]
 EOF
 exit;
-fi
+}
+
+if [ $# -lt 2 ]; then usage; fi
 
 SRC=$1; TARG=$2
+if [ $# -eq 3 ]; then TIME=$3; fi
+if [ -d "$TARG" ] ; then echo "target already existed: $TARG  ... abort"; usage; fi
+if [ ! -d "$SRC" ]; then echo "src not found: $SRC  ... abort"; usage; fi
 
-if [ -d $TARG ]; then echo "target already existed: $TARG  ... abort"; exit; fi
-if [ ! -d $SRC ]; then echo "src not found: $SRC  ... abort"; exit; fi
-
-mkdir -p $TARG
-cp -P $SRC/* $TARG 2>&1 > /dev/null
-cp -rP $SRC/{0,constant,system} $TARG 2>&1 > /dev/null
-
-if [ $# -eq 2 ]; then
+echo -e "Clone openfoam case\nfrom:" $SRC "\nto  :" $TARG
+(
+    mkdir -p $TARG
+    cp -P "$SRC"/* "$TARG"
+    cp -rP "$SRC"/{0,constant,system} "$TARG"
+) > /dev/null 2>&1
 
 if [ -d $SRC/processor0 ]; then
-    for i in $SRC/processor*; do mkdir $TARG/`basename $i` 2>&1 > /dev/null; done
-    for i in $SRC/processor*; do cp -rp ${i}/{0,constant} $TARG/`basename $i` 2>&1 > /dev/null; done
+    echo "Clone processor*"
+    for i in "$SRC"/processor*; do mkdir "$TARG"/`basename "$i"`; done
+    (
+        for i in "$SRC"/processor*; do
+            cp -rpP "${i}"/{0,constant} "$TARG"/`basename "$i"`;
+        done
+    ) > /dev/null 2>&1
 fi
 
+if [ -n "$TIME" ]; then
+    if [ -d "$SRC/$TIME" ]; then
+        echo "Clone time (serial):" $TIME
+        cp -rP "$SRC/$TIME" "$TARG"
+    fi
+    if [ -d "$SRC/processor0/$TIME" ]; then
+        echo "Clone time (parallel): processor*/"$TIME
+        for i in "$SRC"/processor*; do cp -rpP "${i}/$TIME" "$TARG"/`basename "$i"`; done
+    fi
 fi
 
 rm -fr $TARG/log.*
