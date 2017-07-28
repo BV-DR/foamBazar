@@ -89,21 +89,21 @@ def setInputs(data):
     if data.SWcase:
         # fvSolution
         filename = data.newDir+'/system/fvSolution'
-        setValue(filename, r'//EulerCells  EulerCells;', 'EulerCells  EulerCells;')
+        setValue(filename, r'//EulerCells  EulerCells;', 'EulerCells  EulerCells;',True)
         # fvSchemes
         filename = data.newDir+'/system/fvSchemes'
-        setValue(filename, 'default      Euler;', 'default      CrankNicolson 0.9;')
+        setValue(filename, 'default      Euler;', 'default      CrankNicolson 0.9;',True)
         # run.sh
         filename = data.newDir+'/run.sh'
         oname, bname = getJobName(data)
-        setValue(filename, oname, bname+'_sw_CN')
+        setValue(filename, oname, bname+'_sw_CN',True)
     elif data.WVcase:
         # fvSolution
         filename = data.newDir+'/system/fvSolution'
-        setValue(filename, r'//EulerCells  EulerCells;', 'EulerCells  EulerCells;')
+        setValue(filename, r'//EulerCells  EulerCells;', 'EulerCells  EulerCells;',True)
         # fvSchemes
         filename = data.newDir+'/system/fvSchemes'
-        setValue(filename, 'default      Euler;', 'default      CrankNicolson 0.9;')
+        setValue(filename, 'default      Euler;', 'default      CrankNicolson 0.9;',True)
         # dynamicMeshDict
         filename = data.newDir+'/constant/dynamicMeshDict'
         os.rename(filename,filename+'_old')

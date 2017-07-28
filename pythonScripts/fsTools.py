@@ -16,11 +16,14 @@ import pprint
 
 # abenhamou: 2017-july-27
 
-def setValue(filename, variable, value):
+def setValue(filename, variable, value, pout=False):
+    if type(variable) is not str: variable = str(variable)
+    if '"' in variable: variable = variable.replace('"','\\"')
+    if '/' in variable: variable = variable.replace('/','\\/')
     if type(value) is not str: value = str(value)
     if '"' in value: value = value.replace('"','\\"')
     if '/' in value: value = value.replace('/','\\/')
-    # print 'sed -i "s/'+variable+'/'+value+'/g" '+filename
+    if pout:  print 'sed -i "s/'+variable+'/'+value+'/g" '+filename
     subprocess.call('sed -i "s/'+variable+'/'+value+'/g" '+filename, shell=True)
 
 # foamFile may be compressed i.e. ".gz"  
