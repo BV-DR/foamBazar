@@ -1,6 +1,6 @@
 import PyFoam
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
-from PyFoam.Basics.DataStructures import Vector,Field,Dimension
+from PyFoam.Basics.DataStructures import Vector, Field, Dimension, DictProxy
 from os.path import join
 from compatOF import water, air
 
@@ -18,18 +18,18 @@ class TransportProperties(WriteParameterFile) :
       self.header["class"] = "dictionary"
 
       if version == "foamStar" : self["phases"] = ["water" , "air"]
+      
+      dw = DictProxy()     
+      dw["transportModel"] =  "Newtonian"
+      dw["nu"]             =  "nu [0 2 -1 0 0 0 0] {}".format(nuWater)
+      dw["rho"]            =  "rho [1 -3 0 0 0 0 0] {}".format(rhoWater)
+      self['"'+water[version]+'"'] = dw
 
-      self['"'+water[version]+'"'] = {
-                           "transportModel" :   "Newtonian",
-                           "nu"             :   "nu [0 2 -1 0 0 0 0] {}".format(nuWater),
-                           "rho"             :  "rho [1 -3 0 0 0 0 0] {}".format(rhoWater)
-                         }
-
-      self['"'+air[version]+'"'] = {
-                                  "transportModel" : "Newtonian",
-                                  "nu"             : "nu [0 2 -1 0 0 0 0] {}".format(nuAir),
-                                  "rho"            : "rho [1 -3 0 0 0 0 0] {}".format(rhoAir)
-                               }
+      da = DictProxy() 
+      da["transportModel"] =  "Newtonian",
+      da["nu"]             =  "nu [0 2 -1 0 0 0 0] {}".format(nuAir)
+      da["rho"]            =  "rho [1 -3 0 0 0 0 0] {}".format(rhoAir)
+      self['"'+air[version]+'"'] = da
 
       self[r"sigma"] = "sigma [1 0 -2 0 0 0 0] {}".format(sigma)
 

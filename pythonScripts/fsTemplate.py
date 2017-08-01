@@ -14,6 +14,17 @@ import numpy as np
 import sys, argparse, configparser
 import pprint
 from fsTools import *
+from inputFiles.fvSchemes import FvSchemes
+from inputFiles.controlDict import ControlDict
+from inputFiles.waveProperties import WaveProperties, RelaxZone, WaveCondition
+from inputFiles.boundaryCondition import writeAllBoundaries
+from inputFiles.turbulenceProperties import writeTurbulenceProperties
+from inputFiles.transportProperties import TransportProperties
+from inputFiles.sixDofDomainBody import SixDofDomainBody
+from inputFiles.dynamicMeshDict import DynamicMeshDict
+from inputFiles.flexProperties import writeFlexProperties
+from inputFiles.gravity import Gravity
+from inputFiles.decomposeParDict import DecomposeParDict
 
 # abenhamou: 2017-may-16
 
@@ -530,8 +541,8 @@ def readHomerData(data):
                     freq.append(float(sline[6])**2)
     f.close()
 
-    data.shipCOG    =  ('{:20.14e} '*3).format(*cog)
-    data.shipInertia = ('{:20.14e} '*6) .format(*inertia)
+    data.shipCOG    =  cog
+    data.shipInertia = inertia
     if len(modes2use)>0:
         data.hmrScaling  = ('{:20.14e}').format(scaling[0])
         data.shipFreq    = ('{:20.14e} '*len(freq)).format(*freq)
@@ -539,244 +550,150 @@ def readHomerData(data):
 def foamCase_template(data):
     print 'Create system folder input files'
     #controlDict
-    filename = data.caseDir+'/system/controlDict'
-    if not os.path.isfile(filename):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + controlDict_contents, shell=True)
-        setValue(filename, 'START_TIME', data.startTime)
-        setValue(filename, 'END_TIME', data.endTime)
-        setValue(filename, 'TIME_STEP', data.timeStep)
-        setValue(filename, 'WRITE_INTERVAL', data.writeInterval)
-        setValue(filename, 'PURGE_WRITE', data.purgeWrite)
-        if data.outputMotions:
-            setValue(filename, 'INCLUDE_MOTIONS', r'motionInfo { type motionInfo; }' )
-        else:
-            setValue(filename, 'INCLUDE_MOTIONS', '' )
-        if data.outputVBM:
-            setValue(filename, 'INCLUDE_VBM', r'#include "vbm.inc"')
-            outfile = data.caseDir+'/system/vbm.inc'
-            if not os.path.isfile(outfile):
-                subprocess.call('cat << EOF > '+ outfile + vbm_contents, shell=True)
-                setValue(outfile, 'HULL_PATCH', data.hullPatch)
-                setValue(outfile, 'DON_FILENAME', data.donName)
-        else:
-            setValue(filename, 'INCLUDE_VBM', '')
-        if data.outputWave:
-            setValue(filename, 'INCLUDE_WAVE', r'#include "waveProbe.inc"')
-            outfile = data.caseDir+'/system/waveProbe.inc'
-            if not os.path.isfile(outfile):
-                subprocess.call('cat << EOF > '+ outfile + waveProbe_contents, shell=True)
-        else:
-            setValue(filename, 'INCLUDE_WAVE', '')
-        if data.outputForces:
-            setValue(filename, 'INCLUDE_FORCES', r'#include "forces.inc"')
-            outfile = data.caseDir+'/system/forces.inc'
-            if not os.path.isfile(outfile):
-                subprocess.call('cat << EOF > '+ outfile + forces_contents, shell=True)
-                setValue(outfile, 'HULL_PATCH', data.hullPatch)
-        else:
-            setValue(filename, 'INCLUDE_FORCES', '')
-        
-        if len(data.localMotionPts)>0:
-            setValue(filename, 'INCLUDE_LOCALMOTION', r'#include "localMotion.inc"')
-            outfile = data.caseDir+'/system/localMotion.inc'
-            if not os.path.isfile(outfile):
-                subprocess.call('cat << EOF > '+ outfile + localMotion_contents, shell=True)
-        else:
-            setValue(filename, 'INCLUDE_LOCALMOTION', '')
+    if data.outputVBM:
+        vbmPatch = [data.hullPatch,data.donName]
+    else:
+        vbmPatch = None
+    if data.outputWave:
+        sys.exit('ERROR: Wave probes cannot be included yet')
+    if data.outputForces:
+        forcesPatch = data.hullPatch
+    else:
+        forcesPatch = None
+
+    controlDict = ControlDict( case                = data.caseDir,
+                               startFrom           = data.startTime,
+                               endTime             = data.endTime,
+                               deltaT              = data.timeStep,
+                               writeInterval       = data.writeInterval,
+                               purgeWrite          = data.purgeWrite,
+                               writePrecision      = 15,
+                               outputMotions       = data.outputMotions,
+                               outputLocalMotions  = len(data.localMotionPts)>0,
+                               vbmPatch            = vbmPatch,
+                               forcesPatch         = forcesPatch,
+                               version             = "foamStar" )
+    controlDict.writeFile()
 
     #fvSchemes
-    filename = data.caseDir+'/system/fvSchemes'
-    if not os.path.isfile('system/fvSchemes'):
-        subprocess.call('cat << EOF > '+ filename + fvSchemes_contents, shell=True)
-        setValue(filename, 'DDT_SCHEME', data.scheme)
+    fvSchemes = FvSchemes( case     = data.caseDir,
+                           simType  = "Euler",
+                           orthogonalCorrection = "implicit",
+                           version  = "foamStar" )
+    fvSchemes.writeFile()
 
     #fvSolution
     filename = data.caseDir+'/system/fvSolution'
-    if not os.path.isfile('system/fvSolution'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + fvSolution_contents, shell=True)
-        setValue(filename, 'FSI_TOL', data.fsiTol)
+    subprocess.call('cat << EOF > '+ filename + fsHeader + fvSolution_contents, shell=True)
+    setValue(filename, 'FSI_TOL', data.fsiTol)
     
     #decomposeParDict
-    filename = data.caseDir+'/system/decomposeParDict'
-    if not os.path.isfile('system/decomposeParDict'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + decomposeParDict_contents, shell=True)
-        setValue(filename, 'NB_PROCS', data.nProcs)
+    decomposeParDict = DecomposeParDict( case=data.caseDir, nProcs=data.nProcs )
+    decomposeParDict.writeFile()
 
     print 'Create constant folder input files'
     #waveProperties
     filename = data.caseDir+'/constant/waveProperties'
-    if not os.path.isfile('constant/waveProperties'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + waveProperties_contents, shell=True)
-        setValue(filename, 'WAVE_TYPE', data.wave)
-        setValue(filename, 'WAVE_START_TIME', data.waveStartTime)
-        setValue(filename, 'WAVE_RAMP_TIME', data.waveRampTime)
-        setValue(filename, 'WAVE_VELOCITY', data.velocity)
-        setValue(filename, 'WAVE_DEPTH', data.depth)
-        setValue(filename, 'WAVE_HEIGHT', data.waveH)
-        setValue(filename, 'WAVE_PERIOD', data.waveT)
-        setValue(filename, 'WAVE_SEALEVEL', data.waveSeaLvl)
-        
-        bBox = findCFDBoundingBox(data.caseDir,False)
-        setValue(filename, 'BOUND_X0', bBox[0])
-        setValue(filename, 'BOUND_X1', bBox[3])
-        setValue(filename, 'BOUND_Y1', bBox[4])
-        relaxDomain = ''
-        if data.sideRelaxZone   is not None: relaxDomain += 'domainY1 '
-        if data.outletRelaxZone is not None: relaxDomain += 'domainX0 '
-        if data.inletRelaxZone  is not None: relaxDomain += 'domainX1 '
-        setValue(filename, 'RELAX_DOMAIN', relaxDomain)
+    waveCond  = WaveCondition( waveType   = data.wave,
+                               height     = data.waveH,
+                               period     = data.waveT,
+                               U0         = -1*data.velocity,
+                               depth      = data.depth,
+                               refDirection = [-1,0,0],
+                               startTime  = data.waveStartTime,
+                               rampTime   = data.waveRampTime
+                             )
     
-    #turbulenceProperties
-    filename = data.caseDir+'/constant/turbulenceProperties'
-    if not os.path.isfile('constant/turbulenceProperties'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + turbulenceProperties_contents, shell=True)
-        
-    #transportProperties
-    filename = data.caseDir+'/constant/transportProperties'
-    if not os.path.isfile('constant/transportProperties'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + transportProperties_contents, shell=True)
+    relaxZones = []
+    bBox = findCFDBoundingBox(data.caseDir,False)
+    if data.sideRelaxZone is not None:
+        relaxSide   = RelaxZone( "side"  , relax=True, waveCondition=waveCond, origin=[0., bBox[4], 0.], orientation = [  0. , -1. , 0.], bound=data.sideRelaxZone)
+        relaxZones += [relaxSide]
+    if data.outletRelaxZone is not None:
+        relaxOutlet = RelaxZone( "outlet", relax=True, waveCondition=waveCond, origin=[bBox[0], 0., 0.], orientation = [  1. ,  0. , 0.], bound=data.outletRelaxZone)
+        relaxZones += [relaxOutlet]
+    if data.inletRelaxZone  is not None:
+        relaxInlet  = RelaxZone( "inlet" , relax=True, waveCondition=waveCond, origin=[bBox[3], 0., 0.], orientation = [ -1. ,  0. , 0.], bound=data.inletRelaxZone)
+        relaxZones += [relaxInlet]
     
-    #dynamicMeshDict
-    filename = data.caseDir+'/constant/dynamicMeshDict'
-    if not os.path.isfile('constant/dynamicMeshDict'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + dynamicMeshDict_contents, shell=True)
-        setValue(filename, 'HULL_PATCH', data.hullPatch)
-        if data.addDamping:
-            bBox = findBoundingBox(data.caseDir+'/constant/triSurface/'+data.stlFile,False)
-            LBP = round(0.95*abs(bBox[3]-bBox[0]),2)
-            BC = round(abs(bBox[4]-bBox[1]),2)
-            rc = '\\n'
-            dmp = 'dampingCoeff'                        +rc+ \
-                  '        {'                           +rc+ \
-                  '        type dampingSinkageAndTrim;' +rc+ \
-                  '        heaveDampingCoef 1000;'      +rc+ \
-                  '        pitchDampingCoef 1000;'      +rc+ \
-                  '        Lpp '+str(LBP)+';'           +rc+ \
-                  '        Breadth '+str(BC)+';'        +rc+ \
-                  '        }'
-            setValue(filename, 'SW_DAMPING', dmp)
-        else:
-            setValue(filename, 'SW_DAMPING', '')
-
-    #g
-    filename = data.caseDir+'/constant/g'
-    if not os.path.isfile('constant/g'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + g_contents, shell=True)
-        
-    #RASProperties
-    filename = data.caseDir+'/constant/RASProperties'
-    if not os.path.isfile('constant/RASProperties'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + RASProperties_contents, shell=True)
-    
-    #*.flex
-    if len(data.modesToUse)>0:
-        filename = data.caseDir+'/constant/'+data.donName+'.flex'
-        if not os.path.isfile('constant/'+data.donName+'.flex'):
-            subprocess.call('cat << EOF > '+ filename + flex_contents, shell=True)
-            setValue(filename, 'SHIP_FREQ', data.shipFreq)
-            setValue(filename, 'SHIP_DAMPING', data.shipDamping)
-            dmig_name = ((data.dmigFile).rpartition('/')[-1]).partition('_dmig')[0]
-            setValue(filename, 'DMIG_NAME', dmig_name)
-            setValue(filename, 'HULL_PATCH', data.hullPatch) 
-            if len(data.localMotionPts)>0:
-                setValue(filename, 'LOCAL_MOTION', '#include "modeshapes/PTS_localMotion.flx"')
-            else:
-                setValue(filename, 'LOCAL_MOTION', '')
-
-    print 'Create 0 folder input files'
-    #alpha water
-    filename = data.caseDir+'/0/org/alpha.water'
-    if not os.path.isfile('0/org/alpha.water'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + alphawater_contents, shell=True)
-        setValue(filename, 'HULL_PATCH', data.hullPatch)
-
-    #p_rgh
-    filename = data.caseDir+'/0/org/p_rgh'
-    if not os.path.isfile('0/org/p_rgh'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + p_rgh_contents, shell=True)
-        setValue(filename, 'HULL_PATCH', data.hullPatch)
-
-    #U
-    filename = data.caseDir+'/0/org/U'
-    if not os.path.isfile('0/org/U'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + U_contents, shell=True)
-        setValue(filename, 'HULL_PATCH', data.hullPatch)
-        setValue(filename, 'WAVE_VELOCITY', data.velocity)
-        
-    #pointDisplacement
-    filename = data.caseDir+'/0/org/pointDisplacement'
-    if not os.path.isfile('0/org/pointDisplacement'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + pointDisplacement_contents, shell=True)
-        setValue(filename, 'HULL_PATCH', data.hullPatch)
-    
-    #sixDofDomainBody
-    filename = data.caseDir+'/0/uniform/sixDofDomainBody'
-    if not os.path.isfile('0/uniform/sixDofDomainBody'):
-        subprocess.call('cat << EOF > '+ filename + fsHeader + sixDofDomainBody_contents, shell=True)
-        setValue(filename, 'SHIP_MASS', data.shipMass)
-        setValue(filename, 'SHIP_INERTIA', data.shipInertia)
-        setValue(filename, 'SHIP_COG', data.shipCOG)
-        if len(data.modesToUse)>0:
-            rc = '\\n'
-            modal = 'modalData'                                        +rc+ \
-                    '{'                                                +rc+ \
-                    'readFromFile   "constant/'+data.donName+'.flex";' +rc+ \
-                    '}'
-            setValue(filename, 'MODAL_DATA', modal)
-        else:
-            setValue(filename, 'MODAL_DATA', '')
-     
-    print 'Create other input files'
-    #initFlexDict
-    if len(data.modesToUse)>0:
-        filename = data.caseDir+'/initFlexDict'
-        if not os.path.isfile('initFlexDict'):
-            subprocess.call('cat << EOF > '+ filename + fsHeader + initFlexDict_contents, shell=True)
-            setValue(filename, 'MD_FILE', data.mdFile)
-            setValue(filename, 'MODES_TO_USE', data.modesToUse)
-            setValue(filename, 'DAT_FILE', data.datFile)
-            setValue(filename, 'DMIG_FILE', data.dmigFile)
-            setValue(filename, 'HMR_SCALE', data.hmrScaling)
-            setValue(filename, 'DRAFT', data.draft)
-            setValue(filename, 'HULL_PATCH', data.hullPatch)
-            if data.vtkOut:
-                setValue(filename, 'VTKOUT', '')
-            else:
-                setValue(filename, 'VTKOUT', 'outputToVTK no;')
-            if len(data.localMotionPts)>0:
-                rc = '\\n'
-                lms = '    pointList (localMotion);' + rc + \
-                      '    localMotion' + rc + \
-                      '    (' + rc
-                for pt in data.localMotionPts: lms += '        ('+('{:8.6e} '*3).format(*pt.tolist())+')'+ rc
-                lms +='     );' + rc
-                setValue(filename, 'LOCAL_MOTION', lms)
-            else:
-                setValue(filename, 'LOCAL_MOTION', '') 
+    waveProperties = WaveProperties( filename, initWaveCondition=waveCond, relaxZones=relaxZones, version = "foamStar" )
+    waveProperties.writeFile()
     
     #cell.Set
     filename = data.caseDir+'/cell.Set'
-    if not os.path.isfile('cell.Set'):
-        subprocess.call('cat << EOF > '+ filename + cellSet_contents, shell=True)
-        setValue(filename, 'STL_FILE', data.stlFile)
+    waveProperties.writeBlendingZoneBatch(filename)
+    bBox = findBoundingBox(data.caseDir+'/constant/triSurface/'+data.stlFile,False)
+    bBox = [0.5*(bBox[0]+bBox[3]), 0.5*(bBox[1]+bBox[4])+math.fabs(bBox[1]-bBox[4]), 0.5*(bBox[2]+bBox[5])]
+    outsidePoints = str(bBox[0])+" "+str(bBox[1])+" "+str(bBox[2])
+    cSet = open(filename,'a')
+    cSet.write('cellSet EulerCells new surfaceToCell "./constant/triSurface/'+data.stlFile+'" (('+outsidePoints+')) yes yes no '+str(data.EulerCellsDist)+' -1e6')
+    cSet.close()
+    
+    #turbulenceProperties, RASProperties
+    writeTurbulenceProperties( data.caseDir , "laminar" )
+        
+    #transportProperties
+    transportProperties = TransportProperties( case = data.caseDir,
+                                               nuWater = 1.14e-06,
+                                               rhoWater = 1025,
+                                               version = "foamStar"
+                                             )
+    transportProperties.writeFile()
+    
+    #dynamicMeshDict
+    if data.addDamping:
         bBox = findBoundingBox(data.caseDir+'/constant/triSurface/'+data.stlFile,False)
-        bBox = [0.5*(bBox[0]+bBox[3]), 0.5*(bBox[1]+bBox[4])+math.fabs(bBox[1]-bBox[4]), 0.5*(bBox[2]+bBox[5])]
-        outsidePoints = str(bBox[0])+" "+str(bBox[1])+" "+str(bBox[2])
-        setValue(filename, 'OUTSIDE_POINT', outsidePoints)
-        setValue(filename, 'EULER_DIST', data.EulerCellsDist)
-        if data.inletRelaxZone is not None:
-            setValue(filename, 'INLET_X', data.inletRelaxZone)
-        else:
-            setValue(filename, 'cellSet inletZone', r'//cellSet inletZone')
-        if data.outletRelaxZone is not None:
-            setValue(filename, 'OUTLET_X', data.outletRelaxZone)
-        else:
-            setValue(filename, 'cellSet outletZone', r'//cellSet outletZone')
-        if data.sideRelaxZone is not None:
-            setValue(filename, 'SIDE_X', data.sideRelaxZone)
-        else:
-            setValue(filename, 'cellSet sideZone', r'//cellSet sideZone')
-            
+        LBP = round(0.95*abs(bBox[3]-bBox[0]),2)
+        BC = round(abs(bBox[4]-bBox[1]),2)
+    dynamicMeshDict = DynamicMeshDict( case = data.caseDir,
+                                       hullPatch = data.hullPatch,
+                                       addDamping = data.addDamping,
+                                       lpp = LBP,
+                                       bc = BC,
+                                       version = "foamStar"
+                                     )
+    dynamicMeshDict.writeFile()
+
+    #g
+    gravity = Gravity( case = data.caseDir )
+    gravity.writeFile()
+    
+    print 'Create 0 folder input files'
+    #alpha water, p_rgh, U, pointDisplacement
+    writeAllBoundaries( case=data.caseDir,
+                        speed=data.velocity,
+                        symmetryPlane = "yes",
+                        version = "foamStar" )
+    
+    #sixDofDomainBody
+    sixDofDomainBody = SixDofDomainBody( case = data.caseDir,
+                                         mass = data.shipMass,
+                                         inertia = data.shipInertia,
+                                         COG = data.shipCOG,
+                                         nModes = data.modesToUse,
+                                         donName = data.donName,
+                                         version = "foamStar"
+                                         )
+    sixDofDomainBody.writeFile()
+     
+    if len(data.modesToUse)>0:
+        print 'Create flexible properties input files'
+        writeFlexProperties( case = data.caseDir,
+                             donName = data.donName,
+                             mdFile = data.mdFile,
+                             modes2use = data.modesToUse,
+                             datFile = data.datFile,
+                             dmigFile = data.dmigFile,
+                             draft = data.draft,
+                             scale = data.hmrScaling,
+                             vtkOut = data.vtkOut,
+                             hullPatch = data.hullPatch,
+                             localPts = data.localMotionPts,
+                             freq = data.shipFreq,
+                             damping = data.shipDamping,
+                             version = "foamStar"
+                            )
+
     #run.sh
     filename = data.caseDir+'/run.sh'
     if not os.path.isfile('run.sh'):
@@ -895,137 +812,6 @@ fsHeader =r'''
 |   \\\\  /    A nd           | Web:      www.OpenFOAM.org                      | 
 |    \\\\/     M anipulation  |                                                 | 
 \*---------------------------------------------------------------------------*/ 
-'''
-
-controlDict_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "system";
-    object      controlDict;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-/*
-*   created by template on $(hostname) @ $(date)
-*/
-
-application     foamStar;
-
-startFrom       START_TIME;
-
-startTime       0;
-
-stopAt          endTime;
-
-endTime         END_TIME;
-
-deltaT          TIME_STEP;
-
-writeControl    timeStep;
-
-writeInterval   WRITE_INTERVAL;
-
-purgeWrite      PURGE_WRITE;
-
-writeFormat     ascii;
-
-writePrecision  15;
-
-writeCompression compressed;
-
-timeFormat      general;
-
-timePrecision   6;
-
-runTimeModifiable no;
-
-adjustTimeStep  no;
-
-maxCo           1;
-maxAlphaCo      1;
-maxDeltaT       1;
-
-libs
-(
-    "libfoamStar.so"
-);
-  
-// ************************************************************************* //
-
-functions
-{
-    INCLUDE_MOTIONS
-    INCLUDE_VBM
-    INCLUDE_WAVE
-    INCLUDE_FORCES
-    INCLUDE_LOCALMOTION
-}
-
-EOF
-'''
-
-fvSchemes_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "system";
-    object      fvSchemes;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-/*
-*   created by template on $(hostname) @ $(date)
-*/
-
-ddtSchemes
-{
-    default      DDT_SCHEME;
-    ddt(U)       Euler;
-}
-
-gradSchemes
-{
-    default     Gauss linear;
-}
-
-divSchemes
-{
-    div(rhoPhi,U)  Gauss linearUpwindV GradU;
-    div(phi,alpha) Gauss vanLeer;
-    div(phirb,alpha) Gauss interfaceCompression;
-    div((muEff*dev(T(grad(U))))) Gauss linear;
-}
-
-laplacianSchemes
-{
-    default         Gauss linear corrected;
-}
-
-interpolationSchemes
-{
-    default         linear;
-}
-
-snGradSchemes
-{
-    default         corrected;
-}
-
-fluxRequired
-{
-    default         no;
-    p_rgh;
-    pcorr;
-    alpha.water;
-
-}
-
-// ************************************************************************* //
-
-EOF
 '''
 
 fvSolution_contents='''
@@ -1192,65 +978,6 @@ relaxationFactors
 EOF
 '''
 
-decomposeParDict_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "system";
-    object      decomposeParDict;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-/*
-*   created by template on $(hostname) @ $(date)
-*/
-
-numberOfSubdomains NB_PROCS;
-method          scotch;
-
-// ************************************************************************* //
-
-EOF
-'''
-
-vbm_contents='''
-vbm
-{
-    type internalLoads; outputControl timeStep; outputInterval 1;
-    hullPatches         (HULL_PATCH);
-    donFileName         "DON_FILENAME.don";
-    wldFileName         "";
-    log true;
-    ySymmetry           yes;
-}
-
-// ************************************************************************* //
-
-EOF
-'''
-
-forces_contents='''
-forces
-    {
-        type forces;
-        functionObjectLibs ( "libforces.so" );
-        patches (HULL_PATCH);
-        rhoInf  1000;
-        rhoName rho;
-        pName   p;
-        UName   U;
-        log     on;
-        outputControl   timeStep;
-        outputInterval  1;
-        CofR (0 0 0);
-    }
-
-// ************************************************************************* //
-
-EOF
-'''
-
 waveProbe_contents='''
 waveProbe
 {
@@ -1282,596 +1009,6 @@ waveProbe
 }
 
 // ************************************************************************* //
-
-EOF
-'''
-
-localMotion_contents='''
-localMotion
-{
-    type localMotion;
-    motionData sixDofDomainBody;
-    flxPTS localMotion;
-}
-
-// ************************************************************************* //
-
-EOF
-'''
-
-waveProperties_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    object      environmentalProperties;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#inputMode overwrite;
-
-mycase
-{
-    waveType    WAVE_TYPE; //streamFunction
-    refTime     0;
-    startTime   WAVE_START_TIME;
-    rampTime    WAVE_RAMP_TIME;
-    refDirection (-1 0 0);
-    U0 (-WAVE_VELOCITY 0 0);
-    depth WAVE_DEPTH;
-    height WAVE_HEIGHT;
-    period WAVE_PERIOD;
-}
-
-seaLevel    WAVE_SEALEVEL;
-
-initCoeffs
-{
-    \$mycase
-}
-
-relaxationNames (RELAX_DOMAIN);
-
-domainX1Coeffs
-{
-    \$mycase
-    relaxationZone
-    {
-        zoneName         inletZone;
-        origin           (BOUND_X1 0 0);
-        orientation      (-1 0 0);
-    }
-}
-
-domainX0Coeffs
-{
-    \$mycase
-    relaxationZone
-    {
-        zoneName         outletZone;
-        origin           (BOUND_X0 0 0);
-        orientation      (1 0 0);
-    }
-}
-
-domainY1Coeffs
-{
-    \$mycase
-    relaxationZone
-    {
-        zoneName         sideZone;
-        origin           (0 BOUND_Y1 0);
-        orientation      (0 -1 0);
-    }
-}
-
-// ************************************************************************* //
-
-EOF
-'''
-
-turbulenceProperties_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "constant";
-    object      turbulenceProperties;
-}
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-simulationType laminar; //RASModel;
-
-// ************************************************************************* //
-
-EOF
-'''
-
-transportProperties_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "constant";
-    object      transportProperties;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-phases (water air);
-
-"water|phase1"
-{
-    transportModel  Newtonian;
-    nu              nu [ 0 2 -1 0 0 0 0 ] 1.14e-06;
-    rho             rho [ 1 -3 0 0 0 0 0 ] 1025;
-}
-
-"air|phase2"
-{
-    transportModel  Newtonian;
-    nu              nu [ 0 2 -1 0 0 0 0 ] 1.48e-05;
-    rho             rho [ 1 -3 0 0 0 0 0 ] 1;
-}
-
-sigma           sigma [ 1 0 -2 0 0 0 0 ] 0.0;
-
-// ************************************************************************* //
-
-EOF
-'''
-
-g_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       uniformDimensionedVectorField;
-    location    "constant";
-    object      g;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-dimensions      [0 1 -2 0 0 0 0];
-value           ( 0 0 -9.81 );
-
-// ************************************************************************* //
-
-EOF
-'''
-
-dynamicMeshDict_contents='''
-FoamFile
-{
-    version         2.0;
-    format          ascii;
-    class           dictionary;
-    object          dynamicMeshDict;
-}
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-//dynamicFvMesh   staticFvMesh;
-dynamicFvMesh   sixDofDomainFvMesh;
-
-motionSolverLibs ("libfvMotionSolvers.so");
-solver              displacementLaplacian;
-displacementLaplacianCoeffs
-{
-    diffusivity  invDistSqr (HULL_PATCH);
-    //diffusivity  invDistSqr (InternalFaces);
-}
-
-sixDofDomainFvMeshCoeffs
-{
-    hullPatches     (HULL_PATCH);
-    meshConfigType  4;
-
-    solver          RKCK45;
-    absTol          1e-8;
-    relTol          0;
-
-    rampTime        15;
-
-    loads
-    {
-        gravity { type gravity; value (0 0 -9.81); }
-        fluid { type fluidForce; patches (HULL_PATCH); dynRelax off; relaxCoeff 0.5; ySym yes;}
-        SW_DAMPING
-    }
-
-    constraints
-    {
-        heavePitch { type cog6DOF; default "fixAll"; except (heave pitch); }
-    }
-}
-
-// ************************************************************************* //
-
-EOF
-'''
-
-RASProperties_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    object      RASProperties;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-RASModel            laminar; //rhoKOmegaSST;
-
-turbulence          off;
-
-printCoeffs         on;
-
-// ************************************************************************* //
-
-EOF
-'''
-
-alphawater_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       volScalarField;
-    location    "0";
-    object      alpha.water;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-dimensions      [0 0 0 0 0 0 0];
-
-internalField   uniform 0;
-
-boundaryField
-{
-    "domainX1"
-    {
-        type            waveAlpha;
-        value           uniform 0;
-    }
-
-    "domainX0"
-    {
-        type            waveAlpha;
-        value           uniform 0;
-    }
-
-    "domainZ0"
-    {
-        type            zeroGradient;
-    }
-
-    "domainY0"
-    {
-        type            symmetryPlane;
-    }
-
-    "domainY1"
-    {
-        type            symmetryPlane;
-    }
-
-    "domainZ1"
-    {
-        type            inletOutlet;
-        inletValue      uniform 0;
-        value           uniform 0;
-    }
-
-    "HULL_PATCH"
-    {
-        type            zeroGradient;
-    }
-}
-
-// ************************************************************************* //
-
-EOF
-'''
-
-p_rgh_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       volScalarField;
-    object      p_rgh;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-dimensions      [1 -1 -2 0 0 0 0];
-
-internalField   uniform 0;
-
-boundaryField
-{
-    "domainX1"
-    {
-        type            fixedFluxPressure;
-    }
-
-    "domainX0"
-    {
-        type            fixedFluxPressure;
-    }
-
-    "domainZ0"
-    {
-        type            fixedFluxPressure;
-    }
-
-    "domainY0"
-    {
-        type            symmetryPlane;
-    }
-
-    "domainY1"
-    {
-        type            symmetryPlane;
-    }
-
-    "domainZ1"
-    {
-        type            totalPressure;
-        p0              uniform 0;
-        U               U;
-        phi             phi;
-        rho             rho;
-        psi             none;
-        gamma           1;
-        value           uniform 0;
-    }
-
-    "HULL_PATCH"
-    {
-        type            fixedFluxPressure;
-    }
-}
-
-// ************************************************************************* //
-
-EOF
-'''
-
-U_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       volVectorField;
-    location    "0";
-    object      U;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-dimensions      [0 1 -1 0 0 0 0];
-
-minusFwdSpeed   (-WAVE_VELOCITY 0 0);
-
-internalField   uniform \$minusFwdSpeed;
-
-boundaryField
-{
-    "domainX1"
-    {
-        type            waveVelocity;
-        value           uniform (0 0 0);
-    }
-
-    "domainX0"
-    {
-        type            waveVelocity;
-        value           uniform (0 0 0);
-    }
-
-    "domainZ0"
-    {
-        type            fixedValue;
-        value           uniform \$minusFwdSpeed;
-    }
-
-    "domainY0"
-    {
-        type            symmetryPlane;
-    }
-
-    "domainY1"
-    {
-        type            symmetryPlane;
-    }
-
-    "domainZ1"
-    {
-        type            pressureInletOutletVelocity;
-        tangentialVelocity uniform \$minusFwdSpeed;
-        value           uniform (0 0 0);
-    }
-
-    "HULL_PATCH"
-    {
-        type            movingWallVelocity;
-        value           uniform (0 0 0);
-    }
-}
-
-// ************************************************************************* //
-
-EOF
-'''
-
-pointDisplacement_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       pointVectorField;
-    location    "0.01";
-    object      pointDisplacement;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-dimensions      [0 1 0 0 0 0 0];
-
-internalField   uniform (0 0 0);
-
-boundaryField
-{
-    "domainX1"
-    {
-        type            fixedValue;
-        value           uniform (0 0 0);
-    }
-
-    "domainX0"
-    {
-        type            fixedValue;
-        value           uniform (0 0 0);
-    }
-
-    "domainZ0"
-    {
-        type            fixedValue;
-        value           uniform (0 0 0);
-    }
-
-    "domainY1"
-    {
-        type            fixedValue;
-        value           uniform (0 0 0);
-    }
-
-    "domainY0"
-    {
-        type            symmetryPlane;
-    }
-
-    "domainZ1"
-    {
-        type            fixedValue;
-        value           uniform (0 0 0);
-    }
-
-    "HULL_PATCH"
-    {
-        type            fixedValue;
-        value           uniform (0 0 0);
-    }
-
-    "InternalFaces"
-    {
-        type            fixedValue;
-        value           uniform (0 0 0);
-    }
-}
-
-// ************************************************************************* //
-
-EOF
-'''
-
-cellSet_contents='''
-cellSet EulerCells new surfaceToCell "./constant/triSurface/STL_FILE" ((OUTSIDE_POINT)) yes yes no EULER_DIST -1e6
-cellSet inletZone new boxToCell (INLET_X -1e6 -1e6) (1e6 1e6 1e6)
-cellSet outletZone new boxToCell (-1e6 -1e6 -1e6) (OUTLET_X 1e6 1e6)
-cellSet sideZone new boxToCell (-1e6 SIDE_X -1e6) (1e6 1e6 1e6)
-
-EOF
-'''
-
-initFlexDict_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    object      initFlxDict;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-// initFlx will read each block and create interpolated mode shapes for CFD mesh
-//- src data is in vtuFile
-//- interpolated data from patches is in "constant/modeshapes/CFD_<name>*"
-//- interpolated data from point{Set,List} is in "constant/modeshapes/PTS_<name>*"
-
-//- note: pointSet are fvMesh points, but pointList are user-defined pointField
-
-FEM_STRUCTURALMESH_VTU
-{
-    mdFile "../MD_FILE"; selected (MODES_TO_USE);
-    datFile "../DAT_FILE";
-    dmigMfile "../DMIG_FILE";
-    dmigKfile "../DMIG_FILE";
-    pchCoordinate (0 0 -DRAFT 0 0 0);
-    pchScaleMode  HMR_SCALE;
-    pchLengthUnit 1;
-    pchMassUnit   1;
-    VTKOUT
-
-    patches (HULL_PATCH); ySym (true);
-
-LOCAL_MOTION
-
-}
-// ************************************************************************* //
-
-EOF
-'''
-
-sixDofDomainBody_contents='''
-FoamFile
-{
-    version         2.0;
-    format          ascii;
-    class           dictionary;
-    object          singleBody;
-}
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-mass SHIP_MASS;
-
-momentOfInertia (SHIP_INERTIA);
-
-cogInitial (SHIP_COG);
-
-Xrel (0 0 0);
-
-dotXrel (0 0 0);
-
-omega (0 0 0);
-
-EulerZYX
-{
-    rollPitchYaw (0 0 0);
-}
-
-MODAL_DATA
-
-// ************************************************************************* //
-
-EOF
-'''
-
-flex_contents='''
-wn2 (SHIP_FREQ);
-dampingRatio (SHIP_DAMPING);
-
-
-#include "modeshapes/DMIG_NAME_dmig.prj"
-
-// These folder should be named after hull patch name : CFD_{patch name}_fpt.flx
-#include "modeshapes/CFD_HULL_PATCH_fpt.flx"
-#include "modeshapes/CFD_HULL_PATCH_fps.flx"
-#include "modeshapes/CFD_HULL_PATCH_mpt.flx"
-LOCAL_MOTION
 
 EOF
 '''

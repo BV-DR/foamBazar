@@ -11,7 +11,7 @@ p_rgh = { "foamStar" : "p_rgh" ,
 
 
 application = {
-               "foamStar" : "CRSinterDyMFoam" ,
+               "foamStar"   : "foamStar" ,
                "foamExtend" : "navalFoam" ,
                "swenseFoam" : "swenseFoam"
               }
@@ -33,6 +33,10 @@ surfaceElevation = { "foamStar" : "waveProbes" ,
                      "swenseFoam" : "surfaceElevation" ,
                     }
                     
+pointDisp = {
+              "foamStar"   : "pointDisplacement" ,
+            }
+                    
 initWaveField = { "foamStar" : "CRSinitWaveField" ,
                   "foamExtend" : "initWaveField" ,
                   "swenseFoam" : "initWaveField" ,
@@ -53,14 +57,40 @@ waveTypeDict = { "stokes5th" : {"foamStar" : "stokes5th" ,
                }
                
 water = {
-            "foamStar" : "water",
+            "foamStar" : "water|phase1",
             "foamExtend" : "phase1",
             "swenseFoam" : "phase1",
          }
 
 air = {
-            "foamStar" : "phase2|air",
+            "foamStar" : "air|phase2",
             "foamExtend" : "phase2",
             "swenseFoam" : "phase2",
          }
+         
+foamStarPatch = {
+                    "outlet" : "domainX0",
+                    "inlet" : "domainX1",
+                    "side1" : "domainY0",
+                    "side2" : "domainY1",
+                    "bottom" : "domainZ0" ,
+                    "top" : "domainZ1",
+                    "structure" : "ship"
+                }
 
+defaultPatch = {
+                    "inlet" : "inlet" ,
+                    "outlet" : "outlet" ,
+                    "side" : "side" ,
+                    "symmetryPlane" : "symmetryPlane" ,
+                    "bottom" : "bottom" ,
+                    "top" : "top" ,
+                    "structure" : "structure" ,
+                    "frontBack" : "frontBack"   #In case of  2D computation
+               }
+
+namePatch = { 
+                "default" : defaultPatch,
+                "foamStar" : foamStarPatch
+            }
+ 
