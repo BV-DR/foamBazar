@@ -17,6 +17,7 @@ from fsTools import *
 from inputFiles.fvSchemes import FvSchemes
 from inputFiles.controlDict import ControlDict
 from inputFiles.waveProperties import WaveProperties, RelaxZone, WaveCondition
+from inputFiles.waveProbes import createLinearWaveProbesList, setWaveProbes
 from inputFiles.boundaryCondition import writeAllBoundaries
 from inputFiles.turbulenceProperties import writeTurbulenceProperties
 from inputFiles.transportProperties import TransportProperties
@@ -72,12 +73,13 @@ DEFAULT_PARAMS = {
 'inletRelaxZone' : None,
 'outletRelaxZone' : None,
 'sideRelaxZone' : None,
-'shipDamping' : None
+'shipDamping' : None,
+'waveProbes' : []
 }
 
 #*** Data structure for user input data
 class UserInput(object):
-    def __init__(self, dir='', opts=DEFAULT_PARAMS, genCase=False, initCase=False, decomposeCase=False, disableBound=False):
+    def __init__(self, dir='', opts=DEFAULT_PARAMS, genCase=False, initCase=False, decomposeCase=False, disableBound=False, tar=False):
     
         if dir=='':
             self.caseDir =  opts['caseDir']
@@ -97,7 +99,7 @@ class UserInput(object):
         self.outputVBM      =  opts['outputVBM']
         self.outputWave     =  opts['outputWave']
         self.outputMotions  =  opts['outputMotions']
-        self.outputForces  =  opts['outputForces']
+        self.outputForces   =  opts['outputForces']
         self.fsiTol         =  opts['fsiTol']
         self.hullPatch      =  opts['hullPatch']
         self.donFile        =  opts['donFile']
@@ -114,6 +116,7 @@ class UserInput(object):
         self.addDamping     =  opts['addDamping']
         self.vtkOut         =  opts['vtkOut']
         self.localMotionPts =  opts['localMotionPts']
+        self.waveProbes     =  opts['waveProbes']
         self.genCase        =  genCase
         self.initCase       =  initCase
         self.decomposeCase  =  decomposeCase
@@ -133,6 +136,8 @@ class UserInput(object):
         self.shipInertia    =  ''
         self.shipCOG        =  ''
         self.shipDamping    =  opts['shipDamping']
+        self.case2D         =  opts['case2D']
+        self.tar            =  tar
    
 def cmdOptions(argv):
     global DEBUG
@@ -146,6 +151,7 @@ def cmdOptions(argv):
     parser.add_argument('-i','-init', dest='initCase', nargs='?', default='void', help='enables automatic case initialisation (add <directory> if not used with -f or -c option)')
     parser.add_argument('-d', dest='decomposeCase', action='store_true', help='enables case decomposition for parallel run')
     parser.add_argument('-n', dest='disableBound', action='store_true', help='disable boundaries editing of mesh folder')
+    parser.add_argument('-tar', dest='tar', action='store_true', help='activate compression of resulting folder')
     args = parser.parse_args()
     
     if args.showConfig:
@@ -163,34 +169,25 @@ def cmdOptions(argv):
                 raise SystemExit('')
             else:
                 subprocess.call('echo "Initialising FoamStar case for case '+args.initCase+'"', shell=True)
-                inputdata = UserInput(dir=str(args.initCase),initCase=True,decomposeCase=args.decomposeCase,disableBound=args.disableBound)
+                inputdata = UserInput(dir=str(args.initCase),initCase=True,decomposeCase=args.decomposeCase,disableBound=args.disableBound,tar=args.tar)
         else:
             if args.initCase=='void':
-                inputdata = UserInput(dir=str(args.case),genCase=True,disableBound=args.disableBound)
+                inputdata = UserInput(dir=str(args.case),genCase=True,disableBound=args.disableBound,tar=args.tar)
             else:
-                inputdata = UserInput(dir=str(args.case),genCase=True,initCase=True,decomposeCase=args.decomposeCase,disableBound=args.disableBound)
+                inputdata = UserInput(dir=str(args.case),genCase=True,initCase=True,decomposeCase=args.decomposeCase,disableBound=args.disableBound,tar=args.tar)
     else:
         # here we read all input parameters from files
         fid = str(args.inputfile)
         subprocess.call('echo "Input data are read from file '+fid+'"', shell=True)
         params = readInputParams(fid)
         if args.initCase=='void':
-            inputdata = UserInput(opts=params,genCase=True,disableBound=args.disableBound)
+            inputdata = UserInput(opts=params,genCase=True,disableBound=args.disableBound,tar=args.tar)
         else:
-            inputdata = UserInput(opts=params,genCase=True,initCase=True,decomposeCase=args.decomposeCase,disableBound=args.disableBound)
+            inputdata = UserInput(opts=params,genCase=True,initCase=True,decomposeCase=args.decomposeCase,disableBound=args.disableBound,tar=args.tar)
         pass
         
     return inputdata
     pass
-
-def getBool(string):
-    if string in ['True','true','T','t','1']:
-        return True
-    elif string in ['False','false','F','f','0']:
-        return False
-    else:
-        print 'Invalid boolean entry : '+str(string)
-        raise SystemExit('')
 
 def readInputParams(filename):
     params = dict(DEFAULT_PARAMS)
@@ -368,6 +365,12 @@ def readInputParams(filename):
         params['addDamping'] = getBool(txt)
     except KeyError: pass
     
+    # template for 2D case
+    try:
+        txt = str(config[name]['case2D'])
+        params['case2D'] = getBool(txt)
+    except KeyError: pass
+    
     # output VTK files for modes shapes
     try:
         txt = str(config[name]['vtkOut'])
@@ -387,6 +390,21 @@ def readInputParams(filename):
                 params['localMotionPts'] = np.array(ptm)
             else:
                 sys.exit('ERROR: Points for local motions must have 3 coordinates')
+    except KeyError: pass
+    
+    # list of wave probes
+    try:
+        txt = str(config[name]['waveProbes'])
+        if len(txt)>0:
+            try:
+                ptm = np.matrix(txt)
+            except:
+                sys.exit('ERROR: Unable to read list of waveProbes. Please use the follwing format : \n \
+                                 >>> waveProbes = xMin1 xMax1 nX1 y1 zMin1 Zmax1 nZ1; xMin2 xMax2 nX2 y2 zMin2 Zmax2 nZ2')
+            if np.shape(ptm)[1]==7:
+                params['waveProbes'] = np.array(ptm)
+            else:
+                sys.exit('ERROR: Definition of waveProbes shoud include 7 parameters')
     except KeyError: pass
     
     # sea level
@@ -475,34 +493,6 @@ def run_setSet():
     #    runCommand('mpirun -np '+str(NPROCS)+' '+ CMD_setSet + ' -parallel -batch .tmp_setSet ' + CMD_keepLog)
     pass
 
-def findBoundingBox(stlFile, verbose=True):
-    if verbose:
-        print "Compute STL bounding box: " + stlFile
-    p = subprocess.Popen("surfaceCheck "+stlFile+" | grep '^Bounding Box :' | sed \"s/.*: (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    boundingBox,error = p.communicate()
-    if error:
-        print 'error: ', error
-        raise SystemExit('abort ...')
-    boundingBox = boundingBox.split(' ')
-    boundingBox = [float(i) for i in boundingBox]
-    if verbose:
-        print "   ",boundingBox
-    return boundingBox
-    
-def findCFDBoundingBox(case, verbose=True):
-    if verbose:
-        print "Compute CFD bounding box:"
-    p = subprocess.Popen("fsBoundingBox -case "+case+" | grep 'Overall domain bounding box' | sed \"s/.*box (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    boundingBox,error = p.communicate()
-    if error:
-        print 'error: ', error
-        raise SystemExit('abort ...')
-    boundingBox = boundingBox.split(' ')
-    boundingBox = [float(i) for i in boundingBox]
-    if verbose:
-        print "   ", boundingBox
-    return boundingBox 
-
 def readHomerData(data):
     print 'Reading data from Homer file : '+data.hmrUserOutput
     modes2use = [int(i) for i in data.modesToUse.split()]
@@ -555,7 +545,13 @@ def foamCase_template(data):
     else:
         vbmPatch = None
     if data.outputWave:
-        sys.exit('ERROR: Wave probes cannot be included yet')
+        # print 'WARNING: Wave probes cannot be included yet'
+        wpList = []
+        for wp in data.waveProbes:
+            wpList += createLinearWaveProbesList(*wp)
+    else:
+        wpList = None
+        
     if data.outputForces:
         forcesPatch = data.hullPatch
     else:
@@ -572,12 +568,13 @@ def foamCase_template(data):
                                outputLocalMotions  = len(data.localMotionPts)>0,
                                vbmPatch            = vbmPatch,
                                forcesPatch         = forcesPatch,
+                               waveProbesList      = wpList,
                                version             = "foamStar" )
     controlDict.writeFile()
 
     #fvSchemes
     fvSchemes = FvSchemes( case     = data.caseDir,
-                           simType  = "Euler",
+                           simType  = data.scheme,
                            orthogonalCorrection = "implicit",
                            version  = "foamStar" )
     fvSchemes.writeFile()
@@ -622,12 +619,13 @@ def foamCase_template(data):
     #cell.Set
     filename = data.caseDir+'/cell.Set'
     waveProperties.writeBlendingZoneBatch(filename)
-    bBox = findBoundingBox(data.caseDir+'/constant/triSurface/'+data.stlFile,False)
-    bBox = [0.5*(bBox[0]+bBox[3]), 0.5*(bBox[1]+bBox[4])+math.fabs(bBox[1]-bBox[4]), 0.5*(bBox[2]+bBox[5])]
-    outsidePoints = str(bBox[0])+" "+str(bBox[1])+" "+str(bBox[2])
-    cSet = open(filename,'a')
-    cSet.write('cellSet EulerCells new surfaceToCell "./constant/triSurface/'+data.stlFile+'" (('+outsidePoints+')) yes yes no '+str(data.EulerCellsDist)+' -1e6')
-    cSet.close()
+    if not data.case2D:
+        bBox = findBoundingBox(data.caseDir+'/constant/triSurface/'+data.stlFile,False)
+        bBox = [0.5*(bBox[0]+bBox[3]), 0.5*(bBox[1]+bBox[4])+math.fabs(bBox[1]-bBox[4]), 0.5*(bBox[2]+bBox[5])]
+        outsidePoints = str(bBox[0])+" "+str(bBox[1])+" "+str(bBox[2])
+        cSet = open(filename,'a')
+        cSet.write('cellSet EulerCells new surfaceToCell "./constant/triSurface/'+data.stlFile+'" (('+outsidePoints+')) yes yes no '+str(data.EulerCellsDist)+' -1e6')
+        cSet.close()
     
     #turbulenceProperties, RASProperties
     writeTurbulenceProperties( data.caseDir , "laminar" )
@@ -641,17 +639,26 @@ def foamCase_template(data):
     transportProperties.writeFile()
     
     #dynamicMeshDict
-    if data.addDamping:
-        bBox = findBoundingBox(data.caseDir+'/constant/triSurface/'+data.stlFile,False)
-        LBP = round(0.95*abs(bBox[3]-bBox[0]),2)
-        BC = round(abs(bBox[4]-bBox[1]),2)
-    dynamicMeshDict = DynamicMeshDict( case = data.caseDir,
-                                       hullPatch = data.hullPatch,
-                                       addDamping = data.addDamping,
-                                       lpp = LBP,
-                                       bc = BC,
-                                       version = "foamStar"
-                                     )
+    if data.case2D:
+        dynamicMeshDict = DynamicMeshDict( case = data.caseDir,
+                                           static = True,
+                                           version = "foamStar"
+                                         )
+    else:
+        if data.addDamping:
+            bBox = findBoundingBox(data.caseDir+'/constant/triSurface/'+data.stlFile,False)
+            LBP = round(0.95*abs(bBox[3]-bBox[0]),2)
+            BC = round(abs(bBox[4]-bBox[1]),2)
+        else:
+            LBP = 0.
+            BC = 0.
+        dynamicMeshDict = DynamicMeshDict( case = data.caseDir,
+                                        hullPatch = data.hullPatch,
+                                        addDamping = data.addDamping,
+                                        lpp = LBP,
+                                        bc = BC,
+                                        version = "foamStar"
+                                        )
     dynamicMeshDict.writeFile()
 
     #g
@@ -662,37 +669,38 @@ def foamCase_template(data):
     #alpha water, p_rgh, U, pointDisplacement
     writeAllBoundaries( case=data.caseDir,
                         speed=data.velocity,
-                        symmetryPlane = "yes",
+                        case2D = data.case2D,
                         version = "foamStar" )
     
-    #sixDofDomainBody
-    sixDofDomainBody = SixDofDomainBody( case = data.caseDir,
-                                         mass = data.shipMass,
-                                         inertia = data.shipInertia,
-                                         COG = data.shipCOG,
-                                         nModes = data.modesToUse,
-                                         donName = data.donName,
-                                         version = "foamStar"
-                                         )
-    sixDofDomainBody.writeFile()
+    #sixDofDomainBody, flexProperties
+    if not data.case2D:
+        sixDofDomainBody = SixDofDomainBody( case = data.caseDir,
+                                            mass = data.shipMass,
+                                            inertia = data.shipInertia,
+                                            COG = data.shipCOG,
+                                            nModes = data.modesToUse,
+                                            donName = data.donName,
+                                            version = "foamStar"
+                                            )
+        sixDofDomainBody.writeFile()
      
-    if len(data.modesToUse)>0:
-        print 'Create flexible properties input files'
-        writeFlexProperties( case = data.caseDir,
-                             donName = data.donName,
-                             mdFile = data.mdFile,
-                             modes2use = data.modesToUse,
-                             datFile = data.datFile,
-                             dmigFile = data.dmigFile,
-                             draft = data.draft,
-                             scale = data.hmrScaling,
-                             vtkOut = data.vtkOut,
-                             hullPatch = data.hullPatch,
-                             localPts = data.localMotionPts,
-                             freq = data.shipFreq,
-                             damping = data.shipDamping,
-                             version = "foamStar"
-                            )
+        if len(data.modesToUse)>0:
+            print 'Create flexible properties input files'
+            writeFlexProperties( case = data.caseDir,
+                                donName = data.donName,
+                                mdFile = data.mdFile,
+                                modes2use = data.modesToUse,
+                                datFile = data.datFile,
+                                dmigFile = data.dmigFile,
+                                draft = data.draft,
+                                scale = data.hmrScaling,
+                                vtkOut = data.vtkOut,
+                                hullPatch = data.hullPatch,
+                                localPts = data.localMotionPts,
+                                freq = data.shipFreq,
+                                damping = data.shipDamping,
+                                version = "foamStar"
+                                )
 
     #run.sh
     filename = data.caseDir+'/run.sh'
@@ -702,27 +710,38 @@ def foamCase_template(data):
         setValue(filename, 'NB_PROCS', data.nProcs)
         setValue(filename, 'SOLVER_NAME', data.solver)
         
-def setBoundaries(data,meshTimeFolder):
-    
+def setBoundaries(data):
     rc = '\n'
     
-    if not os.path.isfile(data.meshDir+'/'+meshTimeFolder+'/polyMesh/boundary_old'):
-        os.rename(data.meshDir+'/'+meshTimeFolder+'/polyMesh/boundary',data.meshDir+'/'+meshTimeFolder+'/polyMesh/boundary_old')
-    obound = open(data.meshDir+'/'+meshTimeFolder+'/polyMesh/boundary_old','r')
-    nbound = open(data.meshDir+'/'+meshTimeFolder+'/polyMesh/boundary','w')
+    os.rename(data.caseDir+'/constant/polyMesh/boundary',data.caseDir+'/constant/polyMesh/boundary_old')
+    obound = open(data.caseDir+'/constant/polyMesh/boundary_old','r')
+    nbound = open(data.caseDir+'/constant/polyMesh/boundary','w')
     
     for line in obound:
-        if '10' in line[:4]:
+        if (not data.case2D) and ('10' in line[:4]):
             nbound.write('7'+rc)
+        elif data.case2D and '7' in line[:4]:
+            nbound.write('6'+rc)
         elif 'defaultFaces' in line:
             for _ in xrange(5): obound.next()
+        elif 'domainY0' in line:
+            if data.case2D:
+                nbound.write(line)
+                line = obound.next()
+                nbound.write(line)
+                line = obound.next()
+                nbound.write('        type            empty;'+rc)
+                line = obound.next()
         elif 'domainY1' in line:
             nbound.write(line)
             line = obound.next()
             nbound.write(line)
             line = obound.next()
-            nbound.write('        type            symmetryPlane;'+rc)
-            nbound.write('        inGroups        1(symmetryPlane);'+rc)
+            if data.case2D:
+                nbound.write('        type            empty;'+rc)
+            else:
+                nbound.write('        type            symmetryPlane;'+rc)
+                nbound.write('        inGroups        1(symmetryPlane);'+rc)
         elif 'ship_hull' in line:
             while(not 'nFaces' in line): line = obound.next()
             nFaces = int(line.split()[-1][:-1])
@@ -759,24 +778,25 @@ def copyMesh(data):
     else:
         meshTimeFolder = data.meshTime
     
-    if not data.disableBound: setBoundaries(data,meshTimeFolder)
-    
     print 'Copy mesh from folder '+meshTimeFolder
     subprocess.call('cp -r '+data.meshDir+'/'+meshTimeFolder+'/polyMesh '+data.caseDir+'/constant', shell=True)
-
-    print 'Copy '+data.stlFile+' file'
-    subprocess.call('mkdir '+data.caseDir+'/constant/triSurface', shell=True)
-    subprocess.call('cp -r '+data.meshDir+'/constant/triSurface/'+data.stlFile+' '+data.caseDir+'/constant/triSurface', shell=True)
     
-    print 'Copy '+data.donName+'.don file'
-    subprocess.call('cp '+data.donFile+' '+data.caseDir+'/.', shell=True)
+    if not data.disableBound: setBoundaries(data)
+    
+    if not data.case2D:
+        print 'Copy '+data.stlFile+' file'
+        subprocess.call('mkdir '+data.caseDir+'/constant/triSurface', shell=True)
+        subprocess.call('cp -r '+data.meshDir+'/constant/triSurface/'+data.stlFile+' '+data.caseDir+'/constant/triSurface', shell=True)
+        
+        print 'Copy '+data.donName+'.don file'
+        subprocess.call('cp '+data.donFile+' '+data.caseDir+'/.', shell=True)
 
 def initCase(data):
     string=[]
     string.append('setSet -batch cell.Set')
     string.append('setsToZones -noFlipMap')
     string.append('cp -rf ./0/org/* ./0/')
-    if len(data.modesToUse)>0: string.append('initFlx initFlexDict')
+    if len(data.modesToUse)>0 and not data.case2D: string.append('initFlx initFlexDict')
     string.append('initWaveField')
     rc = '\n'
     process = 'set -x'+rc+'('+rc 
@@ -801,6 +821,11 @@ def decomposeCase(data):
     os.chdir(data.caseDir)
     subprocess.call(process, shell=True)
     os.chdir('..')
+
+def tarCase(data):
+    print 'Creating archive {}.tar.gz'.format(data.caseDir)
+    process = 'tar czvf {}.tar.gz {}'.format(data.caseDir,data.caseDir)
+    subprocess.call(process, shell=True)
 
 #*** These are templates files *************************************************
 
@@ -1078,6 +1103,7 @@ waveSeaLvl = 0
 waveStartTime = 0
 waveRampTime = 10
 addDamping = False
+waveProbes = xMin Xmax nX y zMin zMax nZ; xMin Xmax nX y zMin zMax nZ
 
 #Set Euler and Relaxation zones (set 0 if no zone)
 EulerCellsDist  = 8
@@ -1104,10 +1130,11 @@ if __name__ == "__main__":
     dat = cmdOptions(sys.argv)
     if dat.genCase:
         copyMesh(dat)
-        readHomerData(dat)
+        if not dat.case2D: readHomerData(dat)
         foamCase_template(dat)
     if dat.initCase: initCase(dat)
     if dat.decomposeCase: decomposeCase(dat)
+    if dat.tar: tarCase(dat)
     endTime = time.time()
     print 'Case generation completed in %d minutes' % ((endTime-startTime)/60)
     

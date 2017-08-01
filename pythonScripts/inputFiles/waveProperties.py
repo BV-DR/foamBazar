@@ -3,7 +3,7 @@ from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import Vector, DictProxy
 import numpy as np
 import os
-from compatOF import waveTypeDict
+from compatOF import waveTypeDict, foamStarPatch
 from math import pi 
 # from Spectral.omega2wn import omega2omegae
 
@@ -144,7 +144,11 @@ class WaveProperties( WriteParameterFile ) :
             self["initCoeffs"] = {"$mycase" : ''}
             self["relaxationNames"] =  [ relax.name for relax in relaxZones if relax.relax]
             for relax  in relaxZones :
-                self[relax.name + "Coeffs"] = relax.pyFoamDict(version = version)
+                if version=="foamStar": 
+                    relaxName = '"({}|{})Coeffs"'.format(foamStarPatch[relax.name],relax.name)
+                else:
+                    relaxName = "{}Coeff".foamat(relax.name)
+                self[relaxName] = relax.pyFoamDict(version = version)
     
         elif version == "foamExtend" :
             self["relaxationNames"] =  [ relax.name for relax in relaxZones if relax.relax]

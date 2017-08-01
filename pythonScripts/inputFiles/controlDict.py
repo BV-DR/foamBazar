@@ -2,7 +2,7 @@ from os.path import join
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import Vector, DictProxy
 from waveProbes import setWaveProbes
-from compatOF import application
+from compatOF import application, surfaceElevation
 
 class ControlDict( WriteParameterFile ) :
 
@@ -89,8 +89,8 @@ class ControlDict( WriteParameterFile ) :
             fDict["localMotion"] = localDict
         
         #Construct waveProbe dict from waveProbes list  [ ( x,y,z_min,nb_point ) , ... ]
-        # if waveProbesList is not None  :
-            # self["functions"] = setWaveProbes( waveProbesList , version = version , writeProbesInterval = writeProbesInterval )
+        if waveProbesList is not None:
+            fDict[surfaceElevation[version]] = setWaveProbes( waveProbesList , version = version , writeProbesInterval = writeProbesInterval )
             
         self["functions"] = fDict
 

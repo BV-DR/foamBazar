@@ -32,6 +32,34 @@ def foamFileExist(filename):
     if not found:
         found = os.path.isfile(filename + '.gz')
     return found
+    
+def findBoundingBox(stlFile, verbose=True):
+    if verbose:
+        print "Compute STL bounding box: " + stlFile
+    p = subprocess.Popen("surfaceCheck "+stlFile+" | grep '^Bounding Box :' | sed \"s/.*: (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    boundingBox,error = p.communicate()
+    if error:
+        print 'error: ', error
+        raise SystemExit('abort ...')
+    boundingBox = boundingBox.split(' ')
+    boundingBox = [float(i) for i in boundingBox]
+    if verbose:
+        print "   ",boundingBox
+    return boundingBox
+    
+def findCFDBoundingBox(case, verbose=True):
+    if verbose:
+        print "Compute CFD bounding box:"
+    p = subprocess.Popen("fsBoundingBox -case "+case+" | grep 'Overall domain bounding box' | sed \"s/.*box (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    boundingBox,error = p.communicate()
+    if error:
+        print 'error: ', error
+        raise SystemExit('abort ...')
+    boundingBox = boundingBox.split(' ')
+    boundingBox = [float(i) for i in boundingBox]
+    if verbose:
+        print "   ", boundingBox
+    return boundingBox 
 
 def runCommand(cmd):
     try:
@@ -62,6 +90,15 @@ def getFoamTimeFolders(dir,constant=False,inprocs=False):
             timeFolders.append(val)
     return timeFolders
     pass
+    
+def getBool(string):
+    if string in ['True','true','T','t','1']:
+        return True
+    elif string in ['False','false','F','f','0']:
+        return False
+    else:
+        print 'Invalid boolean entry : '+str(string)
+        raise SystemExit('')
     
 def checkError(file):
     error=False
