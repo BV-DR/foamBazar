@@ -12,12 +12,12 @@
 import os
 import numpy as np
 import pandas as pd
-from waveTimeFrequencyAnalysis.TimeDomain import TimeSignals as ts
+import waveTimeFrequencyAnalysis.Reader as rd
 
 dicoPost = {
              "motions" : 'motions',
              "sixDofDomainBody" : 'motionInfo',
-             "surfaceElevation.dat" : 'waveProbe',
+             "surfaceElevation" : 'waveProbes',
              "fx" : 'vbm',
              "fy" : 'vbm',
              "fz" : 'vbm',
@@ -56,7 +56,7 @@ def fsRead(case,res,split=False,csv=False):
     data = [{} for i in range(ntlist)]
     if split: tdt = np.empty(0)
     for t in xrange(ntlist):
-        data[t] = ts.read(os.path.join(case,'postProcessing',dicoPost[res],str(tlist[t]),res+'.dat'),reader="openFoamReader")
+        data[t] = rd.dfRead(os.path.join(case,'postProcessing',dicoPost[res],str(tlist[t]),res+'.dat'),reader="openFoamReader")
         if t>0: data[t] = data[t][data[t].index>data[t-1].index[-1]]
         if split:
             dt = round(data[t].index[-1] - data[t].index[-2],10)
