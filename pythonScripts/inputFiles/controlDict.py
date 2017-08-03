@@ -57,8 +57,8 @@ class ControlDict( WriteParameterFile ) :
             vbmDict["type"]               = "internalLoads"
             vbmDict["outputControl"]      = "timeStep"
             vbmDict["outputInterval"]     = 1
-            vbmDict["hullPatches"]        = vbmPatch[0]
-            vbmDict["donFileName"]        = '"'+vbmPatch[1]+'.don"'
+            vbmDict["hullPatches"]        = '({})'.format(vbmPatch[0])
+            vbmDict["donFileName"]        = '"{}.don"'.format(vbmPatch[1])
             vbmDict["wldFileName"]        = '""'
             vbmDict["log"]                = "true"
             vbmDict["ySymmetry"]          = "yes"

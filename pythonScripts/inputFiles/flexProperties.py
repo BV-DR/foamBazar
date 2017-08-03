@@ -14,7 +14,7 @@ class InitFlexDict(WriteParameterFile) :
     """
     def __init__(self , case, mdFile=None, modes2use=None, datFile=None, dmigFile=None, draft=0., scale=1., vtkOut=True, hullPatch=None, localPts=None, version="foamStar"):
         
-        WriteParameterFile.__init__(self,  name = join(case, "initFlxDict")  )
+        WriteParameterFile.__init__(self,  name = join(case, "initFlexDict")  )
         self.header["class"] = "dictionary"
         
         fem = DictProxy()
@@ -49,8 +49,8 @@ class FlexFile(WriteParameterFile) :
         dmig_name = ((dmigFile).rpartition('/')[-1]).partition('_dmig')[0]
         self['#include "modeshapes/{}_dmig.prj"'.format(dmig_name)] = ""
         self['#include "modeshapes/CFD_{}_fpt.flx"'.format(hullPatch)] = ""
-        self['#include "modeshapes/CFD_{}_fpt.fps"'.format(hullPatch)] = ""
-        self['#include "modeshapes/CFD_{}_fpt.mpt"'.format(hullPatch)] = ""
+        self['#include "modeshapes/CFD_{}_fps.flx"'.format(hullPatch)] = ""
+        self['#include "modeshapes/CFD_{}_mpt.flx"'.format(hullPatch)] = ""
         if localPts is not None:
             if len(localPts)>0:
                 self['#include "modeshapes/PTS_localMotion.flx"'] =  ""

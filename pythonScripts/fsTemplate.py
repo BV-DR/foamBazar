@@ -74,7 +74,8 @@ DEFAULT_PARAMS = {
 'outletRelaxZone' : None,
 'sideRelaxZone' : None,
 'shipDamping' : None,
-'waveProbes' : []
+'waveProbes' : [],
+'case2D' : False
 }
 
 #*** Data structure for user input data
@@ -687,19 +688,19 @@ def foamCase_template(data):
         if len(data.modesToUse)>0:
             print 'Create flexible properties input files'
             writeFlexProperties( case = data.caseDir,
-                                donName = data.donName,
-                                mdFile = data.mdFile,
-                                modes2use = data.modesToUse,
-                                datFile = data.datFile,
-                                dmigFile = data.dmigFile,
-                                draft = data.draft,
-                                scale = data.hmrScaling,
-                                vtkOut = data.vtkOut,
-                                hullPatch = data.hullPatch,
-                                localPts = data.localMotionPts,
-                                freq = data.shipFreq,
-                                damping = data.shipDamping,
-                                version = "foamStar"
+                                 donName = data.donName,
+                                 mdFile = data.mdFile,
+                                 modes2use = data.modesToUse,
+                                 datFile = data.datFile,
+                                 dmigFile = data.dmigFile,
+                                 draft = data.draft,
+                                 scale = data.hmrScaling,
+                                 vtkOut = data.vtkOut,
+                                 hullPatch = data.hullPatch,
+                                 localPts = data.localMotionPts,
+                                 freq = data.shipFreq,
+                                 damping = data.shipDamping,
+                                 version = "foamStar"
                                 )
 
     #run.sh
@@ -724,14 +725,13 @@ def setBoundaries(data):
             nbound.write('6'+rc)
         elif 'defaultFaces' in line:
             for _ in xrange(5): obound.next()
-        elif 'domainY0' in line:
-            if data.case2D:
-                nbound.write(line)
-                line = obound.next()
-                nbound.write(line)
-                line = obound.next()
-                nbound.write('        type            empty;'+rc)
-                line = obound.next()
+        elif ('domainY0' in line) and data.case2D:
+            nbound.write(line)
+            line = obound.next()
+            nbound.write(line)
+            line = obound.next()
+            nbound.write('        type            empty;'+rc)
+            line = obound.next()
         elif 'domainY1' in line:
             nbound.write(line)
             line = obound.next()
