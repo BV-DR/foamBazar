@@ -15,6 +15,7 @@ import sys, argparse, configparser
 import pprint
 from fsTools import *
 from inputFiles.fvSchemes import FvSchemes
+from inputFiles.fvSolution import FvSolution
 from inputFiles.controlDict import ControlDict
 from inputFiles.waveProperties import WaveProperties, RelaxZone, WaveCondition
 from inputFiles.waveProbes import createLinearWaveProbesList, setWaveProbes
@@ -581,9 +582,11 @@ def foamCase_template(data):
     fvSchemes.writeFile()
 
     #fvSolution
-    filename = data.caseDir+'/system/fvSolution'
-    subprocess.call('cat << EOF > '+ filename + fsHeader + fvSolution_contents, shell=True)
-    setValue(filename, 'FSI_TOL', data.fsiTol)
+    fvSolution = FvSolution( case    = data.caseDir,
+                             fsiTol  = data.fsiTol,
+                             useEuler = data.scheme=='Euler',
+                             version  = "foamStar" )
+    fvSolution.writeFile()
     
     #decomposeParDict
     decomposeParDict = DecomposeParDict( case=data.caseDir, nProcs=data.nProcs )
@@ -837,205 +840,6 @@ fsHeader =r'''
 |   \\\\  /    A nd           | Web:      www.OpenFOAM.org                      | 
 |    \\\\/     M anipulation  |                                                 | 
 \*---------------------------------------------------------------------------*/ 
-'''
-
-fvSolution_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "system";
-    object      fvSolution;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-/*
-*   created by template on $(hostname) @ $(date)
-*/
-
-solvers
-{
-    "alpha.water.*"
-    {
-        nAlphaCorr      3;
-        nAlphaSubCycles 1;
-        cAlpha          0.3;
-
-        MULESCorr       yes;
-        nLimiterIter    5;
-        alphaApplyPrevCorr  no;
-
-        solver          smoothSolver;
-        smoother        symGaussSeidel;
-        tolerance       1e-8;
-        relTol          0;
-        minIter         2;
-    }
-
-    "pcorr.*"
-    {
-        solver          PCG;
-        preconditioner
-        {
-            preconditioner  GAMG;
-            tolerance       1e-7;
-            relTol          0;
-            smoother        DICGaussSeidel;
-            nPreSweeps      0;
-            nPostSweeps     2;
-            nFinestSweeps   2;
-            cacheAgglomeration false;
-            nCellsInCoarsestLevel 10;
-            agglomerator    faceAreaPair;
-            mergeLevels     1;
-        }
-
-        tolerance       1e-08;
-        relTol          0;
-        maxIter         1000;
-        minIter         2;
-
-    };
-
-    p_rgh
-    {
-        solver          GAMG;
-        tolerance       1e-8;
-        relTol          0;
-        smoother        DIC;
-        nPreSweeps      0;
-        nPostSweeps     2;
-        nFinestSweeps   2;
-        cacheAgglomeration true;
-        nCellsInCoarsestLevel 10;
-        agglomerator    faceAreaPair;
-        mergeLevels     1;
-        minIter         2;
-
-    };
-
-    p_rghFinal
-    {
-        solver          PCG;
-        preconditioner
-        {
-            preconditioner  GAMG;
-            tolerance       1e-7;
-            relTol          0;
-            nVcycles        2;
-            smoother        DICGaussSeidel;
-            nPreSweeps      2;
-            nPostSweeps     2;
-            nFinestSweeps   2;
-            cacheAgglomeration true;
-            nCellsInCoarsestLevel 10;
-            agglomerator    faceAreaPair;
-            mergeLevels     1;
-        }
-
-        tolerance       1e-8;
-        relTol          0;
-        maxIter         1000;
-        minIter         2;
-
-    };
-    
-    "(U|k|epsilon)"
-    {
-        solver          smoothSolver;
-        smoother        GaussSeidel;
-        tolerance       1e-8;
-        relTol          0;
-        nSweeps         2;
-        minIter         2;
-    }
-
-    "(U|k|epsilon)Final"
-    {
-        solver          smoothSolver;
-        smoother        GaussSeidel;
-        tolerance       1e-8;
-        relTol          0;
-        nSweeps         2;
-        minIter         2;
-    }
-
-    "cellDisplacement.*"
-    {
-        solver          GAMG;
-        tolerance       1e-8;
-        relTol          0;
-        smoother        GaussSeidel;
-        cacheAgglomeration true;
-        nCellsInCoarsestLevel 10;
-        agglomerator    faceAreaPair;
-        mergeLevels     1;
-
-    }
-}
-
-PIMPLE
-{
-    //EulerCells  EulerCells;
-    momentumPredictor   yes;
-    nOuterCorrectors    22;
-    fsiTol              FSI_TOL;
-    fsiMaxIter          23;
-    nCorrectors         4;
-    nNonOrthogonalCorrectors 0;
-    correctPhi          no;
-    moveMeshOuterCorrectors yes;
-}
-
-relaxationFactors
-{
-    equations
-    {
-        U       1;
-        UFinal  1;
-        p_rgh   1;
-        p_rghFinal 1;
-    }
-}
-
-// ************************************************************************* //
-
-EOF
-'''
-
-waveProbe_contents='''
-waveProbe
-{
-    type surfaceElevation;
-    fields              (alpha.water);     // default is alpha.water
-    writePrecision      6;                 // default is 6
-    interpolationScheme cellPointFace;     // default is cellPointFace
-    outputControl timeStep; outputInterval 1;
-
-    // using syntax from libsampling.so
-    sets
-    (
-        wp1
-        {
-            start (315 1 -5.6);
-            end (315 1 3.5);
-            type face; axis z;
-            nPoints 100;
-        }
-
-        wp2
-        {
-            start (340 1 -5.6);
-            end (340 1 3.5);
-            type face; axis z;
-            nPoints 100;
-        }
-    );
-}
-
-// ************************************************************************* //
-
-EOF
 '''
 
 run_contents='''

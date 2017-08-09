@@ -12,14 +12,11 @@
 import os, subprocess, time, math
 import numpy as np
 import sys, argparse, configparser
+from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
 import pprint
 from fsTools import *
 
 # abenhamou: 2017-july-27
-
-DEFAULT_PARAMS = {
-'caseDir' : 'newCase'
-}
 
 #*** Data structure for user input data
 class UserInput(object):
@@ -52,9 +49,9 @@ def cmdOptions(argv):
 
 def cloneFolder(data,time):
     
-    baseDir = data.dir.split('_')[0]
+    baseDir = data.dir.rsplit('_',1)[0]
     if data.SWcase:
-        data.newDir = baseDir+'_sw_CN'
+        data.newDir = baseDir+'_swCN'
     elif data.WVcase:
         data.newDir = baseDir+'_wave'
     else:
@@ -78,8 +75,7 @@ def getJobName(data):
             job = line.split()[-1]
             break
     rf.close()
-    jsplit = job.split('_')
-    bjob = jsplit[0]+'_'+jsplit[1]
+    bjob = job.rsplit('_',1)[0]
     
     return job, bjob
     
@@ -89,58 +85,47 @@ def setInputs(data):
     if data.SWcase:
         # fvSolution
         filename = data.newDir+'/system/fvSolution'
-        setValue(filename, r'//EulerCells  EulerCells;', 'EulerCells  EulerCells;',True)
+        parsedFile = ParsedParameterFile(filename)
+        parsedFile["PIMPLE"]["EulerCells"] = "EulerCells"
+        parsedFile.writeFile()
+        
         # fvSchemes
         filename = data.newDir+'/system/fvSchemes'
-        setValue(filename, 'default      Euler;', 'default      CrankNicolson 0.9;',True)
+        parsedFile = ParsedParameterFile(filename)
+        parsedFile["ddtSchemes"]["default"] = "CrankNicolson {}".format(0.9)
+        parsedFile.writeFile()
+        
         # run.sh
         filename = data.newDir+'/run.sh'
         oname, bname = getJobName(data)
-        setValue(filename, oname, bname+'_sw_CN',True)
+        setValue(filename, oname, bname+'_swCN',True)
     elif data.WVcase:
         # fvSolution
         filename = data.newDir+'/system/fvSolution'
-        setValue(filename, r'//EulerCells  EulerCells;', 'EulerCells  EulerCells;',True)
+        parsedFile = ParsedParameterFile(filename)
+        parsedFile["PIMPLE"]["EulerCells"] = "EulerCells"
+        parsedFile.writeFile()
+        
         # fvSchemes
         filename = data.newDir+'/system/fvSchemes'
-        setValue(filename, 'default      Euler;', 'default      CrankNicolson 0.9;',True)
+        parsedFile = ParsedParameterFile(filename)
+        parsedFile["ddtSchemes"]["default"] = "CrankNicolson {}".format(0.9)
+        parsedFile.writeFile()
+        
         # dynamicMeshDict
         filename = data.newDir+'/constant/dynamicMeshDict'
-        os.rename(filename,filename+'_old')
-        odf = open(filename+'_old','r')
-        ndf = open(filename,'w')
-        for line in odf:
-            if 'dampingCoeff' in line:
-                ndf.write(r'//'+line)
-                line = odf.next()
-                while not '}' in line:
-                    ndf.write(r'//'+line)
-                    line = odf.next()
-                ndf.write(r'//'+line)
-            else:
-                ndf.write(line)
-        odf.close()
-        ndf.close()
+        parsedFile = ParsedParameterFile(filename)
+        del parsedFile["sixDofDomainFvMeshCoeffs"]["loads"]["dampingCoeff"]
+        parsedFile.writeFile()
+        
         # waveProperties
         filename = data.newDir+'/constant/waveProperties'
-        os.rename(filename,filename+'_old')
-        owp = open(filename+'_old','r')
-        nwp = open(filename,'w')
-        for line in owp:
-            if 'waveType    noWaves;' in line:
-                nwp.write(r'    waveType    streamFunction;'+rc)
-            elif 'domainX0Coeffs' in line:
-                nwp.write(line)
-                line = owp.next()
-                while not 'relaxationZone' in line:
-                    nwp.write(line)
-                    line = owp.next()
-                nwp.write(r'    waveType    noWaves;'+rc)
-                nwp.write(line)
-            else:
-                nwp.write(line)
-        owp.close()
-        nwp.close()
+        parsedFile = ParsedParameterFile(filename)
+        parsedFile["mycase"]["waveType"] = "streamFunction"
+        print parsedFile
+        # parsedFile['initCoeffs']["waveType"] = "noWaves"
+        parsedFile.writeFile()
+        
         # run.sh
         filename = data.newDir+'/run.sh'
         oname, bname = getJobName(data)

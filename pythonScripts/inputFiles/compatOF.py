@@ -72,7 +72,7 @@ air = {
 foamStarPatch = {
                     "outlet" : "domainX0",
                     "inlet" : "domainX1",
-                    "side" : "doaminY1",
+                    "side" : "domainY1",
                     "side1" : "domainY0",
                     "side2" : "domainY1",
                     "bottom" : "domainZ0" ,
