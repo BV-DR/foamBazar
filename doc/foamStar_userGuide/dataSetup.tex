@@ -1,10 +1,169 @@
-\chapter{Data setup}
+\chapter{FoamStar data setup}
 
 \section{Mesh}
 
-The mesh should be prepared in a separate folder from the calculation folder. Once created the mesh can be transferred to the calculation folder using the following command:
+The mesh should be prepared in a separate folder from the calculation folder (cf. part \ref{mesh}). Once created the mesh can be transferred to the calculation folder by hand or using fsTemplate python script described hereafter.
+
+\section{Using fsTemplate.py}
+
+All inputs for foamStar correspond to text files that can be written manually. Howerver, due to the huge number of files and options, it is easier and safer to use a template. The fsTemplate.py is a specific script written for automatic foamStar case generation, all parameters need to be set in an input file described hereafter.
+
+\subsection{fsTemplate input file}
+
+Input file for fsTemplate python script contains all information needed for automatic foamStar case generation, the corresponding extension is .cfg. A template can automatically be created using the following command:
 \begin{lstlisting}[language=bash]
-$ write python template script
+$ fsTemplate.py -p
+\end{lstlisting}
+
+Input file options are described hereafter:
+
+\paragraph{Case name}
+The case name, also used as directory name and job name should be given as follow.
+\begin{lstlisting}[language=bash]
+#Set name of case folder to be created
+caseDir = myCase
+\end{lstlisting}
+
+\paragraph{Mesh}
+The mesh location should be given with the following keywords. The mesh directory (relative path) should be provided together with the time folder to be used. The final mesh can be selected automatically by setting "meshTime = latestTime".
+\begin{lstlisting}[language=bash]
+#Set location of mesh folder, stl file name and time folder from which it should be retrieved ('0.08', '0.09' or 'latestTime')
+meshDir = mesh
+meshTime = latestTime
+\end{lstlisting}
+
+\paragraph{STL}
+The name of STL file containing the hull and used to generate the mesh should be given as follow. This file should be located in "meshDir/constant/triSurface" folder.
+\begin{lstlisting}[language=bash]
+#Set name of stl file
+stlFile = ship.stl
+\end{lstlisting}
+
+\paragraph{Hull patch name}
+The name to be given to the hull patch should be provided with the following keyword.
+\begin{lstlisting}[language=bash]
+#Set patch name given for hull in boundary file
+hullPatch = ship
+\end{lstlisting}
+
+\paragraph{Solver parameters}
+Basic solver parameters such as the solver selections, the number of processors to be used in parallel and the scheme (Euler or Chrank Nicolson) can be defined as follow.
+\begin{lstlisting}[language=bash]
+#Set OpenFOAM solver parameters 
+solver = foamStar
+nProcs = 24
+scheme = Euler
+\end{lstlisting}
+
+\paragraph{Case control}
+Parameters controlling the case can be defined as follow. It includes:
+\begin{itemize}
+\item Start time of simulation
+\item End time of simulation
+\item Time step of simulation
+\item Write interval of full output (warning: these outputs takes a lot of disk space)
+\item Number of full outputs to be kept (keep last N output time steps)
+\item Outputs controls (global motions, local motions, internal loads and wave probes)
+\item Local motion points definition (if local motions are needed)
+\item Wave probes location definition (if wave probes are needed)
+\item Tolerance to be used for CFD solver iterations
+\end{itemize}
+
+\begin{lstlisting}[language=bash]
+#Set case control parameters
+startTime = latestTime
+endTime = 4000
+timeStep = 0.05
+writeInterval = 40
+purgeWrite = 5
+outputMotions = True
+localMotionPts = X1 Y1 Z1; X2 Y2 Z2; X3 Y3 Z3
+outputVBM = True
+outputWave = False
+waveProbes = xMin Xmax nX y zMin zMax nZ; xMin Xmax nX y zMin zMax nZ
+fsiTol = 1e-6
+\end{lstlisting}
+
+\paragraph{Wave properties}
+Parameters controlling the wave can be defined as follow. It includes:
+\begin{itemize}
+\item Wave type (noWaves, streamFunction, ...)
+\item Water depth
+\item Draft
+\item Forward speed
+\item Wave height (regular wave only)
+\item Wave period (regular wave only)
+\item Sea level
+\item Wave start time 
+\item Wave ramp time
+\item Additional hydrodynamic damping (to be used for faster still water cases convergence)
+\end{itemize}
+
+\begin{lstlisting}[language=bash]
+#Set wave properties
+wave = noWaves
+depth = 500
+draft = 0
+velocity = 0.0
+waveH = 1.0
+waveT = 10.0
+waveSeaLvl = 0
+waveStartTime = 0
+waveRampTime = 10
+addDamping = False
+\end{lstlisting}
+
+\paragraph{Relaxation zones}
+Relaxation zones can be defined to blend the wave at input, output or on the sides of the domain. Theses zones are used to avoid reflections on the boundaries and ensure a clean wave field around the ship. These zones are defined by two boundaries, the first is one of the domain boundary and the other has to be user-defined. It corresponds to X, Y or Z coordinates depending on zone type.
+\begin{lstlisting}[language=bash]
+#Set Relaxation zones (set 0 if no zone)
+inletRelaxZone  = 400
+outletRelaxZone = -250
+sideRelaxZone   = 250
+\end{lstlisting}
+
+\paragraph{Scheme blending}
+When using Crank Nicolson scheme, instabilities appears around the floating body. This can bypassed by using Euler scheme around the body. The size of the zone where Euler scheme will be used can be set with following parameter providing the distance between the body and the zone boundary.
+\begin{lstlisting}[language=bash]
+#Set Euler zones (set 0 if no zone)
+EulerCellsDist  = 8
+\end{lstlisting}
+
+\paragraph{Structural data}
+Structural data including mass distribution and flexible properties have to be provided using the following keywords. The corresponding files are described in part \ref{homer}.  It includes:
+\begin{itemize}
+\item A DAT file containing the mesh
+\item A DON file containing information about the sections
+\item A DMIG file with mass matrix
+\item A MD file with informations about flexible modes
+\item Homer HmFEM output file with standard information
+\item Flexible modes to be used
+\item Structural damping to be added on each flexible mode
+\end{itemize}
+
+\begin{lstlisting}[language=bash]
+#Set structural data obtained with Homer
+#all path should be written relatively to this input file location
+datFile =  ../homer/ship.dat
+donFile = ../homer/ship.don
+dmigfile = ../homer/ship_dmig.pch
+mdFile = ../homer/ship_md.pch
+hmrUserOutput = ../homer/HmFEM.out
+modesToUse = 7 8 9
+shipDamping = 0.01 0.01 0.01
 \end{lstlisting}
 
 
+\subsection{Launch options}
+
+To run the fsTemplate.py python script, the following command should be used with the input file described previously:
+\begin{lstlisting}[language=bash]
+fsTemplate.py -f inputFile.cfg
+\end{lstlisting}
+
+This script can generate all inputs files for foamStar but can also initialize the case by running corresponding foamStar routines. The following options are available:
+\begin{itemize}
+\item \textbf{-i}: initialize the foamStar case (generate zones, initialize wave field and initialize flexible modes)
+\item \textbf{-d}: run the decomposition of the case for parallel run
+\item \textbf{-tar}: creates an archive file with the case ready to be launched
+\end{itemize}
