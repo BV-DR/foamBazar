@@ -99,6 +99,7 @@ def setInputs(data):
         filename = data.newDir+'/run.sh'
         oname, bname = getJobName(data)
         setValue(filename, oname, bname+'_swCN',True)
+    
     elif data.WVcase:
         # fvSolution
         filename = data.newDir+'/system/fvSolution'
@@ -122,8 +123,7 @@ def setInputs(data):
         filename = data.newDir+'/constant/waveProperties'
         parsedFile = ParsedParameterFile(filename)
         parsedFile["mycase"]["waveType"] = "streamFunction"
-        print parsedFile
-        # parsedFile['initCoeffs']["waveType"] = "noWaves"
+        parsedFile.content.getRegexpValue('"(domainX0|outlet)Coeffs"')["waveType"] = "noWaves" 
         parsedFile.writeFile()
         
         # run.sh
