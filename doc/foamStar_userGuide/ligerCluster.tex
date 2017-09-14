@@ -56,3 +56,16 @@ alias keepAlive='while [ true ]; do clc; date; i=$[(RANDOM % 100)+10]; sleep $i;
 \end{lstlisting}
 
 You will have to launch "keepAlive" every time you are not working on your session.
+
+\section{Administration}
+
+To know the groups you belong to:
+\begin{lstlisting}[language=bash]
+groups
+\end{lstlisting}
+
+In order to know the CPU hours by everyone of the group:
+\begin{lstlisting}[language=bash]
+sreport cluster AccountUtilizationByUser start=2016-01-01 accounts=I1608251 -t hours
+\end{lstlisting}
+
