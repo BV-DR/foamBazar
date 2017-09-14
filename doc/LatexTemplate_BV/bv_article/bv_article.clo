@@ -1,0 +1,243 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{bv_article}[2004/02/09 Page de Garde Bureau Veritas V4- Antoine Rouhan et Mathieu Renaud - last rev is 2007 Aug. 1]
+\RequirePackage{graphicx}
+\RequirePackage{color}
+\RequirePackage[T1]{fontenc}
+%\RequirePackage{hyperref}
+\RequirePackage{fancyhdr}
+\RequirePackage{lastpage}
+\definecolor{grispantone}{gray}{0.4}
+\definecolor{blanc}{gray}{1.0}
+\definecolor{rougeBV}{rgb}{0.69020,0,0.17647}
+\definecolor{grisBV}{rgb}{0.40784,0.4,0.36078}
+
+
+%on fixe les valeurs courantes
+
+%\setlength\textheight{22cm}
+%\setlength\textwidth {16cm}
+%\setlength\hoffset{1.2cm}
+%\setlength\oddsidemargin{-0.8cm}
+%\setlength\evensidemargin{-1.2cm}
+%\setlength\voffset{-0.9cm}
+%\setlength\parsep{1cm}
+%\setlength\topmargin{-0.cm}
+%\setlength\headheight{51pt}
+
+\setlength{\oddsidemargin}{0.50cm}
+\setlength{\topmargin}{-0.50cm}
+\setlength{\textwidth} {16.00cm}
+\setlength{\textheight}{23.20cm}
+
+\setlength{\parindent}{0.0cm}
+\setlength{\parskip}{0.4cm plus3mm minus3mm}
+
+
+
+\def\@mynormalsize{\fontsize{10}{10}\selectfont}
+\def\@myintersize{\fontsize{9}{9}\selectfont}
+\def\@mysmall{\fontsize{8}{8}\selectfont}
+\def\@mylarge{\fontsize{12}{12}\selectfont}
+\def\@myLarge{\fontsize{14}{14}\selectfont}
+\def\@myLARGE{\fontsize{18}{18}\selectfont}
+\def\@myhuge{\fontsize{20}{20}\selectfont}
+\def\@myHuge{\fontsize{30}{30}\selectfont}
+
+\newcommand{\@textarialbk}[1]{{\fontencoding{T1}\fontfamily{put}\selectfont #1}}
+\newcommand{\@textarial}[1]{{\fontencoding{T1}\fontfamily{put}\selectfont #1}}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Header and footer %%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\doheads}{%
+\pagestyle{fancy}
+\setlength{\headheight}{14.0pt}
+
+%% Normal header and footer  %%
+\fancyhf{} 
+\chead{\bfseries \textbf{\leftmark}} 
+\fancyfoot[R]{\color{grisBV}\vspace*{-0.9em}\begin{minipage}[b]{7cm}\flushright\bfseries\@myintersize\@textarial{ Bureau Veritas Research Department}\end{minipage}}
+\fancyfoot[L]{\bfseries\@myintersize\@textarial{\thepage\ / \pageref{LastPage}}}
+\renewcommand{\footrulewidth}{0.1mm}
+\renewcommand{\footskip}{18mm}
+%\renewcommand{\chaptermark}[1]{\markboth{\thechapter.\ #1}{}}
+%% Chapter pages
+\fancypagestyle{plain}{
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt} % no header line
+\fancyfoot[R]{\color{grisBV}\vspace*{-0.9em}\begin{minipage}[b]{7cm}\flushright\bfseries\@myintersize\@textarial{ Bureau Veritas Research Department}\end{minipage}}
+\fancyfoot[L]{\bfseries\@myintersize\@textarial{\thepage\ / \pageref{LastPage}}}
+}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+\newcommand{\marineconditions}[1]{\gdef\@marineconditions{#1}}
+\newcommand{\reva}[1]{\gdef\@reva{#1}}
+\newcommand{\revb}[1]{\gdef\@revb{#1}}
+\newcommand{\revc}[1]{\gdef\@revc{#1}}
+\newcommand{\datea}[1]{\gdef\@datea{#1}}
+\newcommand{\dateb}[1]{\gdef\@dateb{#1}}
+\newcommand{\datec}[1]{\gdef\@datec{#1}}
+\newcommand{\writtenbya}[1]{\gdef\@writtenbya{#1}}
+\newcommand{\writtenbyb}[1]{\gdef\@writtenbyb{#1}}
+\newcommand{\writtenbyc}[1]{\gdef\@writtenbyc{#1}}
+\newcommand{\checkedbya}[1]{\gdef\@checkedbya{#1}}
+\newcommand{\checkedbyb}[1]{\gdef\@checkedbyb{#1}}
+\newcommand{\checkedbyc}[1]{\gdef\@checkedbyc{#1}}
+\newcommand{\objreva}[1]{\gdef\@objreva{#1}}
+\newcommand{\objrevb}[1]{\gdef\@objrevb{#1}}
+\newcommand{\objrevc}[1]{\gdef\@objrevc{#1}}
+\newcommand{\noata}[1]{\gdef\@noata{#1}}
+\newcommand{\nont}[1]{\gdef\@nont{#1}}
+\newcommand{\titrerapportUppercase}[1]{\gdef\@titrerapportU{#1}}
+\newcommand{\titrerapport}[1]{\gdef\@titrerapport{#1}}%\def\@titrerapportU{\MakeUppercase{#1}}}
+\newcommand{\nomaffaire}[1]{\gdef\@nomaffaire{#1}}
+
+\ifx\@marineconditions\@empty\relax\else\marineconditions{}\fi% 
+\ifx\@reva\@empty\relax\else\reva{}\fi% 
+\ifx\@revb\@empty\relax\else\revb{}\fi% 
+\ifx\@revc\@empty\relax\else\revc{}\fi% 
+\ifx\@datea\@empty\relax\else\datea{}\fi% 
+\ifx\@dateb\@empty\relax\else\dateb{}\fi% 
+\ifx\@datec\@empty\relax\else\datec{}\fi% 
+\ifx\@writtenbya\@empty\relax\else\writtenbya{}\fi% 
+\ifx\@writtenbyb\@empty\relax\else\writtenbyb{}\fi% 
+\ifx\@writtenbyc\@empty\relax\else\writtenbyc{}\fi% 
+\ifx\@checkedbya\@empty\relax\else\checkedbya{}\fi% 
+\ifx\@checkedbyb\@empty\relax\else\checkedbyb{}\fi% 
+\ifx\@checkedbyc\@empty\relax\else\checkedbyc{}\fi% 
+\ifx\@objreva\@empty\relax\else\objreva{}\fi% 
+\ifx\@objrevb\@empty\relax\else\objrevb{}\fi% 
+\ifx\@objrevc\@empty\relax\else\objrevc{}\fi% 
+\ifx\@titrerapportU\@empty\relax\else\gdef\@titrerapportU{\@titrerapport}\fi% 
+\noata{}
+\nont{}
+%\titrerapport{}
+\nomaffaire{}
+
+
+
+%%
+\newcommand{\bvpage}{%
+\newlength\@texth\setlength\@texth{\textheight}
+\newlength\@textw\setlength\@textw{\textwidth}
+\newlength\@vof\setlength\@vof{\voffset}
+\newlength\@hof\setlength\@hof{\hoffset}
+\newlength\@oddsi\setlength\@oddsi{\oddsidemargin}
+\newlength\@evensi\setlength\@evensi{\evensidemargin}
+\setlength\hoffset {-2.2cm}
+\setlength\oddsidemargin{0cm}
+\setlength\evensidemargin{0cm}
+\setlength\voffset{2.52cm}
+\if@twocolumn
+\onecolumn
+\def\@tempo{1}
+\else
+\def\@tempo{0}
+\fi
+\thispagestyle{empty}
+\vspace*{-5.0cm}
+\begin{minipage}[b]{0.9\paperwidth}
+   \fontencoding{T1}\fontfamily{put}\selectfont
+   \setlength{\unitlength}{1cm}
+   \begin{picture}(0,0)(1.1,-8.5)\put(0,-29){%[height=29.7cm,width=21.27cm]
+       {\includegraphics[scale=1.1]{title}}
+   }\end{picture}
+   \begin{flushright}
+      {\@myHuge\color{black}\@textarialbk{MARINE}}\\
+	  \vspace*{0.5cm}
+	  {\@myHuge\color{black}\@textarialbk{DIVISION}}\\ %\end{minipage}\\
+	  \vspace*{2.5cm}
+	  {\@myLarge \@textarialbk{\hspace{-1cm}\color{white}\begin{minipage}[b]{3.52cm}{\hspace{\fill}\@nont\\\vspace*{0.4cm}\hspace{\fill}\@noata}\end{minipage}}}\\
+%  NT :\ \ \@nont\\\hspace{1cm}\vspace*{0.4cm}ATA : \@noata }}\\
+%   \begin{flushleft}
+%        {\@myLarge \@textarialbk{\hspace{1cm}NT :\ \ \@nont\\\hspace{1cm}\vspace*{0.2cm}ATA : \@noata }}\\
+%   \end{flushleft}
+
+    \color{white}\@myhuge\@textarialbk{\@nomaffaire}\\
+\vspace*{1.2cm}
+	\end{flushright}
+	\vspace*{3.0cm}
+
+	\begin{center}
+	{\hspace{1.5cm} \color{black}\@myhuge\bfseries\@textarial{\@titrerapport}}\\
+	\end{center}
+	\begin{picture}(0,0)(0.,0.)\put(6.,-5.5){
+		{\hspace{1cm} \includegraphics[scale=0.6]{logo_bv_mfwc}}
+	}\end{picture}
+\end{minipage}\\
+
+
+\vspace*{\stretch{1000}}
+\begin{center}
+\hspace*{1cm}\begin{minipage}[b]{0.9\paperwidth}
+	\begin{center}
+%        {\color{black}\@myhuge\bfseries\@textarial{\@titrerapport}}}
+        \vspace*{2cm}
+        \color{black}\@mynormalsize
+
+{\fontencoding{T1}\fontfamily{put}\selectfont\color{black}
+\begin{tabular*}{15.9cm}{@{\extracolsep{\fill}}|p{3cm}|p{3cm}|p{3cm}|p{3cm}|}\hline
+\makebox[1.1in][c]{\rule[-0.2cm]{0cm}{0.6cm}Issue} & \@reva & \@revb & \@revc \\ \hline
+\makebox[1.1in][c]{\rule[-0.2cm]{0cm}{0.6cm}Date} & \@datea & \@dateb & \@datec \\\hline
+\makebox[1.1in][c]{\rule[-0.2cm]{0cm}{0.6cm}Author} & \@writtenbya  & \@writtenbyb &\@writtenbyc \\\hline
+\makebox[1.1in][c]{\rule[-0.2cm]{0cm}{0.6cm}Verified by}&\@checkedbya  &\@checkedbyb  &\@checkedbyc\\\hline
+\makebox[1.1in][c]{\rule[-0.6cm]{0cm}{1.cm}Comments}&\@objreva &\@objrevb &\@objrevc \\\hline
+\end{tabular*}%
+\color{black}
+}%
+\vspace*{1.cm}%
+\\
+\hrulefill\\
+\vspace{0.05cm}
+
+{\@mysmall\definecolor{gris}{gray}{0.5}
+\color{grisBV}\bf%
+\fontencoding{T1}\fontfamily{put}\selectfont
+Bureau Veritas Research Department - Immeuble le '1828', 67/71 Bd du Ch\^ateau - 92571 Neuilly sur Seine -France  \newline
+Tel: +33 1 55 24 70 00 / www.bureauveritas.com
+}
+      \end{center}\vspace*{0.5cm}
+
+\end{minipage}\end{center}
+\clearpage
+\setlength\textheight\@texth
+\setlength\textwidth\@textw
+\setlength\voffset\@vof
+\setlength\hoffset\@hof
+\setlength\oddsidemargin\@oddsi
+\setlength\evensidemargin\@evensi
+\newpage
+
+\ifx\@marineconditions\@empty\relax\else%
+\thispagestyle{empty}
+\newpage\clearpage\vspace*{-5cm}
+\thispagestyle{empty}%
+\begin{center}\mbox{\ \ }\\
+\mbox{\ \ }\vspace*{-3cm}\hspace*{-1.7cm}
+\includegraphics[width=1.15\textwidth]{conditions_generales}
+\end{center}%
+\pagestyle{empty}%
+\newpage
+\fi
+\ifnum\@tempo = 1
+\twocolumn
+\fi
+\setcounter{page}{1}
+\doheads
+\newlength{\parwidth}
+\setlength{\parwidth}{\textwidth}
+\addtolength{\parwidth}{-\leftmargin}
+\addtolength{\parwidth}{-\rightmargin}
+%\end{bvenv}
+}
+
+
+
+
