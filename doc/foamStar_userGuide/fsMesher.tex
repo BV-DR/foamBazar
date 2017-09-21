@@ -45,13 +45,6 @@ stlFile1 = ./deck.stl
 stlFile2 = ./stern.stl
 \end{lstlisting}
 
-\paragraph{Draft}
-Draft must be defined from keel in the STL file coordinates system. If different from zero, the geometry is moved relatively to free surface.
-\begin{lstlisting}[language=bash]
-# Draft (measured from keel)
-draft = 15.0
-\end{lstlisting}
-
 \paragraph{Refinement in areas with strong curvature}
 Areas with strong curvature such as bow and stern parts can be specified in order to be refined automatically. User must provide these areas in STL format.
 \begin{lstlisting}[language=bash]
@@ -67,25 +60,75 @@ draft = 15.0
 \end{lstlisting}
 
 \paragraph{Heading}
-Heading is defined in degrees by the following parameter, 180\degree  corresponds to head sea.
+Heading is defined in degrees by the following parameter, 180\degree  corresponds to head sea. If heading is different from head or following sea, symmetric mesh can't be used.
 \begin{lstlisting}[language=bash]
 # Heading (in degrees)
 heading = 180
 \end{lstlisting}
 
 \paragraph{Side to mesh}
-In case of head sea, only one half of the domain has to be meshed, this parameter is use to select which side must be considered ("port" or "starboard"). In case of non-symmetrical mesh, the option "both" should be used.
+In case of head or following sea, only one half of the domain has to be meshed. This parameter is used to select which side must be considered ("port" or "starboard"). In case of non-symmetrical mesh, the option "both" should be used.
 \begin{lstlisting}[language=bash]
 # Side : port, starboard or both ?
 side = port
 \end{lstlisting}
 
 \paragraph{Domain size}
-The size of the whole CFD domain is defined in relation with ship overall length (LOA). Six coefficients ($c_1$, ..., $c_6$) must be defined to set domain boundaries such as $X_{min}= c_1 \cdot \text{LOA}$, $X_{max}= c_2 \cdot \text{LOA}$, $Y_{min}= c_3 \cdot \text{LOA}$, $Y_{max}= c_4 \cdot \text{LOA}$, $Z_{min}= c_5 \cdot \text{LOA}$ and $Z_{max}= c_6 \cdot \text{LOA}$. Default values (-3.0, 2.5, -2.0, 2.0, -0.82124, 0.5555) can be used by setting the keyword to "auto".
+The size of the whole CFD domain is defined in relation with ship overall length (LOA). Six coefficients ($c_1$, ..., $c_6$) must be defined to set domain boundaries such as:
+\begin{itemize}
+\item $X_{min}= c_1 \cdot \text{LOA}$
+\item $X_{max}= c_2 \cdot \text{LOA}$
+\item $Y_{min}= c_3 \cdot \text{LOA}$
+\item $Y_{max}= c_4 \cdot \text{LOA}$
+\item $Z_{min}= c_5 \cdot \text{LOA}$
+\item $Z_{max}= c_6 \cdot \text{LOA}$
+\end{itemize}
+Figure \ref{boundaries} shows the location of boundaries. Default values (-3.0, 2.5, -2.0, 2.0, -0.82124, 0.5555) can be used by setting the keyword to "auto".
 \begin{lstlisting}[language=bash]
 # Domain size relatively to LOA [X(min,max) Y(min,max) Z(min,max)]
 domain = -3.0, 2.5, -2.0, 2.0, -0.82124, 0.5555
 \end{lstlisting}
+
+\begin{figure}[htbp]
+\begin{center}
+    \def\setA{(0,0) circle (1)}
+    \def\setB{(0,0) circle (1)}
+    
+    \begin{tikzpicture}
+        % Top view
+        \draw (-8,2) -- (-1,2) 
+            node[midway,above] {$Y_{max}=c_4 \cdot LOA$}
+            -- (-1,-2)
+            node[midway,below,sloped,rotate=180] {$X_{max}=c_2 \cdot LOA$}
+            -- (-8,-2)
+            node[midway,below] {$Y_{min}=c_3 \cdot LOA $}
+            -- (-8,2)
+            node[midway,above,sloped] {$X_{min}=c_1 \cdot LOA$};
+        \draw[fill=black!25] (-6.5,-2) -- (-6.5,-1.5) .. controls (-3.2,-1.5) and (-3,-1.5) .. (-2.5,-2) -- (-6.5,-2);
+        
+        \draw[latex-latex,blue] (-6.5,-1) -- (-2.5,-1) node[midway,above] {$LOA$};
+        \draw[-latex,red] (-6.5,-2) -- (-6.2,-2) node[below] {$x$};
+        \draw[-latex,red] (-6.5,-2) -- (-6.5,-1.7) node[left] {$y$};
+        
+        % Side view
+        \draw (1,2) -- (8,2) 
+            node[midway,above] {$Z_{max}=c_6 \cdot LOA$}
+            -- (8,-2)
+            node[midway,below,sloped,rotate=180] {$X_{max}=c_2 \cdot LOA$}
+            -- (1,-2)
+            node[midway,below] {$Z_{min}=c_5 \cdot LOA $}
+            -- (1,2)
+            node[midway,above,sloped] {$X_{min}=c_1 \cdot LOA$};
+        \draw[fill=black!25] (5.8,-0.4) -- (2.95,-0.4) -- (2.8,-0.2) -- (2.5,-0.1) -- (2.5,0.4) -- (6.5,0.4) -- (6.5,0.4) .. controls (5.9,-0.1) and (6.3,-0.3) .. (5.8,-0.4);
+        
+        \draw[latex-latex,blue] (2.5,0.8) -- (6.5,0.8) node[midway,above] {$LOA$};
+        \draw[-latex,red] (2.95,-0.4) -- (3.25,-0.4) node[below] {$x$};
+        \draw[-latex,red] (2.95,-0.4) -- (2.95,-0.1) node[left] {$y$};
+    \end{tikzpicture}
+\end{center}
+\caption{Definition of domain boundaries}
+\label{boundaries} 
+\end{figure}
 
 \paragraph{Characteristic length}
 Overall length (LOA) is usually directly computed from the geometry ("auto") but it can also be user-defined with this parameter.
@@ -95,11 +138,47 @@ LOA = 300.
 \end{lstlisting}
 
 \paragraph{Free surface zone}
-The vertical extent of the free surface refined zone is defined in relation with ship overall length (LOA). Two coefficients ($c_1$, $c_2$) must be defined to set domain boundaries such as $Z_{min}= -c_1 \cdot \text{LOA}$ and $Z_{max}= c_2 \cdot \text{LOA}$. Default values (0.02, 0.01) can be used by setting the keyword to "auto".
+The vertical extent of the free surface refined zone is defined in relation with ship overall length (LOA). Two coefficients ($c_1$, $c_2$) must be defined to set domain boundaries such as:
+\begin{itemize}
+\item $Z_{min}= -c_1 \cdot \text{LOA}$
+\item $Z_{max}= c_2 \cdot \text{LOA}$
+\end{itemize}
+Default values (0.02, 0.01) can be used by setting the keyword to "auto".
 \begin{lstlisting}[language=bash]
 # Free surface zone relatively to LOA [Z(min,max)]
 fsZone = 0.02, 0.01
 \end{lstlisting}
+
+\begin{figure}[htbp]
+\begin{center}
+    \def\setA{(0,0) circle (1)}
+    \def\setB{(0,0) circle (1)}
+    
+    \begin{tikzpicture}        
+        % Side view
+        \draw (-8,2) rectangle (8,-2);
+        \draw[fill=black!25] (2.6,-0.8) -- (-2.9,-0.8) -- (-3.4,-0.4) -- (-4,-0.2) -- (-4,0.8) -- (4,0.8) -- (4,0.8) .. controls (2.8,-0.2) and (3.6,-0.6) .. (2.6,-0.8);
+        
+        \draw[blue] (-8,0) -- (8,0);
+        \draw[blue] (-7.95,-0.05) -- (-7.60,-0.05);
+        \draw[blue] (-7.90,-0.10) -- (-7.65,-0.10);
+        \draw[blue] (-7.85,-0.15) -- (-7.70,-0.15);
+        
+        \draw[blue,dashed] (-8,0.5)  -- (8,0.5);
+        \draw[blue,dashed] (-8,-0.4) -- (8,-0.4);
+        \draw[blue,very thick] (8,0) .. controls (7,-1) and (7,1.25) .. (6,0);
+        
+        \draw[latex-latex] (-5,0.0) -- (-5,0.5)  node[above] {$Z_{max}$};
+        \draw[latex-latex] (-5,0.0) -- (-5,-0.4) node[below] {$Z_{min}$};
+        
+        \draw[latex-latex] (-4,1) -- (4,1) node[midway,above] {$LOA$};
+        \draw[-latex,red] (-2.9,-0.8) -- (-2.1,-0.8) node[below] {$x$};
+        \draw[-latex,red] (-2.9,-0.8) -- (-2.9,-0.2) node[left] {$y$};
+    \end{tikzpicture}
+\end{center}
+\caption{Definition of domain boundaries}
+\label{boundaries} 
+\end{figure}
 
 \paragraph{Cell height within the free surface zone}
 Cell height in free surface zone can be defined with this parameter. Default value (0.33*fsZmax) can be used by setting the keyword to "auto".

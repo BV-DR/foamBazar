@@ -122,12 +122,61 @@ outletRelaxZone = -250
 sideRelaxZone   = 250
 \end{lstlisting}
 
+\begin{figure}[htbp]
+\begin{center}
+    \def\setA{(0,0) circle (1)}
+    \def\setB{(0,0) circle (1)}
+    
+    \begin{tikzpicture}
+        % Top view
+        \draw (-8,2) rectangle (8,-2);
+        \draw[fill=black!25] (-2,-2) -- (-2,-1.5) .. controls (1.3,-1.5) and (1.5,-1.5) .. (2,-2) -- (-2,-2);
+        
+        \draw[red,dashed] (4,2) -- (4,-2);
+        \fill [pattern color=red, pattern=north east lines] (4,2) -- (8,2) -- (8,-2) -- (4,-2);
+        \node at(6,0) [draw,fill=white,opacity=.8,text opacity=1] {Inlet zone};
+        \draw[red,dashed] (-3,2) -- (-3,-2);
+        \fill [pattern color=red, pattern=north east lines] (-3,2) -- (-8,2) -- (-8,-2) -- (-3,-2);
+        \node at(-5.5,0) [draw,fill=white,opacity=.8,text opacity=1] {Outlet zone};
+        \draw[purple,dashed] (-8,0.5) -- (8,0.5);
+        \fill [pattern color=purple, pattern=north west lines] (-8,2) -- (-8,0.5) -- (8,0.5) -- (8,2);
+        \node at(0,1.25) [draw,fill=white,opacity=.8,text opacity=1] {Side zone};
+        
+    \end{tikzpicture}
+\end{center}
+\caption{Relaxation zones}
+\label{boundaries} 
+\end{figure}
+
 \paragraph{Scheme blending}
 When using Crank Nicolson scheme, instabilities appears around the floating body. This can bypassed by using Euler scheme around the body. The size of the zone where Euler scheme will be used can be set with following parameter providing the distance between the body and the zone boundary.
 \begin{lstlisting}[language=bash]
 #Set Euler zones (set 0 if no zone)
 EulerCellsDist  = 8
 \end{lstlisting}
+
+\begin{figure}[htbp]
+\begin{center}
+    \def\setA{(0,0) circle (1)}
+    \def\setB{(0,0) circle (1)}
+    
+    \begin{tikzpicture}
+        % Top view
+        \draw (-8,2) rectangle (8,-2);
+        \draw[purple] (-2.4,-2) -- (-2.4,-1.2) .. controls (1.625,-1.2) and (1.875,-1.2) .. (2.4,-2);
+        \fill [pattern color=black!50, pattern=dots] (-8,2) rectangle (8,-2);
+        \fill [pattern color=purple, pattern=north east lines] (-2.4,-2) -- (-2.4,-1.2) .. controls (1.625,-1.2) and (1.875,-1.2) .. (2.4,-2) -- (-2.4,-2);
+        \draw[fill=black!25] (-2,-2) -- (-2,-1.5) .. controls (1.3,-1.5) and (1.5,-1.5) .. (2,-2) -- (-2,-2);
+        
+        \node at(0,1) [fill=white] {Crank Nicolson scheme};
+        \node at(3,-1) [right,purple,fill=white,draw] {Euler scheme};
+        \draw[purple] (3,-1) -- (2,-1.55);
+
+    \end{tikzpicture}
+\end{center}
+\caption{Scheme blending}
+\label{boundaries}
+\end{figure}
 
 \paragraph{Structural data}
 Structural data including mass distribution and flexible properties have to be provided using the following keywords. The corresponding files are described in part \ref{homer}.  It includes:
