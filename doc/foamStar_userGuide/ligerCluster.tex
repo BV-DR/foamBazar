@@ -1,5 +1,28 @@
 \chapter{Using Liger cluster}
 
+\section{Setting up environment}
+
+You can find some useful settings in /data/I1608251/forNewComersToLiger. You can copy them to your home directory:
+
+\begin{lstlisting}[language=bash]
+  $ cd
+  $ mkdir bin 
+  $ cp /data/I1608251/forNewComersToLiger/settings bin/
+\end{lstlisting}
+
+And edit your .bashrc in your home folder by adding the line at the end of the file:
+\begin{lstlisting}[language=bash]
+  $ . /bin/settings
+\end{lstlisting}
+
+In this way, you will be able to source different OpenFOAM versions by the commands:
+\begin{lstlisting}[language=bash]
+  $ of2.4.x
+\end{lstlisting}
+or
+\begin{lstlisting}[language=bash]
+  $ of3.0.x
+\end{lstlisting}
 
 \section{Running a batch}
 
