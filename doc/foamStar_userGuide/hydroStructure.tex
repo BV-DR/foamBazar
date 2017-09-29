@@ -1,0 +1,167 @@
+\chapter{HydroStructure computations}
+\label{homer}
+
+It is possible to perform either quasi-static or elastic hydrostructure computations with foamStar. Quasi-static means one-way coupling with load transfer to FEM. Elastic computations take into account deformation of the structure and rely on mode shapes previously computed. Elastic computations offer a two-way coupling. It is possible to perform load transfer in addition to elastic computation.
+
+In FoamStar, both methods rely on the use of HOMER as interface between the structural solver and the CFD computation.
+
+
+\section{Elastic computations}
+
+All structural information needed for mechanical equation solving and flexible modes can be pre-computed from an Homer 2 model.
+
+\subsection{Running Homer}
+Once the model has been set up, HmFEM has to be run with the following body options. Please refer to Homer user guide for more information about Homer keywords.
+
+\begin{lstlisting}[language=fortran]
+# Strcutural mesh information
+STRUCTURALMESH = body.dat
+STRUCTURALCOORDINATES = 0. 0. -11.75 0. 0. 0.
+STRUCTURALLENGTHUNIT = m
+STRUCTURALMASSUNIT = kg
+
+# Number of flexible modes if required
+STRUCTURALNFLEXIBLEMODES = 3
+
+# Enable specific outputs for OpenFoam
+PREPAREOPENFOAM = 1
+
+# Sections definition
+SECTIONS
+CUT   -6.00 0. 12.015 1. 0. 0.
+CUT   82.83 0. 12.015 1. 0. 0.
+CUT  150.78 0. 12.015 1. 0. 0.
+CUT  223.23 0. 12.015 1. 0. 0.
+CUT  295.00 0. 12.015 1. 0. 0.
+ENDSECTIONS
+\end{lstlisting}
+
+HmFEM will then run normally and create the following files that are useful for foamStar:
+\begin{itemize}
+\item mesh : Finite\_Elements\_Analysis{\textbackslash}HmFEM{\textbackslash}\textbf{body\_Bulk.dat}
+\item mass matrix : Finite\_Elements\_Analysis{\textbackslash}HmFEM{\textbackslash}\textbf{body\_dmig.pch}
+\item mode shapes : Finite\_Elements\_Analysis{\textbackslash}HmFEM{\textbackslash}\textbf{body\_md.pch}
+\item don file : User\_Outputs{\textbackslash}HmFEM{\textbackslash}\textbf{body.don}
+\end{itemize}
+
+\subsection{Initialize structural information for foamStar}
+
+Structural data pre-processing for foamStar is performed using the module \emph{initFlx} together with a standard OpenFoam input file \emph{initFlxDict} described hereafter:
+
+\begin{lstlisting}[language=C]
+FEM_STRUCTURALMESH_VTU
+{
+    datFile "body_Bulk.dat";
+    mdFile "body_md.pch"; selected (7 8 9);
+    dmigMfile "body_dmig.pch";
+    dmigKfile "body_dmig.pch";
+    pchCoordinate (0 0 -11.75 0 0 0);
+    pchScaleMode  0.25909281809220411E+05;
+    pchLengthUnit 1;
+    pchMassUnit   1;
+
+    patches (ship); ySym (true);
+}
+\end{lstlisting}
+
+\begin{itemize}
+\item \textbf{datFile} : finite element mesh provided by Homer (*\_Bulk.dat)
+\item \textbf{mdFile} : modes shapes punch file given by Homer (*\_md.pch)
+\item \textbf{selected} : select flexible modes to use for simulation (starting from mode 7)
+\item \textbf{dmigMfile} : mass matrix punch file provided by Homer (*\_dmig.pch)
+\item \textbf{dmigKfile} : stiffness matrix punch file provided by Homer (*\_dmig.pch)
+\item \textbf{pchCoordinate} : structural coordinates used in Homer
+\item \textbf{pchScaleMode} : value of scaling factor of first mode in Homer
+\item \textbf{pchLengthUnit} : length scaling factor to meters (m=1, mm=0.001)
+\item \textbf{pchMassUnit} : mass scaling factor to kilograms (kg=1, t=1000)
+\item \textbf{pchMassUnit} : mass scaling factor to kilograms (kg=1, t=1000)
+\item \textbf{patches} : define patch representing the hull
+\item \textbf{patches} : define if Y-symmetry is used or not
+\end{itemize}
+
+foamStar module can then be launched with the following command:
+\begin{lstlisting}[language=bash]
+$ initFlx
+\end{lstlisting}
+
+
+\section{Load transfer to FEM}
+
+What is important is to have proper equilibrium in structural computation. The algorithm is the following one:
+\begin{itemize}
+\item Building or getting the FEM model
+
+\item Create a stl file from the skin of the structural model
+
+\item Run HOMER on this model: first run hmFEM. Then proceed to balancing with hmSWB. In the input of hmSWB, specify:
+\begin{lstlisting}[language=fortran]
+USEOPENFOAMCASES = 1
+SHIFTOPENFOAM = 0.1
+\end{lstlisting}
+
+The keyword "SHIFTOPENFOAM" controls the distance from which the Gauss points will be shifted towards the fluid domain. It is recommended to use 0.1m for a full scale ship (otherwise discretization of the geometry in the  CFD meshing may lead to points not located inside the domain).
+
+\item In the output file "hmSWB.out", the result of the balancing looks like this:
+\begin{lstlisting}[language=fortran]
+Definition of structural model coordinates system in global system
+Coordinates System ID:   0
+Name: Structural Mesh Fixed
+Factor from length unit to meter:    0.10000000E+01
+Factor from mass unit to Kilogram:    0.10000000E+01
+Tx(m) =    0.25191550E-01
+Ty(m) =    0.00000000E+00
+Tz(m) =   -0.15212836E+02
+Rx(deg) =    0.00000000E+00
+Ry(deg) =   -0.22208073E+00
+Rz(deg) =    0.00000000E+00
+\end{lstlisting}
+
+It is important to put the stl file to the same reference system. It is possible inside OpenFOAM environment with the following commands:
+\begin{lstlisting}[language=bash]
+$ surfaceTransform -translate "(0.25191550E-01 0.00000000E+00 -0.15212836E+02)" aa.stl bb.stl
+$ surfaceTransform -rollPitchYaw "(0.0 -0.22208073E+00 0.0E0)" bb.stl cc.stl
+\end{lstlisting}
+
+\item Create the CFD mesh from the obtained file.
+
+\item Check the position of Gauss points with Paraview file located in "Visualization" directory against the CFD mesh
+
+\item In system/controlDict file, add the following input:
+
+\begin{lstlisting}[language=C]
+    pressurePoints
+    {
+		type probes; 
+		// Type of functionObject
+		// Where to load it from (if not already in solver)
+		functionObjectLibs ("libsampling.so");
+                outputControl   timeStep; 
+		outputInterval 1;
+		fixedLocations false; // so that probes move with the mesh
+		probeLocations // Locations to be probed. runTime modifiable!
+		(
+			#include "OpenFOAM_GaussPoints.inc"
+		);
+		// Fields to be probed. runTime modifiable!
+		fields
+		(
+		p
+		);
+
+    }
+\end{lstlisting}
+
+with a reference to the coordinates of the Gauss points given by HOMER (file "*.inc").
+
+\item Copy-paste mass properties "sixDofDomainBody" given by HOMER in 0/uniform
+
+\item Launch foamStar computation
+
+\item Transfer to HOMER the result of postProcessing folder, both the time history of body motion and pressure points. 
+
+\end{itemize}
+
+
+
+
+
