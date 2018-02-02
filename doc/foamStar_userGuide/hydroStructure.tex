@@ -13,20 +13,20 @@ All structural information needed for mechanical equation solving and flexible m
 \subsection{Running Homer}
 Once the model has been set up, HmFEM has to be run with the following body options. Please refer to Homer user guide for more information about Homer keywords.
 
-\begin{lstlisting}[language=fortran]
-# Strcutural mesh information
+\begin{lstlisting}[language=bash]
+#Structural mesh information
 STRUCTURALMESH = body.dat
 STRUCTURALCOORDINATES = 0. 0. -11.75 0. 0. 0.
 STRUCTURALLENGTHUNIT = m
 STRUCTURALMASSUNIT = kg
 
-# Number of flexible modes if required
+#Number of flexible modes if required
 STRUCTURALNFLEXIBLEMODES = 3
 
-# Enable specific outputs for OpenFoam
+#Enable specific outputs for OpenFoam
 PREPAREOPENFOAM = 1
 
-# Sections definition
+#Sections definition
 SECTIONS
 CUT   -6.00 0. 12.015 1. 0. 0.
 CUT   82.83 0. 12.015 1. 0. 0.

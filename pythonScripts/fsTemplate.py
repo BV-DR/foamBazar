@@ -869,7 +869,7 @@ defaultParams_contents='''
 #Set name of case folder to be created
 caseDir = newCase
 
-#Set location of mesh folder, stl file name and time folder from which it should be retrived ('0.08', '0.09' or 'latestTime')
+#Set location of mesh folder, stl file name and time folder from which it should be retrieved ('0.08', '0.09' or 'latestTime')
 meshDir = mesh
 meshTime = latestTime
 
@@ -891,9 +891,10 @@ timeStep = 0.05
 writeInterval = 40
 purgeWrite = 5
 outputMotions = True
+localMotionPts = 1 2 3; 4 5 6; 7 8 9
 outputVBM = True
 outputWave = False
-localMotionPts = 1 2 3; 4 5 6; 7 8 9
+waveProbes = xMin Xmax nX y zMin zMax nZ; xMin Xmax nX y zMin zMax nZ
 fsiTol = 1e-6
 
 #Set wave properties
@@ -907,13 +908,14 @@ waveSeaLvl = 0
 waveStartTime = 0
 waveRampTime = 10
 addDamping = False
-waveProbes = xMin Xmax nX y zMin zMax nZ; xMin Xmax nX y zMin zMax nZ
 
-#Set Euler and Relaxation zones (set 0 if no zone)
-EulerCellsDist  = 8
+#Set Relaxation zones (set 0 if no zone)
 inletRelaxZone  = 400
 outletRelaxZone = -250
 sideRelaxZone   = 250
+
+#Set Euler zones (set 0 if no zone)
+EulerCellsDist  = 8
 
 #Set structural data obtained with Homer
 #all path should be written relatively to this input file location
