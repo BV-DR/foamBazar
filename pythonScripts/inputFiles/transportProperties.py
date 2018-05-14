@@ -1,4 +1,3 @@
-import PyFoam
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import Vector, Field, Dimension, DictProxy
 from os.path import join
@@ -34,7 +33,7 @@ class TransportProperties(WriteParameterFile) :
       self[r"sigma"] = "sigma [1 0 -2 0 0 0 0] {}".format(sigma)
 
 if __name__ == "__main__" : 
-   print  TransportProperties("test" , version = "foamExtend")
+   print(TransportProperties("test" , version = "foamExtend"))
 
 
 

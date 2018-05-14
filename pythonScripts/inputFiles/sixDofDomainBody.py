@@ -29,7 +29,7 @@ class SixDofDomainBody(WriteParameterFile):
 
 
 if __name__ == "__main__" : 
-    print  SixDofDomainBody("test", 1000., 2000., '1 2 3', version = "foamExtend")
+    print(SixDofDomainBody("test", 1000., 2000., '1 2 3', version = "foamExtend"))
 
 
 

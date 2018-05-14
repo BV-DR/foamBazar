@@ -1,8 +1,7 @@
-import PyFoam
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import DictProxy
 from os.path import join
-from compatOF import alpha, p_rgh
+from inputFiles.compatOF import alpha, p_rgh
 
 """
   Convenience class to simply write "fvSheme"
@@ -103,4 +102,4 @@ class FvSchemes(WriteParameterFile) :
         self["fluxRequired"] = flux
 
 if __name__ == "__main__" :
-   print  FvSchemes("test" , version = "foamStar" , orthogonalCorrection = "implicit")
+   print(FvSchemes("test" , version = "foamStar" , orthogonalCorrection = "implicit"))

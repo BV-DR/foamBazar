@@ -2,7 +2,6 @@ import PyFoam
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import DictProxy
 from os.path import join
-from compatOF import alpha, p_rgh
 
 """
   Convenience class to simply write "fvSheme"
@@ -130,4 +129,4 @@ class FvSolution(WriteParameterFile) :
         
 
 if __name__ == "__main__" :
-   print  FvSolution("test" , version = "foamStar")
+   print(FvSolution("test" , version = "foamStar"))

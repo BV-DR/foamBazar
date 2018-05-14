@@ -65,5 +65,5 @@ def writeFlexProperties(case, donName, version, freq=[], damping=[], mdFile=None
 
 if __name__ == "__main__" :
 
-   print  BoundaryOmega("test", wallFunction = True)
+   print(BoundaryOmega("test", wallFunction = True))
 

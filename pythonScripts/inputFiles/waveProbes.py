@@ -2,7 +2,7 @@
    Prepare input for wave probes
 """
 
-from compatOF import surfaceElevation, alpha
+from inputFiles.compatOF import surfaceElevation, alpha
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import DictProxy
 
@@ -38,10 +38,10 @@ if __name__ == "__main__" :
     # works with tuples or with lists
     #waveProbesList = ( (10.,0.,-1.,+1 , 100) , (15.,0.,-1.,+1 , 100) )
     waveProbesList = [ [10.,0.,-1.,+1 , 100] , [15.,0.,-1.,+1 , 100] ]
-    print waveProbesList
+    print(waveProbesList)
     
     waveProbesList=createLinearWaveProbesList( -100.0, 100.0, 201, 0.05, -3.0, 3.0, 100)
-    print waveProbesList
+    print(waveProbesList)
     d = setWaveProbes ( waveProbesList, "foamStar" , writeProbesInterval = 0.01 )
     
     waveProbFile = WriteParameterFile("waveProb.inc")

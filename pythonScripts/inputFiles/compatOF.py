@@ -11,6 +11,7 @@ p_rgh = { "foamStar" : "p_rgh" ,
 
 
 application = {
+               "snappyHexMesh" : "snappyHexMesh",
                "foamStar"   : "foamStar" ,
                "foamExtend" : "navalFoam" ,
                "swenseFoam" : "swenseFoam"

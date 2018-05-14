@@ -56,4 +56,4 @@ class DynamicMeshDict(WriteParameterFile):
         self["sixDofDomainFvMeshCoeffs"] = sdc
         
 if __name__ == "__main__" : 
-    print  DynamicMeshDict("test", hullPatch='ship', addDamping=True, lpp=100., bc=20., version = "foamExtend")
+    print(DynamicMeshDict("test", hullPatch='ship', addDamping=True, lpp=100., bc=20., version = "foamExtend"))

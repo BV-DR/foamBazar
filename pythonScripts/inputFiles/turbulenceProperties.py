@@ -1,4 +1,3 @@
-import PyFoam
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from os.path import join
 from compatOF import alpha, p_rgh
@@ -22,7 +21,7 @@ class TurbulenceProperties(WriteParameterFile) :
       elif turbulenceModel in RASturbulenceModel:
          self[ "simulationType" ] =  "RASModel"
       else :
-         print "Unknown turbulence model"
+         print("Unknown turbulence model")
 
 
 class RASProperties(WriteParameterFile) :
@@ -40,7 +39,7 @@ class RASProperties(WriteParameterFile) :
          self["turbulence"] = True
          self["printCoeffs"] = True
       else :
-         print "Unknown turbulence model"
+         print("Unknown turbulence model")
          
 def writeTurbulenceProperties( case , turbulenceModel ) :
 
@@ -54,7 +53,7 @@ if __name__ == "__main__" :
 #    print  TurbulenceProperties("laminar" )
 #    print  RASProperties("laminar" )
    
-   print  TurbulenceProperties(  ".", turbulenceModel = "kOmegaSST" )
-   print  RASProperties("." , turbulenceModel = "kOmegaSST" )
+   print(TurbulenceProperties(  ".", turbulenceModel = "kOmegaSST" ))
+   print(RASProperties("." , turbulenceModel = "kOmegaSST" ))
 
 

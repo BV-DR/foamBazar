@@ -1,12 +1,12 @@
 from os.path import join
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import Vector, DictProxy
-from waveProbes import setWaveProbes
-from compatOF import application, surfaceElevation
+from inputFiles.waveProbes import setWaveProbes
+from inputFiles.compatOF import application, surfaceElevation
 
 class ControlDict( WriteParameterFile ) :
 
-    def __init__(self , case ,  startFrom="latestTime", startTime=0 , endTime=60. , deltaT=None , autoDeltaTCo=None , writeInterval=0.1 , purgeWrite=0, writePrecision=7, runTimeModifiable="no", writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputMotions=False, vbmPatch=None, forcesPatch=None, outputLocalMotions=False, version="foamStar"):
+    def __init__(self , case ,  startFrom="latestTime", startTime=0 , endTime=60. , deltaT=None , autoDeltaTCo=None , writeControl="timeStep", writeInterval=0.1 , purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no", writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputMotions=False, vbmPatch=None, forcesPatch=None, outputLocalMotions=False, version="foamStar"):
 
         WriteParameterFile.__init__(self , join(case , "system" , "controlDict" ))
         self["application"]       = application[version]
@@ -15,12 +15,12 @@ class ControlDict( WriteParameterFile ) :
         self["stopAt"]            = "endTime"
         self["endTime"]           = endTime
         self["deltaT"]            = deltaT
-        self["writeControl"]      = "timeStep"
+        self["writeControl"]      = writeControl
         self["writeInterval"]     = writeInterval
         self["purgeWrite"]        = purgeWrite
         self["writeFormat"]       = "ascii"
         self["writePrecision"]    = writePrecision
-        self["writeCompression"]  = "compressed"
+        self["writeCompression"]  = writeCompression
         self["timeFormat"]        = "general"
         self["timePrecision"]     = 6
         self["runTimeModifiable"] = runTimeModifiable
@@ -33,12 +33,14 @@ class ControlDict( WriteParameterFile ) :
             self["maxDeltaT"]      = adjustTimeStep[2]
         else :
             self["adjustTimeStep"] = "no"
-            self["maxCo"]          = 0.  #Unused
-            self["maxAlphaCo"]     = 0.  #Unused
-            self["maxDeltaT"]      = 0.  #Unused
+            # self["maxCo"]          = 0.  #Unused
+            # self["maxAlphaCo"]     = 0.  #Unused
+            # self["maxDeltaT"]      = 0.  #Unused
       
         if version == "foamStar" :
             self ["libs"] =  ['"libfoamStar.so"' , ]
+        elif version == "snappyHexMesh" :
+            pass
         else :
             self ["libs"] =  [ '"libforces.so"' , ]
         
@@ -91,12 +93,10 @@ class ControlDict( WriteParameterFile ) :
         #Construct waveProbe dict from waveProbes list  [ ( x,y,z_min,nb_point ) , ... ]
         if waveProbesList is not None:
             fDict[surfaceElevation[version]] = setWaveProbes( waveProbesList , version = version , writeProbesInterval = writeProbesInterval )
-            
-        self["functions"] = fDict
+         
+        if len(fDict)>0:
+            self["functions"] = fDict
 
 
 if __name__ == "__main__" :
-
-   test = ControlDict( "test" , waveProbesList = ( (10.,0.,-1.,+1 , 100) , (15.,0.,-1.,+1 , 100) ) , forcesPatch = ["test"] )
-
-   print test
+   print(ControlDict( "test" , waveProbesList = ( (10.,0.,-1.,+1 , 100) , (15.,0.,-1.,+1 , 100) ) , forcesPatch = ["test"] ))

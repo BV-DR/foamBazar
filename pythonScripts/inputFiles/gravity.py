@@ -1,4 +1,3 @@
-import PyFoam
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import Dimension, Vector
 from os.path import join
@@ -20,7 +19,7 @@ class Gravity(WriteParameterFile) :
       self["value"] = Vector(*[0,0,-g])
 
 if __name__ == "__main__" : 
-   print  Gravity("test")
+   print(Gravity("test"))
 
 
 

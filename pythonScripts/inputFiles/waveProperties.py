@@ -192,7 +192,7 @@ if __name__ == "__main__" :
     
     waveProperties = WaveProperties("waveProperties" , waveCond  ,  relaxZones = (relaxInlet , relaxOutlet) , version = "foamStar" )
     
-    print waveProperties
+    print(waveProperties)
     
     #print relaxInlet.zoneBatch()
     #print relaxOutlet.zoneBatch()
