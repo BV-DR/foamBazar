@@ -12,7 +12,7 @@
 import os
 import numpy as np
 import pandas as pd
-import waveTimeFrequencyAnalysis.Reader as rd
+import droppy.Reader as rd
 
 dicoPost = {
              "motions" : 'motions',

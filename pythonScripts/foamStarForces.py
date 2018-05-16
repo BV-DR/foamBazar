@@ -1,16 +1,15 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """
    Plot force output for foamStar post-processing output files
 """
-
+import pandas as pd
 import matplotlib.pyplot as plt
 
 try :
-   from TimeDomain import TimeSignals as ts
+   from droppy.Reader import dfRead
 except ImportError as  e:
-   print "Can not load TimeSignals, please add 'waveTimeFrequencyAnalysis' (from repo https://github.com/cmonroy/waveTimeFrequencyAnalysis.git) to your PYTHON_PATH\n"
+   print("Can not load TimeSignals, please add 'droppy' (from repo https://github.com/BV-DR/droppy) to your PYTHON_PATH")
    raise Exception(e)
-
 
 if __name__ == "__main__" :
 
@@ -29,13 +28,10 @@ if __name__ == "__main__" :
    parser.add_argument('-index',  nargs='+', type = int , help='Index to plot' )
    args = parser.parse_args()
 
-   a = ts.read( args.forceFile , reader = "openFoamReader" , field = "total") 
+   a = dfRead( args.forceFile , reader = "openFoamReader" , field = "total") 
 
-   if args.indexName :
-      a[args.indexName].plot()
-   elif args.index :
-	  a.iloc[:,args.index].plot()
-   else:
-      a.plot()
+   if args.indexName :a[args.indexName].plot()
+   elif args.index : a.iloc[:,args.index].plot()
+   else: a.plot()
 
-   plt.show();
+   plt.show()
