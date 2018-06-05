@@ -58,7 +58,7 @@ def cloneFolder(data,time):
         raise SystemExit('ERROR: this error should not happen !')
 
     process = 'mkclone.sh '+data.dir+' '+data.newDir+' '+str(time)
-    print process
+    print(process)
     process += ' 2>&1 | tee log.clone'
     
     subprocess.call(process, shell=True)
@@ -141,6 +141,6 @@ if __name__ == "__main__":
     setInputs(dat)
     
     endTime = time.time()
-    print 'Case cloning completed in %d minutes' % ((endTime-startTime)/60)
-    print "Don't forget to edit controlDict file !!!" 
+    print('Case cloning completed in %d minutes' % ((endTime-startTime)/60))
+    print("Don't forget to edit controlDict file !!!" )
     
