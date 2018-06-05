@@ -1,6 +1,6 @@
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from os.path import join
-from compatOF import alpha, p_rgh
+from inputFiles.compatOF import alpha, p_rgh
 
 """
   Convenience class to simply write "TurbulenceProperties" and RASModel

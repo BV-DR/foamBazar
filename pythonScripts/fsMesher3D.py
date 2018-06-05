@@ -14,11 +14,23 @@ import os, subprocess, time, math
 import numpy as np
 import sys, argparse, configparser
 import pprint
+from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
+from fsTools import runCommand, foamFileExist, findBoundingBox, getFoamTimeFolders, findSTLPatches, translateStl, rotateStl, createBoxStl
+
+from inputFiles.fvSchemes import FvSchemes
+from inputFiles.fvSolution import FvSolution
+from inputFiles.controlDict import ControlDict
+from inputFiles.decomposeParDict import DecomposeParDict
+from inputFiles.blockMeshDict import BlockMeshDict
+from inputFiles.refineMeshDict import RefineMeshDict
+from inputFiles.snappyHexMeshDict import SnappyHexMeshDict
+from inputFiles.surfaceFeatureExtractDict import SurfaceFeatureExtractDict
+from inputFiles.compatOF import namePatch
 
 # sose: 2016-june-03
 # FIXME: There are still many conditions inwhich this script will fail
 # FIXME: add a sanity check for input parameter(s)
-# FIXME: add parallel suuport for refineMesh
+# FIXME: add parallel support for refineMesh
 # FIXME: adjust the number of box automatically
 # FIXME: add user defined local refinement based on a stl-file
 # FIXME: add user defined edge refinement
@@ -81,12 +93,12 @@ class UserInput(object):
         #       the validity of the existing file
         createShipStl(shipStl, filename, overwrite=True)
         shipPatches = findSTLPatches(filename)
-        print "Found patches in stl: ", shipPatches
+        print("Found patches in stl: ", shipPatches)
         shipBB = findBoundingBox(filename)
         
         if opts['draft'] is not None:
             draft = math.fabs(float(opts['draft']))
-            print "Set draft:",draft
+            print("Set draft:",draft)
             move = -shipBB[2] - draft
             translateStl(filename, [0.0,0.0,move], filename)
             shipBB[2] += move
@@ -95,8 +107,8 @@ class UserInput(object):
         if opts['refSurfExtra'] is not None:
             nameOnly = os.path.basename(opts['refSurfExtra'])
             surfFile = "./constant/triSurface/"+nameOnly
-            print "Create stl: "+surfFile
-            runCommand("cp -f "+opts['refSurfExtra']+" "+surfFile)
+            print("Create stl: "+surfFile)
+            runCommand("cp -f "+opts['refSurfExtra']+" "+surfFile, CMD_showLog)
             if opts['draft'] is not None:
                 translateStl(surfFile, [0.0,0.0,move], surfFile)
         
@@ -204,7 +216,7 @@ def cmdOptions(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('-d','--debug', action='store_true', help='run in debug mode')
     parser.add_argument('-f', dest='inputfile', help='read parameters from input file. Use this option with a stl-file to generate a mesh with default parameters, e.g.: fsMesher.py -f myship.stl ')
-    parser.add_argument('-p','--print-config', dest='showConfig', action='store_true', help='print all available input parameters (including theirs default values) to fsMesher.cfg file and exit. Use this option to generate a template for input files for -f')
+    parser.add_argument('-p','--print-config', dest='showConfig', action='store_true', help='print(all available input parameters (including theirs default values) to fsMesher.cfg file and exit. Use this option to generate a template for input files for -f')
     parser.add_argument('-n','--no-exec', dest='skip', action='store_true', help='do not exec. any foam tool')
     parser.add_argument('-r','--run', help='run only selected steps. Use comma to select multiple steps, e.g: "fyMesher.py -r bg,box,snap".  Available selections are \
                                             [bg]:blockMesh, \
@@ -218,7 +230,7 @@ def cmdOptions(argv):
     args = parser.parse_args()
 
     if args.showConfig:
-        print "\nOutput default parameters to file:", DEFAULT_CFG_FILE
+        print("\nOutput default parameters to file:", DEFAULT_CFG_FILE)
         subprocess.call('cat << EOF > '+DEFAULT_CFG_FILE + defaultParams_contents, shell=True)
         raise SystemExit('')
 
@@ -261,7 +273,7 @@ def cmdOptions(argv):
             elif val=="layer":
                 EXEC_ADDLAYERS=False
             else:
-                print "\nUnknown arg.: --skip", val,"\n"
+                print("\nUnknown arg.: --skip", val,"\n")
                 parser.print_help()
                 raise SystemExit()
 
@@ -284,7 +296,7 @@ def cmdOptions(argv):
             elif val=="layer":
                 EXEC_ADDLAYERS=True
             else:
-                print "\nUnknown arg.: --run", val,"\n"
+                print("\nUnknown arg.: --run", val,"\n")
                 parser.print_help()
                 raise SystemExit()
 
@@ -296,7 +308,7 @@ def cmdOptions(argv):
         CMD_refineMesh += ' -overwrite'
         #CMD_snappyHexMesh += ' -overwrite' # snappyHexMesh will be run in parallel!!! FIXME
     else:
-        print "Running in DEBUG mode ... "
+        print("Running in DEBUG mode ... ")
 
     subprocess.call('echo "Executing fsMesh.py: $(hostname) @ $(date)" '+CMD_keepLog, shell=True)
     return inputdata
@@ -308,7 +320,7 @@ def readInputParams(filename):
     config.read(filename)
     name = 'fsMesher'
     
-    print "Read input paramters from file:", filename
+    print("Read input parameters from file:", filename)
     
     # read stlFile(s)
     done=False
@@ -323,7 +335,7 @@ def readInputParams(filename):
             done=True
             pass
     if i is not 0:
-        print "    stlFile(s):", shipStl
+        print("    stlFile(s):", shipStl)
 
     # heading
     try:
@@ -397,7 +409,8 @@ def readInputParams(filename):
     try:
         txt = str(config[name]['refBoxRatio'])
         if not txt=='auto':
-            params['refBoxGrad'] = [float(val) for val in txt.split(",")]
+            # params['refBoxGrad'] = [float(val) for val in txt.split(",")]
+            params['refBoxGrad'] = float(txt)
     except KeyError: pass
 
     # 'cellBuffer' : buffer between nabo cells
@@ -452,7 +465,7 @@ def readInputParams(filename):
     #
     global DEBUG
     global NPROCS
-    global DEFAULT_SHIP_STL    
+    global DEFAULT_SHIP_STL
     global EXEC_BLOCKMESH
     global EXEC_REFINEBOX
     global EXEC_REFINEPROXIMITY
@@ -492,14 +505,14 @@ def readInputParams(filename):
         if (txt[0] == txt[-1]) and txt.startswith(("'", '"')):
              txt = txt[1:-1]
         DEFAULT_SHIP_STL = txt
-    except KeyError: pass    
+    except KeyError: pass
 
     try:
         txt = config['fsMesher-control']['CMD_keepLog']
         if (txt[0] == txt[-1]) and txt.startswith(("'", '"')):
              txt = txt[1:-1]
         CMD_keepLog = txt
-    except KeyError: pass    
+    except KeyError: pass
 
     try:
         txt = config['fsMesher-control']['CMD_showLog']
@@ -561,91 +574,15 @@ def readInputParams(filename):
     return shipStl, params
     pass
 
-def rotateLogFile():
-    if os.path.isfile(logFile):
-        ext = os.path.splitext(logFile)[-1][1:]
-        try:
-            i = int(ext) + 1
-            logFile = os.path.splitext(logFile)[0]+"."+str(i)
-        except ValueError:
-            i = 0
-            logFile += "."+str(i)
-        return rotateLogFile()
-        pass
-    else:
-        print 'Log file:',logFile
-        return logFile
-
-def setValue(filename, variable, value):
-    subprocess.call('sed -i "s/^'+variable+'[ \t].*;/'+variable+' '+str(value)+';/g" '+filename, shell=True)
-
-# foamFile may be compressed i.e. ".gz"  
-def foamFileExist(filename):
-    found = os.path.isfile(filename)
-    if not found:
-        found = os.path.isfile(filename + '.gz')
-    return found
-
-# foamBlock exists or not?
-def foamBlockExist(filename, blockName):
-    # check one-line format: "name { ... }"
-    cmd="sed -e '/^[ \\t]*[\"]*\<"+blockName+"\>[\"]*[ \\t]*{.\+}/"
-    p = subprocess.Popen(cmd+"{q1}' "+filename, stdout=subprocess.PIPE, shell=True)
-    p.communicate()
-    if p.returncode==0: # not found
-        # check multi-lines format: "name { \newline ... }"
-        cmd="sed -e '/^[ \\t]*[\"]*\<"+blockName+"\>[\"]*[ \\t]*{/,/}/"        
-        p = subprocess.Popen(cmd+"{q1}' "+filename, stdout=subprocess.PIPE, shell=True)
-        p.communicate()
-    if p.returncode==0: # still not found
-        # check multi-lines format: "name \newline { .. }"
-        cmd="sed -e '/^[ \\t]*[\"]*\<"+blockName+"\>[\"]*/,/}/"
-        p = subprocess.Popen(cmd+"{q1}' "+filename, stdout=subprocess.PIPE, shell=True)
-        p.communicate()
-    if p.returncode==0: # still not found
-        return False,cmd
-    return True,cmd
-
-def renameFoamBlock(filename, oldName, newName):
-    cmd="sed -i -e '1h;2,$H;$!d;g' -e 's/\<"+oldName+"\>\([ \\n\\t]\+{\)/"+newName+"\\1/' "
-    subprocess.call(cmd+filename, shell=True)
-    pass
-
-def modifyFoamBlock(filename, blockName, variable, val):
-    OK,cmd = foamBlockExist(filename, blockName)
-    if OK:
-        cmd += "{s/\(\<"+variable+"\>[ \\t]*\)[^;]*/\\1"+str(val)+"/}' -i "
-        subprocess.call(cmd+filename, shell=True)
-    else: # not found
-        print "modifyFoamBlock: Substitution failed"
-        print "filename: ", filename
-        print "blockName: ", blockName
-        print "keyword: ", variable
-        print "value: ", val
-        raise SystemExit('abort ...')
-
-def runCommand(cmd):
-    try:
-        subprocess.check_call(cmd, shell=True)
-    except subprocess.CalledProcessError:
-        subprocess.call(CMD_showLog, shell=True)
-        raise SystemExit('abort ...')
-        pass
-    except OSError:
-        print cmd
-        raise SystemExit('executable not found ... abort')
-        pass
-    pass
-    
 def createShipStl(shipStl, outputStl, overwrite=False):
-    print "Creating stl: "+outputStl
+    print("Creating stl: "+outputStl)
     if os.path.isfile(outputStl) & (not overwrite):
-        print "    file already exist ... reuse existing file"
+        print("    file already exist ... reuse existing file")
         return
 
     subprocess.call("rm -fr "+outputStl, shell=True)
     if len(shipStl)==0:
-        print "    stlFile not specified ..."
+        print("    stlFile not specified ...")
         raise SystemExit('abort ...')
     foo = 0
     while foo < len(shipStl):
@@ -653,57 +590,13 @@ def createShipStl(shipStl, outputStl, overwrite=False):
         foo += 1
         #if not stlFile[::-1][0:4][::-1]==".stl":
         if not stlFile.endswith('.stl'):
-            stlFile = stlFile + '.stl'            
-        print "    append: " + stlFile
+            stlFile = stlFile + '.stl'
+        print("    append: " + stlFile)
         if not os.path.isfile(stlFile):
-            print "\nFile not found:",stlFile,"\n"
+            print("\nFile not found:",stlFile,"\n")
             raise SystemExit('abort ...')
         subprocess.call("mkdir -p $(dirname "+outputStl+")", shell=True)
-        runCommand("cat "+ stlFile + " >> "+outputStl)
-
-def findSTLPatches(stlFile):
-    p = subprocess.Popen("grep '^[ \\t]*\<solid\>' "+stlFile+" | sed 's/solid//g' | tr '\n' ' ' | sed 's/^[ \t]*//;s/ \+/ /g;s/\s*$//g' "  , stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    patches,error = p.communicate()
-    if error:
-        print 'error: ', error
-        raise SystemExit('abort ...')
-    return patches.split(' ')
-    
-def findBoundingBox(stlFile, verbose=True):
-    if verbose:
-        print "Compute bounding box: " + stlFile
-    p = subprocess.Popen("surfaceCheck "+stlFile+" | grep '^Bounding Box :' | sed \"s/.*: (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    boundingBox,error = p.communicate()
-    if error:
-        print 'error: ', error
-        raise SystemExit('abort ...')
-    boundingBox = boundingBox.split(' ')
-    boundingBox = [float(i) for i in boundingBox]
-    if verbose:
-        print "   ",boundingBox
-    return boundingBox 
-
-def translateStl(inputStl, val, outputStl):
-    val = "("+str(val[0])+" "+str(val[1])+" "+str(val[2])+")"
-    print "Translate stl by "+val+": " + inputStl
-    subprocess.call("surfaceTransformPoints -translate '"+val+"' " + inputStl + " " + outputStl + " > /dev/null", shell=True)
-    return True
-
-def rotateStl(inputStl, heading, outputStl):
-    yaw = heading-180.0
-    if str(yaw) == '0.0': return False
-    print "Rotate stl (0 0 " + str(yaw) + "): " + inputStl
-    subprocess.call("surfaceTransformPoints -rollPitchYaw '(0 0 "+str(heading-180.0)+")' " + inputStl + " " + outputStl + " > /dev/null", shell=True)
-    return True
-
-def createBoxStl(BB,name):
-    Xmin,Ymin,Zmin,Xmax,Ymax,Zmax=BB[0],BB[1],BB[2],BB[3],BB[4],BB[5]
-    tol = (Xmax-Xmin)*1e-6
-    filename = "./constant/triSurface/" + name
-    print "Creating stl: " + filename
-    print "   ",BB
-    subprocess.call("surfaceTransformPoints -scale '("+str(Xmax-Xmin-tol)+" "+str(Ymax-Ymin-tol)+" "+str(Zmax-Zmin-tol)+")' fsMesher/fsMesher_box.stl "+filename+" > /dev/null", shell=True)
-    subprocess.call("surfaceTransformPoints -translate '("+str(Xmin+0.5*tol)+" "+str(Ymin+0.5*tol)+" "+str(Zmin+0.5*tol)+")' "+filename+" "+filename+" > /dev/null", shell=True)
+        runCommand("cat "+ stlFile + " >> "+outputStl, CMD_showLog)
 
 # return a list of numbers btw. 0 .. 1
 # dNd1_Ratio=dN/d1
@@ -739,7 +632,7 @@ def simpleGradingN(x1, dNd1_Ratio):
             x1pre=x[1]
     return N
 
-def createBlockMeshDict(data, fileName):
+def createBlockMeshDict(data):
     # note: blockMesh simeplGradient is defined as the ratio last/first cell
     # so we have,
     #   N : given number of cells
@@ -807,7 +700,7 @@ def createBlockMeshDict(data, fileName):
         YminDomain = data.domain[2]
         YmaxDomain = data.domain[3]
     else:
-        print "\nUnknown parameters, side=",data.side
+        print("\nUnknown parameters, side=",data.side)
         raise SystemExit('abort ...')
     
     # compute vertical thickness of each box
@@ -870,7 +763,7 @@ def createBlockMeshDict(data, fileName):
     
     # compute vertical extension for all refBox
     dx = cellWidth/2.0
-    refBoxZdata = [zGrid[0] for i in range(nRefBox), zGrid[-1] for i in range(nRefBox)]
+    refBoxZdata = [zGrid[0]]*nRefBox + [zGrid[-1]]*nRefBox
     for i in range(nRefBox):
         for j in range(len(zGridDelta)):
             if zGrid[j] >= ZminSurface:
@@ -886,49 +779,28 @@ def createBlockMeshDict(data, fileName):
                 break
         dx /= 2.0
     
-    filename = 'constant/polyMesh/blockMeshDict'
-    blockMeshDict_template(filename)
-    setValue(filename, 'XminDomain', XminDomain)
-    setValue(filename,'XmaxDomain', XmaxDomain)
-    setValue(filename,'YminDomain', YminDomain)
-    setValue(filename,'YmaxDomain', YmaxDomain)
-    setValue(filename,'ZminDomain', ZminDomain)
-    setValue(filename,'Xcells', Xcells)
-    setValue(filename,'Ycells', Ycells)
+    print('Domain bounding box:')
+    print("   ", [XminDomain, YminDomain, ZminDomain, XmaxDomain, YmaxDomain, ZmaxDomain])
 
-    print 'Domain bounding box:'
-    print "   ", [XminDomain, YminDomain, ZminDomain, XmaxDomain, YmaxDomain, ZmaxDomain]
-
-    # add z-cuts points
-    # get line number at ($XminDomain $YmaxDomain $ZminDomain)
-    p = subprocess.Popen("grep -n '//VERTICES' "+filename, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    line,error = p.communicate()
-    line = line.split(":")
-    line = int(line[0])+1
-    for val in zAllCut:
-        subprocess.call('sed -i "'+str(line)+'i\    (\$XminDomain \$YminDomain '+str(val)+')" '+filename, shell=True)
-        line += 1
-        subprocess.call('sed -i "'+str(line)+'i\    (\$XmaxDomain \$YminDomain '+str(val)+')" '+filename, shell=True)
-        line += 1
-        subprocess.call('sed -i "'+str(line)+'i\    (\$XmaxDomain \$YmaxDomain '+str(val)+')" '+filename, shell=True)
-        line += 1
-        subprocess.call('sed -i "'+str(line)+'i\    (\$XminDomain \$YmaxDomain '+str(val)+')" '+filename, shell=True)
-        line += 1
-
-    # add hex block
-    # get line number at "hex (...)"
-    p = subprocess.Popen("grep -n '//HEX_BLOCK' "+filename, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    line,error = p.communicate()
-    line = line.split(":")
-    line = int(line[0])+1
-    idx = 0
-    for i,val in enumerate(zAllCutNCells):
-        subprocess.call('sed -i "'+str(line)+'i\    hex ('\
-        +str(idx)+' '+str(idx+1)+' '+str(idx+2)+' '+str(idx+3)+' '+str(idx+4)+' '+str(idx+5)+' '+str(idx+6)+' '+str(idx+7)+\
-        ') (\$Xcells \$Ycells ' +str(val)+ ') simpleGrading (1 1 '+str(zAllCutRatio[i])+')" '+filename, shell=True)
-        idx += 4
-        line += 1
-
+    polyfolder = os.path.join("constant","polyMesh")
+    if not os.path.exists(polyfolder): os.makedirs(polyfolder)
+    
+    #Write blockMeshDict file
+    blockMeshDict = BlockMeshDict( case     = '.',
+                                   ndim     = 3,
+                                   waveMesh = True,
+                                   xmin     = XminDomain,
+                                   xmax     = XmaxDomain,
+                                   ymin     = YminDomain,
+                                   ymax     = YmaxDomain,
+                                   zmin     = ZminDomain,
+                                   zmax     = zAllCut,
+                                   Xcells   = Xcells,
+                                   Ycells   = Ycells,
+                                   Zcells   = zAllCutNCells,
+                                   Zgrading = zAllCutRatio)
+    blockMeshDict.writeFile()
+    
     # update data
     data.zAllCut = zAllCut
     data.zAllCutNCells = zAllCutNCells
@@ -961,7 +833,7 @@ def createBlockMeshDict(data, fileName):
         if data.refBoxType=='wave':
             xCutMax = [XmaxDomain+1e-3 for val in xCutMin]
         elif data.refBoxType=='kelvin':
-            print "not yet implemented"
+            print("not yet implemented")
         else:
             xCutMax = [(XmaxDomain-shipBBxMax)*val for val in xGradMax]
             del xCutMax[0], xCutMax[-1]
@@ -989,26 +861,31 @@ def createBlockMeshDict(data, fileName):
 
 def createBackGroundMesh(data):
     if EXEC_BLOCKMESH:
-        print "blockMesh: create a base mesh ..."
-        runCommand(CMD_blockMesh + CMD_keepLog)
-        print "autoPatch: create domain boundaries ..."
-        runCommand(CMD_autoPatch + CMD_keepLog)
-        renameFoamBlock('./constant/polyMesh/boundary', 'auto0', 'domainX0')
-        renameFoamBlock('./constant/polyMesh/boundary', 'auto1', 'domainX1')
-        renameFoamBlock('./constant/polyMesh/boundary', 'auto2', 'domainY0')
-        renameFoamBlock('./constant/polyMesh/boundary', 'auto3', 'domainY1')
-        renameFoamBlock('./constant/polyMesh/boundary', 'auto4', 'domainZ0')
-        renameFoamBlock('./constant/polyMesh/boundary', 'auto5', 'domainZ1')
-        modifyFoamBlock('./constant/polyMesh/boundary', 'domainZ0', 'type', 'wall')
-        if data.side=='port':
-            modifyFoamBlock('./constant/polyMesh/boundary', 'domainY0', 'type', 'symmetryPlane')
-        elif data.side=='starboard':
-            modifyFoamBlock('./constant/polyMesh/boundary', 'domainY1', 'type', 'symmetryPlane')
+        print("blockMesh: create a base mesh ...")
+        runCommand(CMD_blockMesh + CMD_keepLog, CMD_showLog)
+        print("autoPatch: create domain boundaries ...")
+        runCommand(CMD_autoPatch + CMD_keepLog, CMD_showLog)
+        
+        # Rename boundary patches
+        boundfile = os.path.join("constant","polyMesh","boundary")
+        boundDict = ParsedParameterFile(boundfile,boundaryDict=True)
+        nbound = int(len(boundDict)/2)
+        for i in range(nbound):
+            if boundDict[2*i] in namePatch["foamStar"]:
+                boundDict[2*i] = namePatch["foamStar"][boundDict[2*i]]
+                if boundDict[2*i] == 'domainZ0':
+                    boundDict[2*i+1]['type'] = 'wall'
+                elif boundDict[2*i] == 'domainY0' and data.side=='port':
+                    boundDict[2*i+1]['type'] = 'symmetryPlane'
+                elif boundDict[2*i] == 'domainY1' and data.side=='starboard':
+                    boundDict[2*i+1]['type'] = 'symmetryPlane'
+        boundDict.writeFile()
+        
 #        if NPROCS>1:
-#            print "decomposePar: nProcs =",NPROCS
-#            runCommand(CMD_decomposePar + CMD_keepLog)
+#            print("decomposePar: nProcs =",NPROCS)
+#            runCommand(CMD_decomposePar + CMD_keepLog, CMD_showLog)
     else:
-        print "blockMesh: ... skip"
+        print("blockMesh: ... skip")
 
     # how many refinement box? minimum is 1
     refBoxData = list(data.refBoxData)
@@ -1016,12 +893,12 @@ def createBackGroundMesh(data):
     del refBoxData[0]
     refBoxBB = []
     if len(data.refBoxData)>1:
-        if (nRefBox != (len(data.refBoxData))/4):
-    		raise SystemExit('Error: invalid data for refinement boxes, ', data.refBoxData)
+        if nRefBox != (len(data.refBoxData)-1)/4.:
+            raise SystemExit('Error: invalid data for refinement boxes, ', data.refBoxData)
         for i in range(nRefBox):
             refBoxBB.append([refBoxData[i*4], refBoxData[i*4+2], data.refBoxZdata[i], refBoxData[i*4+1], refBoxData[i*4+3], data.refBoxZdata[-i-1]])
     else:
-		raise SystemExit('\nData for refinement box is missing.\nrefBoxData=[#n, #xmin,#xmax,#ymax,#ymax, #xmin,#xmax,#ymin,#ymax, ..., repeat n times]\nabort ...')
+        raise SystemExit('\nData for refinement box is missing.\nrefBoxData=[#n, #xmin,#xmax,#ymax,#ymax, #xmin,#xmax,#ymin,#ymax, ..., repeat n times]\nabort ...')
 
     shipBBxMin = data.shipBBRot[0]
     shipBByMin = data.shipBBRot[1]
@@ -1062,7 +939,7 @@ def createBackGroundMesh(data):
         for i in range(len(refBoxBB)):
             refBoxBB[i][5] += diff
 
-    #print "debug: refBoxData: ", data.refBoxData
+    #print("debug: refBoxData: ", data.refBoxData)
     #for BB in refBoxBB:
     #    refineBox(BB, 'xy')
     #    pass    
@@ -1135,29 +1012,53 @@ def createBackGroundMesh(data):
         refineProximity('z')
 
 def createSnappyMesh(data):
-    filename='./system/snappyHexMeshDict'
-    snappyMesh_template(filename, data.shipPatches, noLayers=data.noLayers)
-    setValue(filename,"locationInMeshX",data.locationInMesh[0])
-    setValue(filename,"locationInMeshY",data.locationInMesh[1])
-    setValue(filename,"locationInMeshZ",data.locationInMesh[2])
+
+    #surfaceFeatureExtract (if not already done)
+    sltname = DEFAULT_SHIP_STL.split('.stl')[0] 
+    if not foamFileExist('./constant/triSurface/'+sltname+'.eMesh'):
+        print("\nExtract surface features from file: ./constant/triSurface/"+DEFAULT_SHIP_STL)
+        surfaceFeatureExtractDict = SurfaceFeatureExtractDict(case = '.',
+                                                              stlname = DEFAULT_SHIP_STL)
+        surfaceFeatureExtractDict.writeFile()
+        runCommand(CMD_surfaceFeatureExtract + CMD_keepLog, CMD_showLog)
+    else:
+        print("Reuse existing file: "+'./constant/triSurface/'+sltname+'.eMesh')
+    
+    #snappyHexMesh
     if EXEC_SNAP:
-        setValue(filename, "castellatedMesh", "true")
-        setValue(filename, "snap", "true")
-        setValue(filename, "addLayers", "false")
+        snappyHexMeshDict = SnappyHexMeshDict(case                       = '.',
+                                              stlname                    = sltname,
+                                              castellatedMesh            = True,
+                                              snap                       = True,
+                                              addLayers                  = False,
+                                              locationInMesh             = data.locationInMesh,
+                                              nCellsBetweenLevels        = 1,
+                                              edgeLvl                    = 0,
+                                              hullLvl                    = [0,0],
+                                              resolveFeatureAngle        = 15,
+                                              allowFreeStandingZoneFaces = False,
+                                              snapTol                    = 0.75,
+                                              nSolveIter                 = 100,
+                                              maxNonOrtho                = 65,
+                                              minTwist                   = 0.02,
+                                              nSmoothScale               = 5,
+                                              errorReduction             = 0.75)
+        snappyHexMeshDict.writeFile()
+    
         if NPROCS>1:
             isDecomposed,nProcs = caseAlreadyDecomposed()
             if not isDecomposed:
                 nProcs = NPROCS
-                print "decomposePar: nProcs =",nProcs
-                runCommand(CMD_decomposePar + CMD_keepLog)
-            print "snappyHexMesh: snapping ... in parallel, nProcs =",nProcs
+                print("decomposePar: nProcs =",nProcs)
+                runCommand(CMD_decomposePar + CMD_keepLog, CMD_showLog)
+            print("snappyHexMesh: snapping ... in parallel, nProcs =",nProcs)
             cmd = "mpirun -np "+str(nProcs)+" "+CMD_snappyHexMesh + " -parallel "+ CMD_keepLog
         else:
-            print "snappyHexMesh: snapping ... "
+            print("snappyHexMesh: snapping ... ")
             cmd = CMD_snappyHexMesh + CMD_keepLog
-        runCommand(cmd)
+        runCommand(cmd, CMD_showLog)
     else:
-        print "snappyHexMesh: snap ... skip"
+        print("snappyHexMesh: snap ... skip")
         pass
         
     if EXEC_ADDLAYERS:
@@ -1166,59 +1067,72 @@ def createSnappyMesh(data):
         finalLayerThickness = data.shipBL[2]
         minThicknessRatio = data.shipBL[3]
         minThickness = float(minThicknessRatio)*finalLayerThickness/(pow(layerGrowth,float(nLayers-1)))
-        setValue(filename, "castellatedMesh", "false")
-        setValue(filename, "snap", "false")
-        setValue(filename, "addLayers", "true")
-        setValue(filename, "SHIP_BL_layers", nLayers)
-        setValue(filename, "SHIP_BL_layerGrowth", layerGrowth)
-        setValue(filename, "SHIP_BL_finalLayerThickness", finalLayerThickness)
-        setValue(filename, "SHIP_BL_minThickness", minThickness)
+    
+        snappyHexMeshDict = SnappyHexMeshDict(case                       = '.',
+                                              stlname                    = sltname,
+                                              castellatedMesh            = False,
+                                              snap                       = False,
+                                              addLayers                  = True,
+                                              relativeSizes              = True,
+                                              nSurfaceLayers             = nLayers,
+                                              expansionRatio             = layerGrowth,
+                                              finalLayerThickness        = finalLayerThickness,
+                                              minThickness               = minThickness,
+                                              featureAngle               = 60,
+                                              shipPatches                = data.shipPatches,
+                                              noLayers                   = data.noLayers,
+                                              maxNonOrtho                = 65,
+                                              minTwist                   = 0.02,
+                                              nSmoothScale               = 5,
+                                              errorReduction             = 0.75)
+        snappyHexMeshDict.writeFile()
+    
         if NPROCS>1:
             isDecomposed,nProcs = caseAlreadyDecomposed()
             if not isDecomposed:
                 nProcs = NPROCS
-                print "decomposePar: nProcs =",nProcs
-                runCommand(CMD_decomposePar + CMD_keepLog)
-            print "snappyHexMesh: add layers ... in parallel, nProcs =",nProcs
+                print("decomposePar: nProcs =",nProcs)
+                runCommand(CMD_decomposePar + CMD_keepLog, CMD_showLog)
+            print("snappyHexMesh: add layers ... in parallel, nProcs =",nProcs)
             cmd = "mpirun -np "+str(nProcs)+" "+CMD_snappyHexMesh + " -parallel "+ CMD_keepLog
         else:
-            print "snappyHexMesh: add layers ... "
+            print("snappyHexMesh: add layers ... ")
             cmd = CMD_snappyHexMesh + CMD_keepLog
-        runCommand(cmd)
+        runCommand(cmd, CMD_showLog)
     else:
-        print "snappyHexMesh: add layers ... skip"
+        print("snappyHexMesh: add layers ... skip")
         pass
     pass
 
 def run_setSet():
     # FIXME: refineMesh is buggy when run in parallel
-    runCommand(CMD_setSet + ' -batch .tmp_setSet ' + CMD_keepLog)
+    runCommand(CMD_setSet + ' -batch .tmp_setSet ' + CMD_keepLog, CMD_showLog)
 
     #if NPROCS==1:
-    #    runCommand(CMD_setSet + ' -batch .tmp_setSet ' + CMD_keepLog)
+    #    runCommand(CMD_setSet + ' -batch .tmp_setSet ' + CMD_keepLog, CMD_showLog)
     #else:
-    #    runCommand('mpirun -np '+str(NPROCS)+' '+ CMD_setSet + ' -parallel -batch .tmp_setSet ' + CMD_keepLog)
+    #    runCommand('mpirun -np '+str(NPROCS)+' '+ CMD_setSet + ' -parallel -batch .tmp_setSet ' + CMD_keepLog, CMD_showLog)
     pass
 
 def run_refineMesh():
     # FIXME: refineMesh is buggy when run in parallel
-    runCommand(CMD_refineMesh + CMD_keepLog)
+    runCommand(CMD_refineMesh + CMD_keepLog, CMD_showLog)
     
     #if NPROCS==1:
-    #    runCommand(CMD_refineMesh + CMD_keepLog)
+    #    runCommand(CMD_refineMesh + CMD_keepLog, CMD_showLog)
     #else:
-    #    runCommand('mpirun -np '+str(NPROCS)+' '+CMD_refineMesh + ' -parallel ' + CMD_keepLog)
+    #    runCommand('mpirun -np '+str(NPROCS)+' '+CMD_refineMesh + ' -parallel ' + CMD_keepLog, CMD_showLog)
     pass
 
 def selectBoxToCell(BB):
     xmin,ymin,zmin,xmax,ymax,zmax=BB[0],BB[1],BB[2],BB[3],BB[4],BB[5]
     BBtxt = '('+str(xmin)+' '+str(ymin)+' '+str(zmin)+') ('+str(xmax)+' '+str(ymax)+' '+str(zmax)+')'
     cmd = 'cellSet c0 new boxToCell '+BBtxt
-    print "SelectBoxToCell:",cmd
+    print("SelectBoxToCell:",cmd)
     if EXEC_REFINEBOX:
-        runCommand('echo "'+cmd+'" > .tmp_setSet')
+        runCommand('echo "'+cmd+'" > .tmp_setSet', CMD_showLog)
         run_setSet()
-        runCommand('rm -f .tmp_setSet')
+        runCommand('rm -f .tmp_setSet', CMD_showLog)
 
 #surfaceToCell<surface> <outsidePoints> <cut> <inside> <outside> <near> <curvature>
 def selectProximity(opts, stlFile, distance, BB=[0], outsidePoints=None):
@@ -1238,46 +1152,52 @@ def selectProximity(opts, stlFile, distance, BB=[0], outsidePoints=None):
     if len(BB)==6:
         BBtxt = '('+str(BB[0])+' '+str(BB[1])+' '+str(BB[2])+') ('+str(BB[3])+' '+str(BB[4])+' '+str(BB[5])+')'
         cmd += "\n" + 'cellSet c0 subset boxToCell '+BBtxt
-    print "selectProximity:",cmd
+    print("selectProximity:",cmd)
     if EXEC_REFINEPROXIMITY:
-        runCommand('echo "'+cmd+'" > .tmp_setSet')
+        runCommand('echo "'+cmd+'" > .tmp_setSet', CMD_showLog)
         run_setSet()
-        runCommand('rm -f .tmp_setSet')
+        runCommand('rm -f .tmp_setSet', CMD_showLog)
     pass
 
 def refineBox(BB, direction):
     selectBoxToCell(BB)
     if EXEC_REFINEBOX:
-        print "refineBox:", direction
-        refineMesh_template('./system/refineMeshDict', direction)
+        print("refineBox:", direction)
+        dirString = ''
+        for c in direction:
+            if c=='x': dirString += ' tan1'
+            if c=='y': dirString += ' tan2'
+            if c=='z': dirString += ' normal'
+
+        refineMeshDict = RefineMeshDict(case           = '.',
+                                        set            = 'c0',
+                                        directions     = dirString,
+                                        useHexTopology = True,
+                                        geometricCut  = False)
+        refineMeshDict.writeFile()
         run_refineMesh()
     else:
-        print "refineBox:", direction," ... skip"
+        print("refineBox:", direction," ... skip")
     pass
 
 def refineProximity(direction):
     if EXEC_REFINEPROXIMITY:
-        print "refineProximity:", direction
-        refineMesh_template('./system/refineMeshDict', direction)
+        print("refineProximity:", direction)
+        dirString = ''
+        for c in direction:
+            if c=='x': dirString += ' tan1'
+            if c=='y': dirString += ' tan2'
+            if c=='z': dirString += ' normal'
+
+        refineMeshDict = RefineMeshDict(case           = '.',
+                                        set            = 'c0',
+                                        directions     = dirString,
+                                        useHexTopology = True,
+                                        geometricCut   = False)
+        refineMeshDict.writeFile()
         run_refineMesh()
     else:
-        print "refineProximity:", direction," ... skip"
-    pass
-
-def getFoamTimeFolders(constant=False):
-    found = []
-    for val in os.listdir('.'):
-        try:
-            float(val)
-            found.append(val)
-        except ValueError:
-            pass
-    found.sort(key=float)
-    timeFolders = ['./constant/'] if constant else []
-    if len(found):
-        for val in found:
-            timeFolders.append('./'+val+'/')
-    return timeFolders
+        print("refineProximity:", direction," ... skip")
     pass
 
 def caseAlreadyDecomposed():
@@ -1293,9 +1213,9 @@ def caseAlreadyDecomposed():
 
 def clearEmptyZonesFiles(dryrun=False):
     if not dryrun:
-        print "Clear empty {point,cell,face}Zones ... "
+        print("Clear empty {point,cell,face}Zones ... ")
     else:
-        print "Clear empty {point,cell,face}Zones ... dryrun"
+        print("Clear empty {point,cell,face}Zones ... dryrun")
     files = ['polyMesh/faceZones','polyMesh/cellZones','polyMesh/pointZones']
     folders = getFoamTimeFolders(constant=True)
     for pwd in folders:    
@@ -1311,627 +1231,49 @@ def clearEmptyZonesFiles(dryrun=False):
                 p = subprocess.Popen(cmd+" | sed -n '18,19{/^0$/q1}' ", stdout=subprocess.PIPE, shell=True)
                 p.communicate()
                 if p.returncode==1: # found
-                    print "delete:",filename
+                    print("delete:",filename)
                     if not dryrun:
                         try:
                             os.remove(filename)
-                        except OSError, e:
-                            print ("Error: %s - %s." % (e.filename,e.strerror))
+                        except OSError as e:
+                            print(("Error: %s - %s." % (e.filename,e.strerror)))
     pass
-
 
 def foamCase_template():
     global NPROCS
-    subprocess.call('mkdir -p 0 constant system', shell=True)
-    if not os.path.isfile('system/controlDict'):
-        subprocess.call('cat << EOF > system/controlDict' + controlDict_contents, shell=True)
-    if not os.path.isfile('system/fvSchemes'):
-        subprocess.call('cat << EOF > system/fvSchemes' + fvSchemes_contents, shell=True)
-    if not os.path.isfile('system/fvSolution'):
-        subprocess.call('cat << EOF > system/fvSolution' + fvSolution_contents, shell=True)
-    if not os.path.isfile('system/decomposeParDict'):
-        subprocess.call('cat << EOF > system/decomposeParDict' + decomposeParDict_contents, shell=True)
-        if NPROCS>1:
-            setValue('system/decomposeParDict', 'numberOfSubdomains', NPROCS)
-    else:
-        p = subprocess.Popen("grep -E '^numberOfSubdomains' system/decomposeParDict | sed 's/^numberOfSubdomains[ \\t]*//;s/;.*//g' ", stdout=subprocess.PIPE, shell=True)
-        txt,error = p.communicate()
-        if error:
-            print "error:",error
-            raise SystemExit('abort ...')
-        else:
-            NPROCS = int(txt)
-    pass
-
-def blockMeshDict_template(filename):
-    subprocess.call('mkdir -p $(dirname '+filename+")", shell=True)
-    subprocess.call('cat << EOF > '+filename + blockMeshDict_contents, shell=True)
-    pass
-
-def refineMesh_template(filename, dirString):
-    subprocess.call('mkdir -p $(dirname '+filename+")", shell=True)
-    subprocess.call('cat << EOF > '+filename + refineMeshDict_contents, shell=True)
-    directions = ''
-    for c in dirString:
-        if c=='x':
-            directions += ' tan1'
-        if c=='y':
-            directions += ' tan2'
-        if c=='z':
-            directions += ' normal'
-    subprocess.call('sed -i "s/^directions.*;/directions ('+directions+' );/" '+filename, shell=True)
-    pass
+    if not os.path.exists('0'): os.makedirs('0')
+    if not os.path.exists('constant'): os.makedirs('constant')
+    if not os.path.exists('system'): os.makedirs('system')
     
-def snappyMesh_template(filename, shipPatches, noLayers=None):
-    # don't overwrite existing file
-    if not os.path.isfile(filename):
-        print "Creating:",filename
-        subprocess.call('mkdir -p $(dirname '+filename+")", shell=True)
-        subprocess.call('cat << EOF > '+filename + snappyHexMeshDict_contents, shell=True)
-        renameFoamBlock(filename, "DEFAULT_SHIP_STL", '\\"'+DEFAULT_SHIP_STL+'\\"')
-        # add ship_patches to snappyHexMeshDict
-        # get line number at "//ADD_SHIP_PATCHES_HERE"
-        p = subprocess.Popen("grep -n '//ADD_SHIP_PATCHES_HERE' "+filename, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        line,error = p.communicate()
-        line = line.split(":")
-        line = int(line[0])+1
-        if (len(shipPatches)>1):
-            if noLayers==None: noLayers = []
-            if len(noLayers)>0: print "    disable layers on patch(es):",noLayers
-            for val in shipPatches:
-                if val in noLayers: continue
-                subprocess.call('sed -i "'+str(line)+'i\        ship_'+str(val)+'  { nSurfaceLayers \$SHIP_BL_layers; }" '+filename, shell=True)
-                line += 1
-        else:
-            subprocess.call('sed -i "'+str(line)+'i\        ship { nSurfaceLayers \$SHIP_BL_layers; }" '+filename, shell=True)
-            line += 1
-
-    # "snappyHexMeshDict" already exists, check whether or not the "geometry" is OK
-    else:
-        print "Reuse existing file:",filename
-        OK,cmd = foamBlockExist(filename, DEFAULT_SHIP_STL)
-        if not OK:
-            print "\n    Warning: geomtry definition not found for:",DEFAULT_SHIP_STL
-            print "\n    Please review:",filename
-            print "\n"
-            
-    eMeshFile=os.path.splitext(DEFAULT_SHIP_STL)[0] if DEFAULT_SHIP_STL.endswith('.stl') else DEFAULT_SHIP_STL
-    if not foamFileExist('./constant/triSurface/'+eMeshFile+'.eMesh'):
-        print "\nExtract surface features from file: ./constant/triSurface/"+DEFAULT_SHIP_STL
-        subprocess.call('cat << EOF > ./system/surfaceFeatureExtractDict' + surfaceFeatureExtractDict_contents, shell=True)
-        subprocess.call('sed -i "s/^ship.stl/'+DEFAULT_SHIP_STL+'/" '+filename, shell=True)
-        runCommand(CMD_surfaceFeatureExtract + CMD_keepLog)
-    else:
-        print "Reuse existing file: "+'./constant/triSurface/'+eMeshFile+'.eMesh'
+    #controlDict
+    controlDict = ControlDict(case              = '.',
+                              version           = "foamStar",
+                              endTime           = 1000,
+                              deltaT            = 0.01,
+                              writeControl      = "timeStep",
+                              writeInterval     = 50,
+                              writePrecision    = 15,
+                              writeCompression  = "compressed",
+                              runTimeModifiable = "true")
+    controlDict.writeFile()
     
-    pass
+    #fvSchemes
+    fvSchemes = FvSchemes(case        = '.',
+                          simType     = "CrankNicolson",
+                          limitedGrad = True,
+                          orthogonalCorrection = "implicit")
+    fvSchemes.writeFile()
+    
+    #fvSolution
+    fvSolution = FvSolution(case = '.' )
+    fvSolution.writeFile()
+
+    #decomposeParDict
+    decomposeParDict = DecomposeParDict(case   = '.',
+                                        nProcs = NPROCS)
+    decomposeParDict.writeFile()
 
 #*** These are templates files ************************************************* 
-
-blockMeshDict_contents = '''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    object      blockMeshDict;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-/*
-*   created by fsMesher on $(hostname) @ $(date)
-*/
-
-fastMerge yes;
-convertToMeters 1;
-
-XminDomain	moin;
-XmaxDomain	moin;
-YminDomain	moin;
-YmaxDomain	moin;
-ZminDomain  moin;
-Xcells	moin;
-Ycells	moin;
-
-vertices
-(
-    (\$XminDomain \$YminDomain \$ZminDomain)
-    (\$XmaxDomain \$YminDomain \$ZminDomain)
-    (\$XmaxDomain \$YmaxDomain \$ZminDomain)
-    (\$XminDomain \$YmaxDomain \$ZminDomain)
-    //VERTICES
-);
-
-blocks
-(
-    //HEX_BLOCK
-);
-
-edges ();
-
-boundary
-(
-    defaultFaces
-    {
-        type patch; faces ();
-    }
-);
-
-mergePatchPairs ();
-
-// ************************************************************************* //
-EOF
-'''
-
-refineMeshDict_contents = '''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "system";
-    object      refineMeshDict;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-/*
-*   created by fsMesher on $(hostname) @ $(date)
-*/
-set             c0;
-directions      ( tan1 tan2 normal );
-coordinateSystem global;
-globalCoeffs { tan1 ( 1 0 0 ); tan2 ( 0 1 0 ); }
-patchLocalCoeffs { patch outside; tan1 ( 1 0 0 ); }
-useHexTopology  yes;
-geometricCut    no;
-writeMesh       no;
-
-// ************************************************************************* //
-EOF
-'''
-
-surfaceFeatureExtractDict_contents = '''
-/*--------------------------------*- C++ -*----------------------------------*\
-| =========                 |                                                 |
-| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  3.0.x                                 |
-|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
-|    \\/     M anipulation  |                                                 |
-\*---------------------------------------------------------------------------*/
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    object      surfaceFeatureExtractDict;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-/*
-*   created by fsMesher on $(hostname) @ $(date)
-*/
-
-ship.stl
-{
-    extractionMethod    extractFromSurface;
-    writeObj            true;    
-    extractFromSurfaceCoeffs
-    {
-        // Mark edges whose adjacent surface normals are at an angle less
-        // than includedAngle as features
-        // - 0  : selects no edges
-        // - 180: selects all edges
-        includedAngle   150;
-    }
-}
-
-// ************************************************************************* //
-EOF
-'''
-
-controlDict_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "system";
-    object      controlDict;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-/*
-*   created by fsMesher on $(hostname) @ $(date)
-*/
-
-application     foamStar;
-
-startFrom       latestTime;
-
-startTime       0;
-
-stopAt          endTime;
-
-endTime         1000;
-
-deltaT          0.01;
-
-writeControl    timeStep;
-
-writeInterval   50;
-
-purgeWrite      0;
-
-writeFormat     ascii;
-
-writePrecision  15;
-
-writeCompression compressed;
-
-timeFormat      general;
-
-timePrecision   6;
-
-runTimeModifiable no;
-
-adjustTimeStep  no;
-
-maxCo           0.75;
-maxAlphaCo      0.5;
-maxDeltaT       0.1;
-
-libs
-(
-    "libfoamStar.so"
-);
-  
-// ************************************************************************* //
-
-functions
-{
-    //motionInfo { type motionInfo; }
-    //#include "forces.inc"
-    //#include "vbm.inc"
-    //#include "waveProbe.inc"
-}
-
-EOF
-'''
-
-fvSchemes_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "system";
-    object      fvSchemes;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-/*
-*   created by fsMesher on $(hostname) @ $(date)
-*/
-
-ddtSchemes
-{
-    default      CrankNicolson 0.9;
-}
-
-gradSchemes
-{
-    default         cellLimited leastSquares 1;
-    limitedGrad     cellLimited Gauss linear 1;
-}
-
-divSchemes
-{
-    div(rhoPhi,U)   Gauss linearUpwind grad(U);
-    div(phi,alpha)  Gauss vanLeer;
-    div(phirb,alpha) Gauss linear;
-    div(phi,k)      Gauss linearUpwind limitedGrad;
-    div(phi,omega)  Gauss linearUpwind limitedGrad;
-    div((muEff*dev(T(grad(U))))) Gauss linear;
-}
-
-laplacianSchemes
-{
-    default         Gauss linear corrected;
-}
-
-interpolationSchemes
-{
-    default         linear;
-}
-
-snGradSchemes
-{
-    default         corrected;
-}
-
-fluxRequired
-{
-    default         no;
-    p_rgh; pcorr; alpha.water;
-}
-
-EOF
-'''
-
-fvSolution_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "system";
-    object      fvSolution;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-/*
-*   created by fsMesher on $(hostname) @ $(date)
-*/
-
-solvers
-{
-    "alpha.water.*"
-    {
-        nAlphaCorr      3;
-        nAlphaSubCycles 1;
-        cAlpha          0.5;
-        icAlpha         0;
-
-        MULESCorr       yes;
-        nLimiterIter    10;
-        alphaApplyPrevCorr  no;
-
-        solver          smoothSolver;
-        smoother        symGaussSeidel;
-        tolerance       1e-10;
-        relTol          0;
-        minIter         2;
-    }
-
-    "pcorr.*"
-    {
-        solver          GAMG;
-        smoother        DIC;
-        agglomerator    faceAreaPair;
-        mergeLevels     1;
-        nCellsInCoarsestLevel 10;
-        cacheAgglomeration true;
-
-        tolerance       1e-4;
-        relTol          0;
-    };
-
-    p_rgh
-    {
-        solver          GAMG;
-        smoother        DIC;
-        agglomerator    faceAreaPair;
-        mergeLevels     1;
-        nCellsInCoarsestLevel 10;
-        cacheAgglomeration true;
-
-        tolerance       1e-8;
-        relTol          1e-4;
-    };
-
-    p_rghFinal
-    {
-        \$p_rgh;
-        relTol          0;
-    }
-
-    "(U|k|omega).*"
-    {
-        solver          smoothSolver;
-        smoother        symGaussSeidel;
-        nSweeps         1;
-
-        tolerance       1e-8;
-        relTol          0;
-        minIter         1;
-    };
-
-    "cellDisplacement.*"
-    {
-        solver          GAMG;
-        tolerance       1e-7;
-        relTol          0;
-        smoother        GaussSeidel;
-        cacheAgglomeration true;
-        nCellsInCoarsestLevel 10;
-        agglomerator    faceAreaPair;
-        mergeLevels     1;
-    }
-}
-
-PIMPLE
-{
-    momentumPredictor   yes;
-    nOuterCorrectors    4;
-    nCorrectors         4;
-    nNonOrthogonalCorrectors 1;
-    correctPhi          no;
-    moveMeshOuterCorrectors yes;
-}
-
-relaxationFactors
-{
-    fields
-    {
-        //U 0.7; p_rgh 0.3;
-    }
-    equations
-    {
-        //UEqn 0.7; prghEqn 0.3;
-    }
-}
-
-cache
-{
-    grad(U);
-}
-
-// ************************************************************************* //
-
-EOF
-'''
-
-decomposeParDict_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    location    "system";
-    object      decomposeParDict;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-/*
-*   created by fsMesher on $(hostname) @ $(date)
-*/
-
-numberOfSubdomains 4;
-method          scotch;
-distributed     no;
-roots           ( );
-
-EOF
-'''
-
-snappyHexMeshDict_contents='''
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    object      snappyHexMeshDict;
-}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-/*
-*   created by fsMesher on $(hostname) @ $(date)
-*/
-
-#inputMode overwrite;
-
-// user-defined parameters
-locationInMeshX moin;
-locationInMeshY moin;
-locationInMeshZ moin;
-
-SHIP_BL_layers 3;
-SHIP_BL_layerGrowth 1.3;
-SHIP_BL_finalLayerThickness 0.7;
-SHIP_BL_minThickness 0.289;
-
-SHIP_EDGE_LVL 0;
-SHIP_HULL_LVL_MIN 0;
-SHIP_HULL_LVL_MAX 0;
-
-castellatedMesh moin;
-snap            moin;
-addLayers       moin;
-
-geometry
-{
-    DEFAULT_SHIP_STL { type triSurfaceMesh; name ship; patchInfo { type wall; } }
-};
-
-castellatedMeshControls
-{
-    maxLocalCells 10000000;
-    maxGlobalCells 100000000;
-    minRefinementCells 0;
-    nCellsBetweenLevels 1;
-
-    locationInMesh (\$locationInMeshX \$locationInMeshY \$locationInMeshZ); 
-    
-    features
-    (
-        { file "ship.eMesh"; level \$SHIP_EDGE_LVL; }
-    );
-
-    refinementSurfaces
-    {
-        ship { level (\$SHIP_HULL_LVL_MIN \$SHIP_HULL_LVL_MAX); }
-    }
-
-    resolveFeatureAngle 15;
-
-    refinementRegions
-    {
-    }
-
-    allowFreeStandingZoneFaces 	false;
-}
-
-snapControls
-{
-    nSmoothPatch 3;
-    tolerance 0.75;
-    nSolveIter 100;
-    nRelaxIter 5;
-    nFeatureSnapIter 10;
-    implicitFeatureSnap false;
-    explicitFeatureSnap true;
-    multiRegionFeatureSnap true;
-}
-
-addLayersControls
-{
-    relativeSizes true;
-    layers
-    {
-        //ADD_SHIP_PATCHES_HERE
-    }
-
-    expansionRatio \$SHIP_BL_layerGrowth;
-    finalLayerThickness \$SHIP_BL_finalLayerThickness;
-    minThickness \$SHIP_BL_minThickness;
-    nGrow 0;
-
-    featureAngle 60;
-    nRelaxIter 5;
-    nSmoothSurfaceNormals 1;
-    nSmoothNormals 3;
-    nSmoothThickness 10;
-    maxFaceThicknessRatio 0.5;
-    maxThicknessToMedialRatio 0.3;
-    minMedianAxisAngle 90;
-    nBufferCellsNoExtrude 0;
-    nLayerIter 50;
-    nRelaxedIter 20;
-    nMedialAxisIter 10;
-}
-meshQualityControls
-
-{
-    maxNonOrtho 65;
-    maxBoundarySkewness 20;
-    maxInternalSkewness 4;
-    maxConcave 80;
-    minVol 1e-13;
-    minTetQuality 1e-15;
-    minArea -1;
-    minTwist 0.02;
-    minDeterminant 0.001;
-    minFaceWeight 0.05;
-    minVolRatio 0.01;
-    minTriangleTwist -1;
-    minVolCollapseRatio 0.1;
-    //
-    nSmoothScale 4;
-    errorReduction 0.75;
-    //
-    relaxed
-    {
-        maxNonOrtho 75;
-    }
-}
-
-mergeTolerance 1E-6;
-debug 0;
-
-EOF
-'''
 
 defaultParams_contents='''
 # this [fsMesher] header must exist to identify parameters for fsMesher.py
@@ -1951,7 +1293,7 @@ stlFile1 = ./kcs-deck.stl
 # if "None", no operation will be performed to ship.stl
 draft = None
 
-# 180 deg is headsea
+# 180 deg is head sea
 heading = 180
 
 # mesh both side or not? choices are "port", "starboard", "both"
@@ -2056,7 +1398,7 @@ EOF
 '''
 
 def computeProximityData(data):
-    print "debug: computeProximityData()"
+    print("debug: computeProximityData()")
 
     # cell data
     cSize = data.fsdZ
@@ -2071,7 +1413,7 @@ def computeProximityData(data):
     shipBBzMax = data.shipBBRot[5]
     outsidePoints = [0.5*(shipBBxMin+shipBBxMax), 0.5*(shipBByMin+shipBByMax)+math.fabs(shipBByMin-shipBByMax), 0.5*(shipBBzMin+shipBBzMax)]
     
-    proxData = []
+#    proxData = []
     n = nlevel
     while n>=1:
         n -= 1
@@ -2080,8 +1422,7 @@ def computeProximityData(data):
         rData['stlFile'] = str(DEFAULT_SHIP_STL)
         rData['outsidePoints'] = list(outsidePoints)
 
-   
-    print cSize,cBuffer, nlevel
+    print(cSize,cBuffer, nlevel)
     pprint.pprint(rData)
     pass
 
@@ -2090,14 +1431,14 @@ if __name__ == "__main__":
     startTime = time.time()    
     dat = cmdOptions(sys.argv)
     foamCase_template()
-    createBlockMeshDict(dat, 'constant/polyMesh/blockMeshDict')
+    createBlockMeshDict(dat)
     createBackGroundMesh(dat)
     createSnappyMesh(dat)
     
-    #print dat.__dict__
+    #print(dat.__dict__)
     #createBoxStl(dat.shipBB, 'boundingBox.stl') # create boundingBox.stl
     #rotateStl('boundingBox.stl', dat.heading, 'boundingBoxRotated.stl')
 
     endTime = time.time()
-    print 'Completed meshing in %d minutes' % ((endTime-startTime)/60)
+    print('Completed meshing in %d minutes' % ((endTime-startTime)/60))
     

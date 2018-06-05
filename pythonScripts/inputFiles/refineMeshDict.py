@@ -12,7 +12,7 @@ class RefineMeshDict(WriteParameterFile) :
     """
        RefineMeshDict dictionary
     """
-    def __init__(self , case, orient=None, set="freesurface", refineUptoCellLevel=None, coordinateSystem="global", directions="normal", useHexTopology=False, geometricCut=True, writeMesh=False):
+    def __init__(self , case, orient=None, set="freesurface", refineUptoCellLevel=None, coordinateSystem="global", directions="normal", patch=None, useHexTopology=False, geometricCut=True, writeMesh=False):
         if orient==None: suffix = ''
         else: suffix = '.'+orient
         
@@ -32,9 +32,13 @@ class RefineMeshDict(WriteParameterFile) :
         
         if orient is None:
             patchCoef = DictProxy()
-            patchCoef["patch"] = "patchName"
-            patchCoef["tan1"]  = "(0 1 0)"
-            patchCoef["tan2"]  = "(0 0 1)"
+            if patch=="outside":
+                patchCoef["patch"] = patch
+                patchCoef["tan1"]  = "(1 0 0)"
+            else:
+                patchCoef["patch"] = "patchName"
+                patchCoef["tan1"]  = "(0 1 0)"
+                patchCoef["tan2"]  = "(0 0 1)"
             self["patchLocalCoeffs"] = patchCoef
         
         self["directions"]  = '( {} )'.format(directions)

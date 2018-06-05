@@ -30,8 +30,9 @@ if __name__ == "__main__" :
 
    a = dfRead( args.forceFile , reader = "openFoamReader" , field = "total") 
 
-   if args.indexName :a[args.indexName].plot()
-   elif args.index : a.iloc[:,args.index].plot()
-   else: a.plot()
+   a.to_csv(args.forceFile.split('.')[0]+'.csv',sep=';')
+   #if args.indexName :a[args.indexName].plot()
+   #elif args.index : a.iloc[:,args.index].plot()
+   #else: a.plot()
 
-   plt.show()
+   #plt.show()

@@ -11,7 +11,7 @@ class FvSchemes(WriteParameterFile) :
     """
         FvSchemes dictionnary
     """
-    def __init__(self , case, version = "foamStar", prsJump = False,  orthogonalCorrection = False, blendCN = 0.9, simType = "steady" ) :
+    def __init__(self , case, version = "foamStar", prsJump = False,  orthogonalCorrection = False, blendCN = 0.9, simType = "steady", limitedGrad=False):
 
         WriteParameterFile.__init__(self,  name = join(case, "system" , "fvSchemes" )  )
 
@@ -31,8 +31,12 @@ class FvSchemes(WriteParameterFile) :
 
         #-------- gradSchemes
         grad = DictProxy()
-        grad["default"] = "Gauss linear"
-        if prsJump : grad["snGradCorr(pd)"] = "interfaceGauss linear"
+        if limitedGrad:
+            grad["default"] = "cellLimited leastSquares 1"
+            grad["limitedGrad"] = "cellLimited Gauss linear 1"
+        else:
+            grad["default"] = "Gauss linear"
+            if prsJump : grad["snGradCorr(pd)"] = "interfaceGauss linear"
         self["gradSchemes"] = grad
 
         #-------- divSchemes
@@ -44,7 +48,11 @@ class FvSchemes(WriteParameterFile) :
         if version == "foamStar" :
             div["div(phi,alpha)"]   = "Gauss vanLeer"            #vanLeer01DC not in openCFD version
             div["div(phirb,alpha)"] = "Gauss interfaceCompression" #From Vuko's opinion "Gauss linear" should not be used
+            if limitedGrad:
+                div["div(phi,k)"] = "Gauss linearUpwind limitedGrad"
+                div["div(phi,omega)"] = "Gauss linearUpwind limitedGrad"
             div["div((muEff*dev(T(grad(U)))))"] = "Gauss linear"
+            div["div(((rho*nuEff)*dev2(T(grad(U)))))"] = "Gauss linear"
         else :
             div["div(phi,alpha)"]   = "Gauss vanLeer01DC"
             div["div(phirb,alpha)"] = "Gauss vofCompression" #From Vuko's opinion "Gauss linear" should not be used
@@ -66,7 +74,7 @@ class FvSchemes(WriteParameterFile) :
             elif orthogonalCorrection.lower() == "implicit" : 
                 lapl["default"] = "Gauss linear corrected"
             else : 
-                print ("orthogonalCorrection" , orthogonalCorrection , "not reckognized")
+                print ("orthogonalCorrection" , orthogonalCorrection , "not recognized")
         else :
             lapl["default"] = "Gauss linear uncorrected"
             if prsJump : 

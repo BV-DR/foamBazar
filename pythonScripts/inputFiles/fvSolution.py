@@ -11,7 +11,7 @@ class FvSolution(WriteParameterFile) :
     """
         FvSchemes dictionnary
     """
-    def __init__(self , case, fsiTol = 1e-8, useEuler=False, version = "foamStar") :
+    def __init__(self , case, fsiTol = 1e-8, useEuler=False, nOuterCorrectors=5, version = "foamStar") :
 
         WriteParameterFile.__init__(self,  name = join(case, "system" , "fvSolution" )  )
 
@@ -113,7 +113,7 @@ class FvSolution(WriteParameterFile) :
         pimp = DictProxy()
         if not useEuler: pimp["EulerCells"] = "EulerCells"
         pimp["momentumPredictor"] = "yes"
-        pimp["nOuterCorrectors"] = 22
+        pimp["nOuterCorrectors"] = nOuterCorrectors
         pimp["fsiTol"] = fsiTol
         pimp["fsiMaxIter"] = 23
         pimp["nCorrectors"] = 4

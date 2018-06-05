@@ -24,7 +24,10 @@ class DecomposeParDict(WriteParameterFile) :
                                           "delta" : 0.001,
                                           "order" : "xzy" }
             self["manualCoeffs"] = {"dataFile" : '"cellDecomposition"'}
-        
+            
+        elif method == "scotch":
+            self["distributed"] = "no"
+            self["roots"] = '()'
 
 if __name__ == "__main__" : 
    print(DecomposeParDict("test"))

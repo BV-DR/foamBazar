@@ -15,6 +15,8 @@ class SurfaceFeatureExtractDict(WriteParameterFile) :
     def __init__(self , case, stlname="body"):
         WriteParameterFile.__init__(self,  name = join(case, "system" , "surfaceFeatureExtractDict"))
         
+        stlname = stlname.split('.stl')[0] #remove .stl extension
+        
         body = DictProxy()
         body["extractionMethod"]  = "extractFromSurface"
         body["extractFromSurfaceCoeffs"]  = { "includedAngle" : 150. }

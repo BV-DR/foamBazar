@@ -3,7 +3,7 @@ from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import Vector, DictProxy
 import numpy as np
 import os
-from compatOF import waveTypeDict, foamStarPatch
+from inputFiles.compatOF import waveTypeDict, foamStarPatch
 from math import pi 
 # from Spectral.omega2wn import omega2omegae
 
@@ -27,7 +27,7 @@ class RelaxZone(object) :
         self.orientation = [int(i) for i in orientation]  #Assume (1,0,0) ...
         self.length = length
         self.bound = bound
-        self.relax = relax  #If false no relaxation (jsut used for boundary condition)
+        self.relax = relax  #If false no relaxation (just used for boundary condition)
         self.patchNames = patchNames
     
     def pyFoamDict(self, version = "foamStar"):
@@ -68,12 +68,12 @@ class RelaxZone(object) :
                 i = self.orientation.index(-1)
                 if self.length is not None: c1[ i ] = self.origin[ i ] - self.length
                 elif self.bound is not None: c1[ i ] = self.bound
-                else: print 'ERROR : Please provide at least length od bound for relaxZone'
+                else: print('ERROR : Please provide at least length of bound for relaxZone')
             elif +1 in self.orientation :
                 i = self.orientation.index(+1)
                 if self.length is not None: c2[ i ] = self.origin[ i ] + self.length
                 elif self.bound is not None: c2[ i ] = self.bound
-                else: print 'ERROR : Please provide at least length od bound for relaxZone'
+                else: print('ERROR : Please provide at least length of bound for relaxZone')
             return "cellSet {}Zone      new boxToCell ({} {} {}) ({} {} {});".format(self.name ,  *(c1+c2) )
         else :
             return ""
@@ -95,15 +95,15 @@ class WaveCondition(object) :
 
     def pyFoamDict(self , version = "foamStar") :
         d = DictProxy()
-        d["waveType"]  = waveTypeDict[self.waveType ][version]
-        d["height"]    = self.height
-        d["period"]    = self.period
-        d["depth"]     = self.depth
+        d["waveType"]  = waveTypeDict[self.waveType][version]
+        if self.waveType != "noWaves":
+            d["height"]    = self.height
+            d["period"]    = self.period
+            d["depth"]     = self.depth
+            d["refTime"]   = self.startTime
+            d["startTime"] = self.startTime
         d["rampTime"]  = self.rampTime
-        d["refTime"]   = self.startTime
-        d["startTime"] = self.startTime
-        # d["iterateDistance"] = "yes"
-    
+        
         if self.waveType == "streamFunction" :
             d["order"] = 25
     
@@ -119,7 +119,7 @@ class WaveCondition(object) :
             # d["period"] = 2*pi / omega2omegae(2*pi / self.period , v = self.U0, beta = 180.)
     
         elif version == "foamStar" :
-            d["refDirection"] =  Vector( *self.refDirection)
+            if self.waveType != "noWaves": d["refDirection"] =  Vector( *self.refDirection)
             d["U0"] = Vector( self.U0 ,0.,0. )
             d["EulerianCurrent"] =  0.0
         else : 
@@ -193,9 +193,6 @@ if __name__ == "__main__" :
     waveProperties = WaveProperties("waveProperties" , waveCond  ,  relaxZones = (relaxInlet , relaxOutlet) , version = "foamStar" )
     
     print(waveProperties)
-    
-    #print relaxInlet.zoneBatch()
-    #print relaxOutlet.zoneBatch()
     
     #to write the file
     waveProperties.writeFile()

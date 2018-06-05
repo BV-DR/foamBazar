@@ -23,7 +23,7 @@ def setValue(filename, variable, value, pout=False):
     if type(value) is not str: value = str(value)
     if '"' in value: value = value.replace('"','\\"')
     if '/' in value: value = value.replace('/','\\/')
-    if pout:  print 'sed -i "s/'+variable+'/'+value+'/g" '+filename
+    if pout:  print('sed -i "s/'+variable+'/'+value+'/g" '+filename)
     subprocess.call('sed -i "s/'+variable+'/'+value+'/g" '+filename, shell=True)
 
 # foamFile may be compressed i.e. ".gz"  
@@ -34,42 +34,43 @@ def foamFileExist(filename):
     return found
     
 def findBoundingBox(stlFile, verbose=True):
+    stlFile = stlFile.split('.stl')[0] #remove .stl extension
     if verbose:
-        print "Compute STL bounding box: " + stlFile
-    p = subprocess.Popen("surfaceCheck "+stlFile+" | grep '^Bounding Box :' | sed \"s/.*: (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        print( "Compute STL bounding box: "+stlFile+'.stl')
+    p = subprocess.Popen("surfaceCheck "+stlFile+'.stl'+" | grep '^Bounding Box :' | sed \"s/.*: (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     boundingBox,error = p.communicate()
     if error:
-        print 'error: ', error
+        print( 'error: ', error)
         raise SystemExit('abort ...')
-    boundingBox = boundingBox.split(' ')
+    boundingBox = boundingBox.decode('ascii').split(' ')
     boundingBox = [float(i) for i in boundingBox]
     if verbose:
-        print "   ",boundingBox
+        print( "   ",boundingBox)
     return boundingBox
     
 def findCFDBoundingBox(case, verbose=True):
     if verbose:
-        print "Compute CFD bounding box:"
+        print( "Compute CFD bounding box:")
     p = subprocess.Popen("fsBoundingBox -case "+case+" | grep 'Overall domain bounding box' | sed \"s/.*box (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     boundingBox,error = p.communicate()
     if error:
-        print 'error: ', error
+        print( 'error: ', error)
         raise SystemExit('abort ...')
-    boundingBox = boundingBox.split(' ')
+    boundingBox = boundingBox.decode('ascii').split(' ')
     boundingBox = [float(i) for i in boundingBox]
     if verbose:
-        print "   ", boundingBox
+        print( "   ", boundingBox)
     return boundingBox 
 
-def runCommand(cmd):
+def runCommand(cmd,showlog):
     try:
         subprocess.check_call(cmd, shell=True)
     except subprocess.CalledProcessError:
-        subprocess.call(CMD_showLog, shell=True)
+        subprocess.call(showlog, shell=True)
         raise SystemExit('abort ...')
         pass
     except OSError:
-        print cmd
+        print( cmd)
         raise SystemExit('executable not found ... abort')
         pass
     pass
@@ -97,7 +98,7 @@ def getBool(string):
     elif string in ['False','false','F','f','0']:
         return False
     else:
-        print 'Invalid boolean entry : '+str(string)
+        print( 'Invalid boolean entry : '+str(string))
         raise SystemExit('')
     
 def checkError(file):
@@ -107,3 +108,33 @@ def checkError(file):
             if 'ERROR' in line: error=True
     
     return error
+    
+def findSTLPatches(stlFile):
+    p = subprocess.Popen("grep '^[ \\t]*\<solid\>' "+stlFile+" | sed 's/solid//g' | tr '\n' ' ' | sed 's/^[ \t]*//;s/ \+/ /g;s/\s*$//g' "  , stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    patches,error = p.communicate()
+    if error:
+        print('error: ', error)
+        raise SystemExit('abort ...')
+    return patches.decode('ascii').split(' ')
+
+def translateStl(inputStl, val, outputStl):
+    val = "("+str(val[0])+" "+str(val[1])+" "+str(val[2])+")"
+    print("Translate stl by "+val+": " + inputStl)
+    subprocess.call("surfaceTransformPoints -translate '"+val+"' " + inputStl + " " + outputStl + " > /dev/null", shell=True)
+    return True
+
+def rotateStl(inputStl, heading, outputStl):
+    yaw = heading-180.0
+    if str(yaw) == '0.0': return False
+    print("Rotate stl (0 0 " + str(yaw) + "): " + inputStl)
+    subprocess.call("surfaceTransformPoints -rollPitchYaw '(0 0 "+str(heading-180.0)+")' " + inputStl + " " + outputStl + " > /dev/null", shell=True)
+    return True
+
+def createBoxStl(BB,name):
+    Xmin,Ymin,Zmin,Xmax,Ymax,Zmax=BB[0],BB[1],BB[2],BB[3],BB[4],BB[5]
+    tol = (Xmax-Xmin)*1e-6
+    filename = "./constant/triSurface/" + name
+    print("Creating stl: " + filename)
+    print("   ",BB)
+    subprocess.call("surfaceTransformPoints -scale '("+str(Xmax-Xmin-tol)+" "+str(Ymax-Ymin-tol)+" "+str(Zmax-Zmin-tol)+")' fsMesher/fsMesher_box.stl "+filename+" > /dev/null", shell=True)
+    subprocess.call("surfaceTransformPoints -translate '("+str(Xmin+0.5*tol)+" "+str(Ymin+0.5*tol)+" "+str(Zmin+0.5*tol)+")' "+filename+" "+filename+" > /dev/null", shell=True)

@@ -19,6 +19,7 @@ import pandas as pd
 from io import StringIO
 from subprocess import call, Popen
 from scipy import interpolate as interp
+from fsTools import findBoundingBox
 from Pluto.System.readInput import readInput
 
 from inputFiles.fvSchemes import FvSchemes
@@ -99,7 +100,7 @@ def createSectionStl(sdict):
         fy = interp.interp1d(s,mysect.y); y = fy(ss)
         fz = interp.interp1d(s,mysect.z); z = fz(ss)
         
-        #create symetric
+        #create symmetric
         interpsect = pd.DataFrame({ 'x': np.concatenate((x,x[1:])),
                                     'y': np.concatenate(( -1.0*y[:0:-1],y)),
                                     'z': np.concatenate(( z[:0:-1],z)) })
@@ -135,21 +136,22 @@ def createSectionStl(sdict):
         #Create STL
         call('gmsh -2 -format stl -o "'+fstl+'" "'+fgeo+'"', shell=True)
         
-def create2DMesh(sdict,gridlvl,symmetry,runScript):
+def create2DMesh(param,sdict,runScript):
     for isect in sdict.keys():
         print('')
         print('Section =',isect)
         
+        if param.symmetry: mysym = 'sym'
+        else: mysym = 'r{:02d}'.format(int(param.rot))
+        
         mysect = 'section_'+str(isect)
         
-        for grid in gridlvl:
-        
-            mygrid = 'grid_'+str(gridlvl)
-            mycase = os.path.join(mysect,mygrid)
+        for grid in param.gridLevel:
+            mygrid = 'grid_'+str(grid)
+            mycase = os.path.join(mysym,mysect,mygrid)
             length = sdict[isect].y.max()
             height = sdict[isect].z.max()
             
-            if not os.path.exists(mysect): os.makedirs(mysect)
             if not os.path.exists(mycase): os.makedirs(mycase)
             
             print('Create system folder input files')
@@ -158,14 +160,14 @@ def create2DMesh(sdict,gridlvl,symmetry,runScript):
             
             #controlDict
             controlDict = ControlDict(case                = mycase,
-                                    version             = "snappyHexMesh",
-                                    endTime             = 100,
-                                    deltaT              = 1,
-                                    writeControl        = "runTime",
-                                    writeInterval       = 1,
-                                    writePrecision      = 6,
-                                    writeCompression    = "off",
-                                    runTimeModifiable   = "true")
+                                      version             = "snappyHexMesh",
+                                      endTime             = 100,
+                                      deltaT              = 1,
+                                      writeControl        = "runTime",
+                                      writeInterval       = 1,
+                                      writePrecision      = 6,
+                                      writeCompression    = "off",
+                                      runTimeModifiable   = "true")
             controlDict.writeFile()
     
             #fvSchemes
@@ -211,7 +213,7 @@ def create2DMesh(sdict,gridlvl,symmetry,runScript):
             snappyHexMeshDict = SnappyHexMeshDict(case                = mycase,
                                                 addLayers           = True,
                                                 stlname             = mysect,
-                                                refinementLength    = length/15.,   #mesh length/15
+                                                refinementLength    = length/param.refineLength,   #mesh length/10
                                                 nSurfaceLayers      = 3,
                                                 expansionRatio      = 1.3,
                                                 finalLayerThickness = length/200.,  #mesh length/200
@@ -223,8 +225,6 @@ def create2DMesh(sdict,gridlvl,symmetry,runScript):
                                                                 stlname = mysect)
             surfaceFeatureExtractDict.writeFile()
             
-            
-            
             print('Create constant folder input files')
             consfolder = os.path.join(mycase,"constant")
             polyfolder = os.path.join(mycase,"constant","polyMesh")
@@ -235,14 +235,17 @@ def create2DMesh(sdict,gridlvl,symmetry,runScript):
             
             #blockMeshDict
             blockMeshDict = BlockMeshDict( case     = mycase,
-                                        ymin     = -9.0*length*(not symmetry),
-                                        ymax     =  9.0*length,
-                                        zmin     = -2.0*height,
-                                        zmax     =  3.0*height,
-                                        fsmin    = -0.5*height,
-                                        fsmax    =  1.5*height,
-                                        sym     = symmetry,
-                                        gridlvl = gridlvl )
+                                           ndim     = 2,
+                                           xmin     = param.xBounds[0],
+                                           xmax     = param.xBounds[1],
+                                           ymin     = param.yBounds[0]*length*(not param.symmetry),
+                                           ymax     = param.yBounds[1]*length,
+                                           zmin     = param.zBounds[0]*height,
+                                           zmax     = param.zBounds[1]*height,
+                                           fsmin    = param.fsBounds[0]*height,
+                                           fsmax    = param.fsBounds[1]*height,
+                                           sym      = param.symmetry,
+                                           gridlvl = grid )
             blockMeshDict.writeFile()
     
         
@@ -279,17 +282,22 @@ def create2DMesh(sdict,gridlvl,symmetry,runScript):
                 f.write('}\n\n')
                 f.write('(\n')
                 f.write('    blockMesh\n')
-                f.write('    refineBox "(-1e6 {:.2f} {:.2f}) (1e6 {:.2f} {:.2f})"\n'.format(-6.5*length,-2.0*height,6.5*length,3.0*height))
-                f.write('    refineBox "(-1e6 {:.2f} {:.2f}) (1e6 {:.2f} {:.2f})"\n'.format(-4.5*length,-2.0*height,4.5*length,2.5*height))
-                f.write('    refineBox "(-1e6 {:.2f} {:.2f}) (1e6 {:.2f} {:.2f})"\n'.format(-3.0*length,-2.0*height,3.0*length,2.0*height))
-                f.write('    refineBox "(-1e6 {:.2f} {:.2f}) (1e6 {:.2f} {:.2f})"\n'.format(-2.0*length,-1.5*height,2.0*length,1.8*height))
-                f.write('    refineBox "(-1e6 {:.2f} {:.2f}) (1e6 {:.2f} {:.2f})"\n'.format(-1.5*length,-1.0*height,1.5*length,1.6*height))
-                f.write('    refineBox "(-1e6 {:.2f} {:.2f}) (1e6 {:.2f} {:.2f})"\n'.format(-1.1*length,-0.5*height,1.1*length,1.4*height))
-                f.write('    refineFS 6 "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})"\n'.format(-1.5*height,2.5*height))
-                f.write('    refineFS 6 "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})"\n'.format(-1.0*height,2.0*height))
-                f.write('    refineFS 6 "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})"\n'.format(-0.5*height,1.5*height))
-                f.write('    refineFS 6 "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})"\n'.format(-0.3*height,1.3*height))
-                f.write('    refineFS 6 "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})" -noCellLevel\n'.format(-0.2*height,1.2*height))
+                
+                n = int(min([len(param.yRefineBox),len(param.zRefineBox)/2]))
+                if n < param.nRefBoxes:
+                    print('ERROR: Requested number of boxes is greater than refinement level provided!')
+                    os._exit(1)
+                for i in range(param.nRefBoxes):
+                    f.write('    refineBox "(-1e6 {:.2f} {:.2f}) (1e6 {:.2f} {:.2f})"\n'.format(param.yRefineBox[i]*length,param.zRefineBox[i]*height,param.yRefineBox[i+n]*length,param.zRefineBox[i+n]*height))
+                n = int(len(param.fsRefineBox)/2)
+                if n < param.nfsRefBoxes:
+                    print('ERROR: Requested number of boxes is greater than refinement level provided!')
+                    os._exit(1)
+                for i in range(param.nfsRefBoxes):
+                    if i < param.nfsRefBoxes-1:
+                        f.write('    refineFS {} "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})"\n'.format(param.nfsRefBoxes,param.fsRefineBox[i]*height,param.fsRefineBox[i+n]*height))
+                    elif i == param.nfsRefBoxes-1:
+                        f.write('    refineFS {} "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})" -noCellLevel\n'.format(param.nfsRefBoxes,param.fsRefineBox[i]*height,param.fsRefineBox[i+n]*height))
                 f.write('    snap\n')
                 f.write('    extrudeMesh\n')
                 f.write(') 2>&1 | tee log.mesh\n\n')
@@ -307,11 +315,19 @@ def create2DMesh(sdict,gridlvl,symmetry,runScript):
                 f.write('rm -fr 0/alpha.water* 0/U* 0/p_rgh*\n')
             os.chmod(aclean, 0o755)
             
-            print('Copy STL file and run surfaceFeatureExtract')
+            print('Copy STL file, rotate and run surfaceFeatureExtract')
             #Copy STL in triSurface folder
             fstlin  = os.path.join(r'stl/',mysect+'.stl')
             fstlout = os.path.join(trifolder,mysect+'.stl')
             shutil.copyfile(fstlin,fstlout)
+            
+            #rotate section if needed
+            if abs(param.rot)>1e-3:
+                fstltmp = os.path.join(trifolder,mysect+'_tmp.stl')
+                shutil.move(fstlout,fstltmp)
+                p = Popen(["surfaceTransformPoints -yawPitchRoll '(0 0 {:.3f})' {} {}".format(param.rot,fstltmp,fstlout)], shell=True)
+                p.wait()
+                os.remove(fstltmp)
             
             #run surfaceFeatureExtract
             p = Popen(['surfaceFeatureExtract'], cwd=mycase)
@@ -326,27 +342,249 @@ def create2DMesh(sdict,gridlvl,symmetry,runScript):
             
             #create file for Paraview
             open(os.path.join(mycase,'a.foam'), 'a').close()
+            
+def create3DMesh(param,runScript):
+    if param.symmetry: mysym = 'sym'
+    else: mysym = 'r{:02d}'.format(int(param.rot))
+    
+    mystl = param.stlFile.split('.stl')[0] #remove .stl extension
+    
+    for grid in param.gridLevel:
+        mygrid = 'grid_'+str(grid)
+        mycase = os.path.join(mysym,mygrid)
+        
+        #get STL size
+        bBox = findBoundingBox(r'stl/'+mystl, verbose=True)
+        Length = bBox[3]-bBox[0]
+        Beam   = bBox[4]-bBox[1]
+        Depth  = bBox[5]-bBox[2]
+        print('Length = {}; Beam = {}; Depth = {}'.format(Length,Beam,Depth))
+        
+        if not os.path.exists(mycase): os.makedirs(mycase)
+        
+        print('Create system folder input files')
+        sysfolder = os.path.join(mycase,"system")
+        if not os.path.exists(sysfolder): os.makedirs(sysfolder)
+        
+        #controlDict
+        controlDict = ControlDict(case                = mycase,
+                                  version             = "snappyHexMesh",
+                                  endTime             = 100,
+                                  deltaT              = 1,
+                                  writeControl        = "runTime",
+                                  writeInterval       = 1,
+                                  writePrecision      = 6,
+                                  writeCompression    = "off",
+                                  runTimeModifiable   = "true")
+        controlDict.writeFile()
+    
+        #fvSchemes
+        fvSchemes = FvSchemes(case     = mycase,
+                              simType  = "Euler" )
+        fvSchemes.writeFile()
+    
+        #fvSolution
+        fvSolution = FvSolution(case = mycase )
+        fvSolution.writeFile()
+    
+        #decomposeParDict
+        decomposeParDict = DecomposeParDict(case   = mycase,
+                                            nProcs = 4)
+        decomposeParDict.writeFile()
+        
+        #refineMeshDict
+        refineMeshDict = RefineMeshDict(case                = mycase,
+                                        refineUptoCellLevel = 5)
+        refineMeshDict.writeFile()
+        
+        refineMeshDictZ = RefineMeshDict(case           = mycase,
+                                         orient         = 'z',
+                                         set            = "c0",
+                                         useHexTopology = True,
+                                         geometricCut   = False)
+        refineMeshDictZ.writeFile()
+        
+        refineMeshDictXYZ = RefineMeshDict(case           = mycase,
+                                           orient         = 'xyz',
+                                           set            = "c0",
+                                           directions     = "tan1 tan2 normal",
+                                           useHexTopology = True,
+                                           geometricCut   = False)
+        refineMeshDictXYZ.writeFile()
+        
+        #snappyHexMeshDict
+        snappyHexMeshDict = SnappyHexMeshDict(case                = mycase,
+                                              addLayers           = True,
+                                              stlname             = mystl,
+                                              refinementLength    = Beam*0.5/param.refineLength, #mesh Beam*0.5/10
+                                              nSurfaceLayers      = 3,
+                                              expansionRatio      = 1.3,
+                                              finalLayerThickness = Beam*0.5/200.,  #mesh Beam*0.5/200
+                                              minThickness        = Beam*0.5/2000.) #mesh Beam*0.5/2000
+        snappyHexMeshDict.writeFile()
+    
+        #surfaceFeatureExtractDict
+        surfaceFeatureExtractDict = SurfaceFeatureExtractDict(case = mycase,
+                                                              stlname = mystl)
+        surfaceFeatureExtractDict.writeFile()
+        
+        print('Create constant folder input files')
+        consfolder = os.path.join(mycase,"constant")
+        polyfolder = os.path.join(mycase,"constant","polyMesh")
+        trifolder = os.path.join(mycase,"constant","triSurface")
+        if not os.path.exists(consfolder): os.makedirs(consfolder)
+        if not os.path.exists(polyfolder): os.makedirs(polyfolder)
+        if not os.path.exists(trifolder): os.makedirs(trifolder)
+        
+        #blockMeshDict
+        blockMeshDict = BlockMeshDict( case     = mycase,
+                                       ndim     = 3,
+                                       xmin     = param.xBounds[0]*Length,
+                                       xmax     = param.xBounds[1]*Length,
+                                       ymin     = param.yBounds[0]*Beam*0.5*(not param.symmetry),
+                                       ymax     = param.yBounds[1]*Beam*0.5,
+                                       zmin     = param.zBounds[0]*Depth,
+                                       zmax     = param.zBounds[1]*Depth,
+                                       fsmin    = param.fsBounds[0]*Depth,
+                                       fsmax    = param.fsBounds[1]*Depth,
+                                       sym      = param.symmetry,
+                                       gridlvl  = grid )
+        blockMeshDict.writeFile()
+    
+        print('Create 0 folder input files')
+        zerofolder = os.path.join(mycase,"0")
+        if not os.path.exists(zerofolder): os.makedirs(zerofolder)
+    
+        #Allrun
+        print('Create run scripts')
+        arun = os.path.join(mycase,'Allrun')
+        with open(arun,'w') as f:
+            f.write('#! /bin/bash\n')
+            f.write('set -x\n\n')
+            f.write('function clearMeshInfo()\n')
+            f.write('{\n')
+            f.write('    rm -fr background.msh 0/{ccx,ccy,ccz,*Level,polyMesh/cellMap}* constant/polyMesh/{sets,*Level*,*Zone*,refine*,surfaceIndex*}\n')
+            f.write('}\n\n')
+            f.write('function refineBox()\n')
+            f.write('{\n')
+            f.write('    echo "cellSet c0 new boxToCell $1" | setSet -latestTime\n')
+            f.write('    eval BVrefineMesh -dict "system/refineMeshDict.xyz"\n')
+            f.write('}\n\n')
+            f.write('function refineFS()\n')
+            f.write('{\n')
+            f.write('    REFLEVEL=$1\n')
+            f.write('    PARAM=$2\n')
+            f.write('    shift; shift\n')
+            f.write('    echo "cellSet c0 new boxToCell $PARAM" | setSet -latestTime\n')
+            f.write('    eval BVrefineMesh -dict "system/refineMeshDict.z" -refineUpToLevel $REFLEVEL $@\n')
+            f.write('}\n\n')
+            f.write('function snap()\n')
+            f.write('{\n')
+            f.write('    snappyHexMesh\n')
+            f.write('}\n\n')
+            f.write('(\n')
+            f.write('    blockMesh\n')
+            n = int(min([len(param.xRefineBox)/2, len(param.yRefineBox),len(param.zRefineBox)/2]))
+            if n < param.nRefBoxes:
+                print('ERROR: Requested number of boxes is greater than refinement level provided!')
+                os._exit(1)
+            for i in range(param.nRefBoxes):
+                f.write('    refineBox "({:.2f} {:.2f} {:.2f}) ({:.2f} {:.2f} {:.2f})"\n'.format(param.xRefineBox[i]*Length,param.yRefineBox[i]*Beam*0.5,param.zRefineBox[i]*Depth,param.xRefineBox[i+n]*Length,param.yRefineBox[i+n]*Beam*0.5,param.zRefineBox[i+n]*Depth))
+            n = int(len(param.fsRefineBox)/2)
+            if n < param.nfsRefBoxes:
+                print('ERROR: Requested number of boxes is greater than refinement level provided!')
+                os._exit(1)
+            for i in range(param.nfsRefBoxes):
+                if i < param.nfsRefBoxes-1:
+                    f.write('    refineFS {} "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})"\n'.format(param.nRefBoxes,param.fsRefineBox[i]*Depth,param.fsRefineBox[i+n]*Depth))
+                elif i == param.nfsRefBoxes-1:
+                    f.write('    refineFS {} "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})" -noCellLevel\n'.format(param.nRefBoxes,param.fsRefineBox[i]*Depth,param.fsRefineBox[i+n]*Depth))
+            f.write('    snap\n')
+            f.write(') 2>&1 | tee log.mesh\n\n')
+            f.write('checkMesh -latestTime 2>&1 | tee log.checkMesh\n')
+        os.chmod(arun, 0o755)
+    
+        #Allclean
+        aclean = os.path.join(mycase,'Allclean')
+        with open(aclean,'w') as f:
+            f.write('#! /bin/bash\n')
+            f.write('cd ${0%/*} || exit 1    # run from this directory\n\n')
+            f.write('# Source tutorial clean functions\n')
+            f.write('. $WM_PROJECT_DIR/bin/tools/CleanFunctions\n\n')
+            f.write('cleanCase\n\n')
+            f.write('rm -fr 0/alpha.water* 0/U* 0/p_rgh*\n')
+        os.chmod(aclean, 0o755)
+        
+        print('Copy STL file, rotate and run surfaceFeatureExtract')
+        #Copy STL in triSurface folder
+        fstlin  = os.path.join(r'stl/'+mystl+'.stl')
+        fstlout = os.path.join(trifolder,mystl+'.stl')
+        shutil.copyfile(fstlin,fstlout)
+        
+        #rotate section if needed
+        if abs(param.rot)>1e-3:
+            fstltmp = os.path.join(trifolder,mystl+'_tmp.stl')
+            shutil.move(fstlout,fstltmp)
+            p = Popen(["surfaceTransformPoints -yawPitchRoll '(0 0 {:.3f})' {} {}".format(param.rot,fstltmp,fstlout)], shell=True)
+            p.wait()
+            os.remove(fstltmp)
+        
+        #run surfaceFeatureExtract
+        p = Popen(['surfaceFeatureExtract'], cwd=mycase)
+        p.wait()
+        
+        #run Allrun script
+        if runScript:
+            p = Popen(['./Allclean'], cwd=mycase)
+            p.wait()
+            p = Popen(['./Allrun'], cwd=mycase)
+            p.wait()
+        
+        #create file for Paraview
+        open(os.path.join(mycase,'a.foam'), 'a').close()
+        
         
 #*** Main execution start here *************************************************
     #Read input file
-DEFAULT_PARAM = {'sectionsFile'  : '',
+DEFAULT_PARAM = {'ndim'          : 2,
+                 'sectionsFile'  : '',
+                 'stlFile'       : '',
                  'sections'      : [],
                  'gridLevel'     : [1],
-                 'symmetry'      : False }
-                 
-iParam = ['gridLevel']
-rParam = []
+                 'rot'           : 0.0,
+                 'symmetry'      : False,
+                 'xBounds'       : [-0.5,0.5],
+                 'yBounds'       : [-9.,9.],
+                 'zBounds'       : [-2.,3.],
+                 'fsBounds'      : [-0.5,1.5],
+                 'nRefBoxes'     : 6,
+                 'xRefineBox'    : [-0.6,-0.5,-0.4,-0.3,-0.2,-0.1,1.6,1.5,1.4,1.3,1.2,1.1],
+                 'yRefineBox'    : [-6.5,-4.5,-3.0,-2.0,-1.5,-1.2,6.5,4.5,3.0,2.0,1.5,1.2],
+                 'zRefineBox'    : [-2.0,-2.0,-2.0,-1.5,-1.0,-0.5,3.0,2.5,2.0,1.8,1.6,1.4],
+                 'nfsRefBoxes'   : 5,
+                 'fsRefineBox'   : [-1.5,-1.0,-0.5,-0.3,-0.2,2.5,2.0,1.5,1.3,1.2],
+                 'refineLength'  : 15
+                 }
+
+iParam = ['ndim','nRefBoxes','nfsRefBoxes']
+rParam = ['refineLength','rot']
 lParam = ['symmetry']
-sParam = ['sectionsFile']
-aParam = ['sections']
+sParam = ['sectionsFile','stlFile']
+aParam = ['sections','gridLevel','xBounds','yBounds','zBounds','fsBounds','xRefineBox','yRefineBox','zRefineBox','fsRefineBox']
 
 if __name__ == "__main__":
-    startTime = time.time()    
+    startTime = time.time()
     arg = cmdOptions(sys.argv)
     param = readInput(arg.inputfile,iParam=iParam,rParam=rParam,lParam=lParam,sParam=sParam,aParam=aParam,name='fsMesher2D',default=DEFAULT_PARAM)
-    sectDict = readSections(param.sectionsFile,sections=param.sections)
-    if arg.createStl: createSectionStl(sectDict)
-    create2DMesh(sectDict,param.gridLevel,param.symmetry,arg.runScript)
+    if abs(param.rot)>1e-3 and param.symmetry:
+        print('ERROR: Mesh rotation cannot be applied with symmetry')
+        os._exit(1)
+    if param.ndim==2:
+        sectDict = readSections(param.sectionsFile,sections=param.sections)
+        if arg.createStl: createSectionStl(sectDict)
+        create2DMesh(param,sectDict,arg.runScript)
+    elif param.ndim==3:
+        create3DMesh(param,arg.runScript)
 
     endTime = time.time()
     print('Mesh generation completed in '+str(datetime.timedelta(seconds=(endTime-startTime))))

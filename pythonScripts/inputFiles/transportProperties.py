@@ -1,7 +1,7 @@
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import Vector, Field, Dimension, DictProxy
 from os.path import join
-from compatOF import water, air
+from inputFiles.compatOF import water, air
 
 """
   Convenience class to simply write "TransportProperties"
@@ -18,7 +18,7 @@ class TransportProperties(WriteParameterFile) :
 
       if version == "foamStar" : self["phases"] = ["water" , "air"]
       
-      dw = DictProxy()     
+      dw = DictProxy()
       dw["transportModel"] =  "Newtonian"
       dw["nu"]             =  "nu [0 2 -1 0 0 0 0] {}".format(nuWater)
       dw["rho"]            =  "rho [1 -3 0 0 0 0 0] {}".format(rhoWater)

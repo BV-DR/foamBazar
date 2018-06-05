@@ -6,7 +6,7 @@ from inputFiles.compatOF import application, surfaceElevation
 
 class ControlDict( WriteParameterFile ) :
 
-    def __init__(self , case ,  startFrom="latestTime", startTime=0 , endTime=60. , deltaT=None , autoDeltaTCo=None , writeControl="timeStep", writeInterval=0.1 , purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no", writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputMotions=False, vbmPatch=None, forcesPatch=None, outputLocalMotions=False, version="foamStar"):
+    def __init__(self , case ,  startFrom="latestTime", startTime=0 , endTime=60. , deltaT=None , autoDeltaTCo=None , writeControl="timeStep", writeInterval=0.1 , purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no", writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputMotions=False, vbmPatch=None, forcesPatch=None, outputLocalMotions=False, rhoWater = 1000, OFversion=3, version="foamStar"):
 
         WriteParameterFile.__init__(self , join(case , "system" , "controlDict" ))
         self["application"]       = application[version]
@@ -26,16 +26,16 @@ class ControlDict( WriteParameterFile ) :
         self["runTimeModifiable"] = runTimeModifiable
       
       
-        if not adjustTimeStep is None :
+        if adjustTimeStep is not None :
             self["adjustTimeStep"] = "yes"
             self["maxCo"]          = adjustTimeStep[0]
             self["maxAlphaCo"]     = adjustTimeStep[1]
             self["maxDeltaT"]      = adjustTimeStep[2]
         else :
             self["adjustTimeStep"] = "no"
-            # self["maxCo"]          = 0.  #Unused
-            # self["maxAlphaCo"]     = 0.  #Unused
-            # self["maxDeltaT"]      = 0.  #Unused
+            self["maxCo"]          = 0.5
+            self["maxAlphaCo"]     = 0.5
+            self["maxDeltaT"]      = 1.
       
         if version == "foamStar" :
             self ["libs"] =  ['"libfoamStar.so"' , ]
@@ -57,8 +57,12 @@ class ControlDict( WriteParameterFile ) :
         if vbmPatch is not None :
             vbmDict = DictProxy()
             vbmDict["type"]               = "internalLoads"
-            vbmDict["outputControl"]      = "timeStep"
-            vbmDict["outputInterval"]     = 1
+            if OFversion==5:
+                vbmDict["writeControl"]      = "timeStep"
+                vbmDict["writeInterval"]     = 1
+            else:
+                vbmDict["outputControl"]      = "timeStep"
+                vbmDict["outputInterval"]     = 1
             vbmDict["hullPatches"]        = '({})'.format(vbmPatch[0])
             vbmDict["donFileName"]        = '"{}.don"'.format(vbmPatch[1])
             vbmDict["wldFileName"]        = '""'
@@ -70,15 +74,19 @@ class ControlDict( WriteParameterFile ) :
         if forcesPatch is not None :
             forcesDict = DictProxy()
             forcesDict["type"]               = "forces"
-            forcesDict["functionObjectLibs"] = '"libforces.so"'
-            forcesDict["patches"]            = forcesPatch
-            forcesDict["rhoInf"]             = 1000
+            forcesDict["functionObjectLibs"] = ['"libforces.so"']
+            forcesDict["patches"]            = [forcesPatch]
+            forcesDict["rhoInf"]             = rhoWater
             forcesDict["rhoName"]            = "rho"
             forcesDict["pName"]              = "p"
             forcesDict["UName"]              = "U"
             forcesDict["log"]                = True
-            forcesDict["outputControl"]      = "timeStep"
-            forcesDict["outputInterval"]     = 1
+            if OFversion==5:
+                forcesDict["writeControl"]      = "timeStep"
+                forcesDict["writeInterval"]     = 1
+            else:
+                forcesDict["outputControl"]      = "timeStep"
+                forcesDict["outputInterval"]     = 1
             forcesDict["CofR"]               = "( 0 0 0 )"
             fDict["forces"] = forcesDict
             

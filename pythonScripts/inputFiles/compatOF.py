@@ -78,9 +78,15 @@ foamStarPatch = {
                     "side2" : "domainY1",
                     "bottom" : "domainZ0" ,
                     "top" : "domainZ1",
-                    "structure" : "ship"
+                    "structure" : "ship",
+                    "auto0" : "domainX0",
+                    "auto1" : "domainX1",
+                    "auto2" : "domainY0",
+                    "auto3" : "domainY1",
+                    "auto4" : "domainZ0" ,
+                    "auto5" : "domainZ1"
                 }
-
+                
 defaultPatch = {
                     "inlet" : "inlet" ,
                     "outlet" : "outlet" ,
