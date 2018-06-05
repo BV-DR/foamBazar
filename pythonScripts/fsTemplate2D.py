@@ -20,7 +20,7 @@ from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
 from fsTools import *
 from subprocess import call, Popen
 from scipy import interpolate as interp
-from Pluto.System.readInput import readInput
+from droppy.Reader.readInput import readInput
 
 from inputFiles.fvSchemes import FvSchemes
 from inputFiles.fvSolution import FvSolution

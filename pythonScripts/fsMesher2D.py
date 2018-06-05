@@ -20,7 +20,7 @@ from io import StringIO
 from subprocess import call, Popen
 from scipy import interpolate as interp
 from fsTools import findBoundingBox
-from Pluto.System.readInput import readInput
+from droppy.Reader.readInput import readInput
 
 from inputFiles.fvSchemes import FvSchemes
 from inputFiles.fvSolution import FvSolution
