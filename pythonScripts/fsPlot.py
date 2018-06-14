@@ -19,7 +19,7 @@ import matplotlib.ticker as tkr
 import matplotlib.animation as anim
 
 from copy import deepcopy
-from StringIO import StringIO
+from io import StringIO
 from subprocess import PIPE
 from subprocess import Popen
 
@@ -132,27 +132,30 @@ def addPipe(p, cmd):
             p.append(Popen(cmd, stdin=prev.stdout, stdout=PIPE, stderr=PIPE))
             prev.stdout.close()
     except OSError as e:
-        print ("cmd:",' '.join(cmd))
-        print e
-        raise SystemExit('cmd failed to execute ... abort')
+        print("cmd:",' '.join(cmd))
+        print(e)
+        print('cmd failed to execute ... abort')
+        os._exit(1)
         pass
     except:
-        print "cmd:",' '.join(cmd)
-        print "Unexpected error while constructing subprocess.Popen()"
-        raise SystemExit('abort ...')
-    
+        print("cmd:",' '.join(cmd))
+        print("Unexpected error while constructing subprocess.Popen()")
+        print('abort ...')
+        os._exit(1)
     
 # run the command, wait for it to finish, exit if the return code indicates a failure
 def runCommand(cmd):
     try:
         subprocess.check_call(cmd)
     except subprocess.CalledProcessError:
-        print "Failed to exec.:",cmd
-        raise SystemExit('abort ...')
+        print("Failed to exec.:",cmd)
+        print('abort ...')
+        os._exit(1)
         pass
     except OSError:
-        print cmd
-        raise SystemExit('executable not found ... abort')
+        print(cmd)
+        print('executable not found ... abort')
+        os._exit(1)
         pass
     pass    
 
@@ -176,8 +179,9 @@ def getlogdir(name):
         fname = os.path.basename(name)
         logdir = os.path.dirname(name) + "./fsLog_" + fname + "/"
         if not os.path.isdir(logdir):
-            print "log-file/folder not found:",name
-            raise SystemExit('abort ...')
+            print("log-file/folder not found:",name)
+            print('abort ...')
+            os._exit(1)
         return logdir
       
     # name is a folder, just proceed
@@ -198,13 +202,14 @@ def filesOnly(names):
 def checkAvailable(data):
     logdir = str(data['logdir'])
     if not os.path.isdir(logdir):
-        print "Log-data not found in folder:", logdir
-        raise SystemExit('abort ...')
+        print("Log-data not found in folder:", logdir)
+        print('abort ...')
+        os._exit(1)
 
     # find all keys
     availKeys = {}
     plot = data['opts']['plot']
-    if isinstance(plot, basestring):
+    if isinstance(plot, str):
         data['opts']['plot']=[]
         plot=[key for key in KEYWORD]
     for key in plot:
@@ -227,8 +232,9 @@ def checkAvailable(data):
         pass
     else:
         def invalidOption(key):
-            print "Invalid option(s): ",key
-            raise SystemExit('abort ...')
+            print("Invalid option(s): ",key)
+            print('abort ...')
+            os._exit(1)
         var = data['opts']['keyOpts']
         var = [] if var==None else var
         data['opts']['keyOpts']={}    
@@ -315,7 +321,7 @@ def cmdOptions(argv):
             try:
                 i = int(i)
             except ValueError:
-                print "Warning: ignore invalid int value for --column option:",i
+                print("Warning: ignore invalid int value for --column option:",i)
             if (i==0): i=-1
             data['opts']['col'].append(i)
         if not len(data['opts']['col']): data['opts']['col']=[-1]
@@ -356,7 +362,7 @@ def cmdOptions(argv):
                     allGood=False
                     break
         if (not allGood):
-            print "Warning: ignore invalid option: --trim",args.trim
+            print("Warning: ignore invalid option: --trim",args.trim)
         else:
             TRIMINSECOND = list(sec)
             TRIMHEADTAIL = list(tmp)
@@ -378,7 +384,7 @@ def cmdOptions(argv):
         except ValueError:
             allGood=False
         if (not allGood):
-            print "Warning: ignore invalid option: --limit",args.limit
+            print("Warning: ignore invalid option: --limit",args.limit)
         else:
             LIMITSAMPLEINSECOND = sec
             LIMITSAMPLEPOINTS = tmp
@@ -386,8 +392,9 @@ def cmdOptions(argv):
     if args.axis!=None:
         word={'x':'xlim','y':'ylim'}
         def invalidOption():
-            print "Invalid option(s): --axis",args.axis
-            raise SystemExit('abort ...')
+            print("Invalid option(s): --axis",args.axis)
+            print('abort ...')
+            os._exit(1)
         txt = args.axis.split(",")
         if not (len(txt)==2 or len(txt)==4): invalidOption()
         while len(txt):
@@ -408,9 +415,10 @@ def cmdOptions(argv):
         word={'s':'style', 'w':'width', 'm':'marker', 'c':'color'}
         wtype={'style':str, 'width':float, 'marker':str, 'color':str}
         def invalidOption(info=''):
-            if info!='': print info
-            print "Invalid option(s): --line",args.line
-            raise SystemExit('abort ...')
+            if info!='': print(info)
+            print("Invalid option(s): --line",args.line)
+            print('abort ...')
+            os._exit(1)
         def addvalue(key, value, dtype=None):
             if key==None: invalidOption()
             LINEPROPERTY[key].append(value)
@@ -438,9 +446,9 @@ def cmdOptions(argv):
         pass
 
     if args.output!=None:
-        print args
-        print "output each data set to file: ... not yet implemented ... abort ..."
-        raise SystemExit
+        print(args)
+        print("output each data set to file: ... not yet implemented ... abort ...")
+        os._exit(1)
 
     return checkAvailable(data)
 
@@ -472,8 +480,10 @@ def prepareData(fname, opts):
     p = Popen(["head","-n1",fname], stdout=PIPE, stderr=PIPE)
     txt,err = p.communicate()
     if err:
-        print "error:",err
-        raise SystemExit('abort ...')
+        print("error:",err)
+        print('abort ...')
+        os._exit(1)
+    txt = txt.decode('ascii')
     txt = re.sub(r'[#_\n]', '', txt)
     txt = re.sub(r':.*', '', txt)
     plotme['title'] = txt
@@ -494,7 +504,7 @@ def prepareData(fname, opts):
 
 def numpyArrayFromTXTfile(cmd, dtype=float):
     if DEBUG:
-        print "DEBUG:",cmd
+        print("DEBUG:",cmd)
         t0=time.time()
     txt=shlex.split(cmd)
     mycmd=[]
@@ -502,16 +512,18 @@ def numpyArrayFromTXTfile(cmd, dtype=float):
     for cmdarg in txt:
         if (cmdarg=='|'): # open a new pipe
             if len(mycmd)==0:
-                print "cmd invalid:",cmd
-                raise SystemExit('abort ...')
+                print("cmd invalid:",cmd)
+                print('abort ...')
+                os._exit(1)
             addPipe(p, mycmd)
             mycmd=[]
         else:
             mycmd.append(cmdarg)
             
     if len(mycmd)==0:
-        print "cmd invalid:",cmd
-        raise SystemExit('abort ...')
+        print("cmd invalid:",cmd)
+        print('abort ...')
+        os._exit(1)
     addPipe(p, mycmd)
 
 #    using pipe is way faster than StringIO
@@ -521,21 +533,24 @@ def numpyArrayFromTXTfile(cmd, dtype=float):
 #    for proc in p:
 #        err = proc.stderr.readline()
 #        if (err!="" and err[0:16]!="tac: write error"):
-#            print "cmd:",cmd
-#            print err
-#            raise SystemExit("cmd failed to execute ... abort")
+#            print("cmd:",cmd)
+#            print(err)
+#            print("cmd failed to execute ... abort")
+#            os._exit(1)
 
     # slow but stable
     txt,err = p[-1].communicate()
     if err:
-        print "cmd:",cmd
-        print "error:",err
-        raise SystemExit('abort ...')
+        print("cmd:",cmd)
+        print("error:",err)
+        print('abort ...')
+        os._exit(1)
+    txt = txt.decode('ascii')
     if (len(txt)==0): return np.array([])
     fakeStream = StringIO(txt)
     val = np.loadtxt(fakeStream, dtype=dtype)
 
-    if DEBUG: print "DEBUG: timing",time.time()-t0
+    if DEBUG: print("DEBUG: timing",time.time()-t0)
     return val
 
 # how many lines of data for the given sec. of time
@@ -564,7 +579,7 @@ def countLinesToPosition(val, fname, fromTail=False):
 def countHeaderLines(fname):
     cmd="awk 'FNR==1 {count=0;} !NF || /^[ \t]*#/ {count+=1; next;} {print NR-1; exit;}' " + fname
     count = numpyArrayFromTXTfile(cmd, dtype=int)
-    if DEBUG: print "DEBUG: header lines:",count
+    if DEBUG: print("DEBUG: header lines:",count)
     return 0 if count.size==0 else count
 
 def fileHasBeenModified(fname, lastModified):
@@ -593,7 +608,7 @@ def readData(plotme, latestOnly=True, verbose=True):
         headInSec = 0   # trim to current line
     tail = TRIMHEADTAIL[1]
     tailInSec = TRIMINSECOND[1]
-    if verbose: print "Read data:",fname
+    if verbose: print("Read data:",fname)
     nHeaderLines = countHeaderLines(fname)
     if (head>0 or tail>0):
         if headInSec:
@@ -603,10 +618,10 @@ def readData(plotme, latestOnly=True, verbose=True):
             else:
                 info="trim HEAD at "+str(head)+" sec"
                 head=countLinesToPosition(head, fname)
-            if verbose: print info,"("+str(head)+" lines)"
+            if verbose: print(info,"("+str(head)+" lines)")
         else:
             head += nHeaderLines + 1
-            if verbose: print "trim HEAD "+str(head)+" lines"
+            if verbose: print("trim HEAD "+str(head)+" lines")
         #
         if tailInSec:
             if tailInSec==1:
@@ -615,9 +630,9 @@ def readData(plotme, latestOnly=True, verbose=True):
             else:
                 info="trim TAIL at "+str(tail)+" sec"
                 tail=countLinesToPosition(tail, fname, fromTail=True)
-            if verbose: print info,"("+str(tail)+" lines)"
+            if verbose: print(info,"("+str(tail)+" lines)")
         else:
-            if verbose: print "trim TAIL "+str(tail)+" lines"
+            if verbose: print("trim TAIL "+str(tail)+" lines")
     else:
         head += nHeaderLines + 1
     cmd = "head -n-"+str(int(tail))+" "+fname+" | tail -n+"+str(int(head))+" | "+cmd
@@ -627,7 +642,7 @@ def readData(plotme, latestOnly=True, verbose=True):
     if (plotme['curLine']==None):
         plotme['data'] = numpyArrayFromTXTfile(cmd)
         plotme['curLine'] = int(head) + len(plotme['data']) - (nHeaderLines + 1)
-        if DEBUG: print "DEBUG: current Line",plotme['curLine']
+        if DEBUG: print("DEBUG: current Line",plotme['curLine'])
     else:
         newdata = numpyArrayFromTXTfile(cmd)
         if newdata.size:
@@ -635,7 +650,7 @@ def readData(plotme, latestOnly=True, verbose=True):
             if newdata.ndim==1: newdata=np.array([newdata])
             plotme['data'] = np.append(plotme['data'], newdata, axis=0)
             plotme['curLine'] += len(newdata)
-            if DEBUG: print "DEBUG: cururent Line",plotme['curLine']
+            if DEBUG: print("DEBUG: cururent Line",plotme['curLine'])
         else:
             # same old data, nothing else to do ...
             foundNewData=False
@@ -655,21 +670,21 @@ def readData(plotme, latestOnly=True, verbose=True):
                 plotme['data']=[]
             else:
                 plotme['data'] = alldata[-idx:,:]
-            if verbose: print "limit data points to",limit,"sec"
+            if verbose: print("limit data points to",limit,"sec")
             pass
         else:
             plotme['data'] = alldata[-idx:,:]
-            if verbose: print "limit data points to",idx,"lines"
+            if verbose: print("limit data points to",idx,"lines")
             pass
         startIndex = max([0, startIndex - oldSize + min([oldSize,idx])])
 
     if not len(plotme['data']):
-        if verbose: print "cmd:",cmd
-        if verbose: print "Warning: cmd returns no data ... skip"
+        if verbose: print("cmd:",cmd)
+        if verbose: print("Warning: cmd returns no data ... skip")
 
     if DEBUG:
-        print "DEVUG: foundNewData:",foundNewData
-        print "DEBUG: startIndex:",startIndex
+        print("DEVUG: foundNewData:",foundNewData)
+        print("DEBUG: startIndex:",startIndex)
     return foundNewData, startIndex
 
 # load data into np.array for plot, return data
@@ -695,8 +710,9 @@ def createArray(data):
             elif os.path.isfile(data['logdir'] + os.path.basename(key)):
                 fname = data['logdir'] + os.path.basename(key)
             else:
-                print "Data file not found:",fname
-                raise SystemExit('abort ...')
+                print("Data file not found:",fname)
+                print('abort ...')
+                os._exit(1)
             data['plotme'].append(prepareData(fname, plotOpts))
     return data
 
@@ -724,7 +740,7 @@ def setPlotAxes(ax, plotme, check=False):
     ydata=plotme['data'][:,1]
     expand = 0.01   # expand axis by 1%
     if not check:
-        if DEBUG: print "DEBUG: set axis from raw data"
+        if DEBUG: print("DEBUG: set axis from raw data")
         ax.set_xlabel(plotme['xlabel'])
         ax.set_ylabel(plotme['ylabel'])
         ax.set_title(plotme['title'])
@@ -739,13 +755,13 @@ def setPlotAxes(ax, plotme, check=False):
         return
 
     # check for existing axis
-    if DEBUG: print "DEBUG: set axis, check current axis and raw data"
+    if DEBUG: print("DEBUG: set axis, check current axis and raw data")
     if (plotme['xlabel'] != ax.get_xlabel()):
-        print "debug: xlabel has changed?"
+        print("debug: xlabel has changed?")
     if (plotme['ylabel'] != ax.get_ylabel()):
-        print "debug: ylabel has changed?"
-        print "plotme['ylabel']:",plotme['ylabel']
-        print "ax.get_ylabel():",ax.get_ylabel()
+        print("debug: ylabel has changed?")
+        print("plotme['ylabel']:",plotme['ylabel'])
+        print("ax.get_ylabel():",ax.get_ylabel())
     oldXmin, oldXmax = ax.get_xlim()
     oldYmin, oldYmax = ax.get_ylim()
     if not hasX:
@@ -785,7 +801,7 @@ def showPlot(data):
     lines = [None] * len(data['plotme'])
     nLines = [0]    # we must use list here to keep nLines known in "def update"
     def update(frame):
-        if DEBUG: print "DEBUG: frame",frame," obj:",len(data['plotme'])
+        if DEBUG: print("DEBUG: frame",frame," obj:",len(data['plotme']))
         for i,item in enumerate(data['plotme']):
             foundNewData,startIndex = readData(item, verbose=(DEBUG or VERBOSE))
             if (not foundNewData or item['data'].ndim==1): continue
@@ -799,7 +815,7 @@ def showPlot(data):
             xdata = item['data'][:,0]
             ydata = item['data'][:,1]
             if lines[i]==None:
-                if DEBUG: print "DEBUG: create Line2D",i
+                if DEBUG: print("DEBUG: create Line2D",i)
                 linemarker = item['line']['marker']
                 linestyle = item['line']['style']
                 linewidth = item['line']['width']
@@ -832,10 +848,11 @@ def loadData(args, dtype='pandas.dataframe'):
         try:
             newmodule = __import__(name)
         except:
-            print "Failed to import",name,"... please check your installation"
-            raise SystemExit('abort ...')
+            print("Failed to import",name,"... please check your installation")
+            print('abort ...')
+            os._exit(1)
         return newmodule
-    cmd = shlex.split(args) if isinstance(args, basestring) else args
+    cmd = shlex.split(args) if isinstance(args, str) else args
     data = cmdOptions(cmd)
     createArray(data)
     for i,item in enumerate(data['plotme']):
@@ -853,12 +870,13 @@ def loadData(args, dtype='pandas.dataframe'):
             pd[-1].columns.name = 'name'
         pd=pandas.concat(pd,axis=1)
         return pd
-    raise SystemExit('Unkown dtype: '+dtype)
+    print('Unkown dtype: '+dtype)
+    os._exit(1)
 
 #*** Main execution start here *************************************************
 if __name__ == "__main__":
     data = cmdOptions(sys.argv[1:])
-    print (str(sys.argv[1:]))
+    print(str(sys.argv[1:]))
     showPlot(data)
     
 

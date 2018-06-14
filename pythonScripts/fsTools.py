@@ -35,8 +35,7 @@ def foamFileExist(filename):
     
 def findBoundingBox(stlFile, verbose=True):
     stlFile = stlFile.split('.stl')[0] #remove .stl extension
-    if verbose:
-        print( "Compute STL bounding box: "+stlFile+'.stl')
+    if verbose: print( "Compute STL bounding box: "+stlFile+'.stl')
     p = subprocess.Popen("surfaceCheck "+stlFile+'.stl'+" | grep '^Bounding Box :' | sed \"s/.*: (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     boundingBox,error = p.communicate()
     if error:
@@ -44,22 +43,19 @@ def findBoundingBox(stlFile, verbose=True):
         raise SystemExit('abort ...')
     boundingBox = boundingBox.decode('ascii').split(' ')
     boundingBox = [float(i) for i in boundingBox]
-    if verbose:
-        print( "   ",boundingBox)
+    if verbose: print( "   ",boundingBox)
     return boundingBox
     
 def findCFDBoundingBox(case, verbose=True):
-    if verbose:
-        print( "Compute CFD bounding box:")
-    p = subprocess.Popen("fsBoundingBox -case "+case+" | grep 'Overall domain bounding box' | sed \"s/.*box (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if verbose: print( "Compute CFD bounding box:")
+    p = subprocess.Popen("checkMesh -case "+case+" | grep 'Overall domain bounding box' | sed \"s/.*box (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     boundingBox,error = p.communicate()
     if error:
         print( 'error: ', error)
         raise SystemExit('abort ...')
     boundingBox = boundingBox.decode('ascii').split(' ')
     boundingBox = [float(i) for i in boundingBox]
-    if verbose:
-        print( "   ", boundingBox)
+    if verbose: print( "   ", boundingBox)
     return boundingBox 
 
 def runCommand(cmd,showlog):

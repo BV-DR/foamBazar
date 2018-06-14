@@ -152,11 +152,11 @@ def create2DCase(param,runScript=True):
     
     relaxZones = []
     if param.sideRelaxZone is not None:
-        bBox = findBoundingBox( os.path.join(mycase,'constant','triSurface',param.case+'.stl'),False)
+        bBox = findCFDBoundingBox(mycase,False)
         if param.sideRelaxZone>0:
-            relaxSide = RelaxZone( "side" , relax=True, waveCondition=waveCond, origin=[0., bBox[4], 0.], orientation = [  0. , 1. , 0.], bound=param.sideRelaxZone)
+            relaxSide = RelaxZone( "side" , relax=True, waveCondition=waveCond, origin=[0., bBox[4], 0.], orientation = [  0. , -1. , 0.], bound=param.sideRelaxZone)
         else:
-            relaxSide = RelaxZone( "side" , relax=True, waveCondition=waveCond, origin=[0., 4.5*bBox[4], 0.], orientation = [  0. , 1. , 0.], bound=4.5*bBox[4])
+            relaxSide = RelaxZone( "side" , relax=True, waveCondition=waveCond, origin=[0., bBox[4], 0.], orientation = [  0. , -1. , 0.], bound=0.5*bBox[4])
         relaxZones += [relaxSide]
 
     waveProperties = WaveProperties( filename,
@@ -166,8 +166,9 @@ def create2DCase(param,runScript=True):
     waveProperties.writeFile()
     
     #cell.Set
-    filename = os.path.join(mycase,'cell.Set')
-    waveProperties.writeBlendingZoneBatch(filename)
+    if param.sideRelaxZone is not None:
+        filename = os.path.join(mycase,'cell.Set')
+        waveProperties.writeBlendingZoneBatch(filename)
 
     #dynamicMeshDict
     shutil.copyfile(param.dispSignal,os.path.join(mycase,"dispSignal.dat"))
@@ -179,7 +180,7 @@ def create2DCase(param,runScript=True):
     dynamicMeshDict.writeFile()
 
     #g
-    gravity = Gravity( case = mycase )
+    gravity = Gravity( case = mycase, g = param.gravity )
     gravity.writeFile()
     
     #turbulenceProperties, RASProperties
@@ -214,9 +215,12 @@ def create2DCase(param,runScript=True):
         f.write('(\n')
         # f.write('    cp -r ../../snap/Grid1/constant/polyMesh/ constant/\n')
         # f.write('    cp constant/org/boundary constant/polyMesh/\n')
-        f.write('    setSet -batch cell.Set\n')
-        f.write('    setsToZones -noFlipMap\n')
+        if param.sideRelaxZone is not None:
+            f.write('    setSet -batch cell.Set\n')
+            f.write('    setsToZones -noFlipMap\n')
         f.write('    cp -rf 0/org/* 0/\n')
+        if param.translateLength!=0.:
+            f.write('    transformPoints -translate "( 0. 0. {})"\n'.format(param.translateLength))
         f.write('    decomposePar -cellDist\n')
         f.write('    mpirun -np {:d} initWaveField -parallel\n'.format(param.nProcs))
         f.write(') 2>&1 | tee log.init\n')
@@ -312,10 +316,13 @@ DEFAULT_PARAM = {'case'             : 'newCase',
                  'sideRelaxZone'    : None,
                  'dispSignal'       : None,
                  'solver'           : 'foamStar',
-                 'OFversion'        : 3}
+                 'OFversion'        : 3,
+		 'translateLength'  : 0.0,
+                 'gravity'          : 9.81
+	        }
                  
 iParam = ['gridLevel','writeInterval','purgeWrite','nProcs','nOuterCorrectors','fsVersion','OFversion']
-rParam = ['endTime','timeStep','sideRelaxZone']
+rParam = ['endTime','timeStep','sideRelaxZone','translateLength','gravity']
 lParam = ['symmetry','outputForces']
 sParam = ['case','meshDir','meshTime','hullPatch','startTime','scheme','wave','dispSignal','solver']
 aParam = ['']

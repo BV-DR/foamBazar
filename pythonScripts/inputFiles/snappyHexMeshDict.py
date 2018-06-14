@@ -25,7 +25,7 @@ class SnappyHexMeshDict(WriteParameterFile):
                         resolveFeatureAngle=45, refinementLength=None, allowFreeStandingZoneFaces=True,
                         snapTol=4., nSolveIter=30, relativeSizes=False, nSurfaceLayers=3, expansionRatio=1.3, finalLayerThickness=0.1,
                         minThickness=0.02, featureAngle=89, maxNonOrtho=55, minTwist=0.05, nSmoothScale=5,
-                        errorReduction=0.85, shipPatches=None, noLayers=None):
+                        errorReduction=0.85, shipPatches=None, noLayers=None, ofp=False):
         WriteParameterFile.__init__(self,  name = join(case, "system" , "snappyHexMeshDict" )  )
         
         stlname = stlname.split('.stl')[0] #remove .stl extension
@@ -57,7 +57,11 @@ class SnappyHexMeshDict(WriteParameterFile):
         castel["resolveFeatureAngle"] = resolveFeatureAngle
         
         if refinementLength is not None:
-            castel["refinementRegions"] = { stlname : { "mode" : "distance", "levels" : "(({:.3f} 1))".format(refinementLength) } }
+            nRefL = len(refinementLength)
+            lvl = ''
+            for i, rl in enumerate(refinementLength):
+                lvl += ' ({:.3f} {:d})'.format(rl,nRefL-i)
+            castel["refinementRegions"] = { stlname : { "mode" : "distance", "levels" : "("+lvl+")" } }
         else:
             castel["refinementRegions"] = {}
 
@@ -72,7 +76,7 @@ class SnappyHexMeshDict(WriteParameterFile):
         snapControl["nFeatureSnapIter"] = 10
         snapControl["implicitFeatureSnap"] = False
         snapControl["explicitFeatureSnap"] = True
-        snapControl["multiRegionFeatureSnap"] = True
+        snapControl["multiRegionFeatureSnap"] = False 
         self["snapControls"] = snapControl
             
         
@@ -110,6 +114,12 @@ class SnappyHexMeshDict(WriteParameterFile):
         addLayersControl["nBufferCellsNoExtrude"] = 0
         addLayersControl["nLayerIter"] = 50
         addLayersControl["nRelaxedIter"] = 20
+        if ofp:
+            addLayersControl["meshShrinker"] = "displacementMotionSolver"
+            addLayersControl["solver"] = "displacementLaplacian"
+            dlc = DictProxy()
+            dlc["diffusivity"] = "quadratic inverseDistance 1("+stlname+")"
+            addLayersControl["displacementLaplacianCoeffs"] = dlc
         self["addLayersControls"] = addLayersControl
             
         mesh = DictProxy()

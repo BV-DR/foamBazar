@@ -147,7 +147,8 @@ def create2DMesh(param,sdict,runScript):
         mysect = 'section_'+str(isect)
         
         for grid in param.gridLevel:
-            mygrid = 'grid_'+str(grid)
+            if param.gridName is not None: mygrid = param.gridName 
+            else: mygrid = 'grid_'+str(grid)
             mycase = os.path.join(mysym,mysect,mygrid)
             length = sdict[isect].y.max()
             height = sdict[isect].z.max()
@@ -211,13 +212,14 @@ def create2DMesh(param,sdict,runScript):
             
             #snappyHexMeshDict
             snappyHexMeshDict = SnappyHexMeshDict(case                = mycase,
-                                                addLayers           = True,
-                                                stlname             = mysect,
-                                                refinementLength    = length/param.refineLength,   #mesh length/10
-                                                nSurfaceLayers      = 3,
-                                                expansionRatio      = 1.3,
-                                                finalLayerThickness = length/200.,  #mesh length/200
-                                                minThickness        = length/2000.) #mesh length/2000
+                                                  addLayers           = True,
+                                                  stlname             = mysect,
+                                                  refinementLength    = length*param.refineLength,
+                                                  nSurfaceLayers      = 3,
+                                                  expansionRatio      = 1.3,
+                                                  finalLayerThickness = length*param.layerLength,
+                                                  minThickness        = length*param.layerLength*0.1,
+                                                  ofp                 = param.OFplus)
             snappyHexMeshDict.writeFile()
         
             #surfaceFeatureExtractDict
@@ -234,18 +236,21 @@ def create2DMesh(param,sdict,runScript):
             if not os.path.exists(trifolder): os.makedirs(trifolder)
             
             #blockMeshDict
-            blockMeshDict = BlockMeshDict( case     = mycase,
-                                           ndim     = 2,
-                                           xmin     = param.xBounds[0],
-                                           xmax     = param.xBounds[1],
-                                           ymin     = param.yBounds[0]*length*(not param.symmetry),
-                                           ymax     = param.yBounds[1]*length,
-                                           zmin     = param.zBounds[0]*height,
-                                           zmax     = param.zBounds[1]*height,
-                                           fsmin    = param.fsBounds[0]*height,
-                                           fsmax    = param.fsBounds[1]*height,
-                                           sym      = param.symmetry,
-                                           gridlvl = grid )
+            print('WRITE BLOCKMESHDICT')
+            blockMeshDict = BlockMeshDict( case      = mycase,
+                                           ndim      = 2,
+                                           xmin      = param.xBounds[0],
+                                           xmax      = param.xBounds[1],
+                                           ymin      = param.yBounds[0]*length*(not param.symmetry),
+                                           ymax      = param.yBounds[1]*length,
+                                           zmin      = param.zBounds[0]*height,
+                                           zmax      = param.zBounds[1]*height,
+                                           fsmin     = param.fsBounds[0]*height,
+                                           fsmax     = param.fsBounds[1]*height,
+                                           sym       = param.symmetry,
+					   cellRatio = param.cellRatio,
+                                           gridlvl   = grid,
+                                           ofp       = param.OFplus)
             blockMeshDict.writeFile()
     
         
@@ -293,11 +298,11 @@ def create2DMesh(param,sdict,runScript):
                 if n < param.nfsRefBoxes:
                     print('ERROR: Requested number of boxes is greater than refinement level provided!')
                     os._exit(1)
-                for i in range(param.nfsRefBoxes):
-                    if i < param.nfsRefBoxes-1:
-                        f.write('    refineFS {} "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})"\n'.format(param.nfsRefBoxes,param.fsRefineBox[i]*height,param.fsRefineBox[i+n]*height))
-                    elif i == param.nfsRefBoxes-1:
-                        f.write('    refineFS {} "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})" -noCellLevel\n'.format(param.nfsRefBoxes,param.fsRefineBox[i]*height,param.fsRefineBox[i+n]*height))
+                for i in range(min(param.nfsRefBoxes,param.nRefBoxes)):
+                    if i < min(param.nfsRefBoxes,param.nRefBoxes)-1:
+                        f.write('    refineFS {} "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})"\n'.format(param.nRefBoxes,param.fsRefineBox[i]*height,param.fsRefineBox[i+n]*height))
+                    elif i == min(param.nfsRefBoxes,param.nRefBoxes)-1:
+                        f.write('    refineFS {} "(-1e6 -1e6 {:.2f}) (1e6 1e6 {:.2f})" -noCellLevel\n'.format(param.nRefBoxes,param.fsRefineBox[i]*height,param.fsRefineBox[i+n]*height))
                 f.write('    snap\n')
                 f.write('    extrudeMesh\n')
                 f.write(') 2>&1 | tee log.mesh\n\n')
@@ -350,7 +355,8 @@ def create3DMesh(param,runScript):
     mystl = param.stlFile.split('.stl')[0] #remove .stl extension
     
     for grid in param.gridLevel:
-        mygrid = 'grid_'+str(grid)
+        if param.gridName is not None: mygrid = param.gridName
+        else: mygrid = 'grid_'+str(grid)
         mycase = os.path.join(mysym,mygrid)
         
         #get STL size
@@ -416,11 +422,12 @@ def create3DMesh(param,runScript):
         snappyHexMeshDict = SnappyHexMeshDict(case                = mycase,
                                               addLayers           = True,
                                               stlname             = mystl,
-                                              refinementLength    = Beam*0.5/param.refineLength, #mesh Beam*0.5/10
+                                              refinementLength    = Beam*0.5*param.refineLength,
                                               nSurfaceLayers      = 3,
                                               expansionRatio      = 1.3,
-                                              finalLayerThickness = Beam*0.5/200.,  #mesh Beam*0.5/200
-                                              minThickness        = Beam*0.5/2000.) #mesh Beam*0.5/2000
+                                              finalLayerThickness = Beam*0.5*param.layerLength,
+                                              minThickness        = Beam*0.5*param.layerLength*0.1,
+                                              ofp                 = param.OFplus)
         snappyHexMeshDict.writeFile()
     
         #surfaceFeatureExtractDict
@@ -448,7 +455,8 @@ def create3DMesh(param,runScript):
                                        fsmin    = param.fsBounds[0]*Depth,
                                        fsmax    = param.fsBounds[1]*Depth,
                                        sym      = param.symmetry,
-                                       gridlvl  = grid )
+                                       gridlvl  = grid,
+                                       ofp      = param.OFplus)
         blockMeshDict.writeFile()
     
         print('Create 0 folder input files')
@@ -563,14 +571,18 @@ DEFAULT_PARAM = {'ndim'          : 2,
                  'zRefineBox'    : [-2.0,-2.0,-2.0,-1.5,-1.0,-0.5,3.0,2.5,2.0,1.8,1.6,1.4],
                  'nfsRefBoxes'   : 5,
                  'fsRefineBox'   : [-1.5,-1.0,-0.5,-0.3,-0.2,2.5,2.0,1.5,1.3,1.2],
-                 'refineLength'  : 15
+                 'refineLength'  : [0.1],
+		 'layerLength'   : 0.005,
+                 'cellRatio'     : 1,
+                 'OFplus'	 : False,
+                 'gridName'      : None
                  }
 
 iParam = ['ndim','nRefBoxes','nfsRefBoxes']
-rParam = ['refineLength','rot']
-lParam = ['symmetry']
-sParam = ['sectionsFile','stlFile']
-aParam = ['sections','gridLevel','xBounds','yBounds','zBounds','fsBounds','xRefineBox','yRefineBox','zRefineBox','fsRefineBox']
+rParam = ['layerLength','rot','cellRatio']
+lParam = ['symmetry','OFplus']
+sParam = ['sectionsFile','stlFile','gridName']
+aParam = ['sections','gridLevel','xBounds','yBounds','zBounds','fsBounds','xRefineBox','yRefineBox','zRefineBox','fsRefineBox','refineLength']
 
 if __name__ == "__main__":
     startTime = time.time()

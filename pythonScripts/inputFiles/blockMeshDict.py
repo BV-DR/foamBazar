@@ -66,9 +66,9 @@ class BlockMeshDict(WriteParameterFile) :
       blockMeshDict dictionary
    """
    def __init__(self , case, ndim = 3, waveMesh=False, xmin=-0.05, xmax=0.05, ymin=None, ymax=None, zmin=None, zmax=None, 
-                       fsmin=None, fsmax=None, Xcells=None, Ycells=12, Zcells=None, Zgrading=None, sym=False, gridlvl=1):
-        WriteParameterFile.__init__(self,  name = join(case, "constant" , "polyMesh", "blockMeshDict" ) )
-        
+                       fsmin=None, fsmax=None, Xcells=None, Ycells=12, Zcells=None, cellRatio=1, Zgrading=None, sym=False, gridlvl=1, ofp=False):
+        if ofp: WriteParameterFile.__init__(self,  name = join(case, "system" , "blockMeshDict" ) )
+        else:   WriteParameterFile.__init__(self,  name = join(case, "constant" , "polyMesh", "blockMeshDict" ) )
         self["fastMerge"]  = "yes"
         self["convertToMeters"]  = 1
         
@@ -104,7 +104,7 @@ class BlockMeshDict(WriteParameterFile) :
             rXY = (xmax - xmin)/(ymax - ymin)
             rYZ = (zmax - zmin)/(ymax - ymin)
             ny = int(round(ny*(np.sqrt(2)**(gridlvl-1))))
-            nz = int(round(ny*rYZ))
+            nz = int(round(ny*rYZ*cellRatio))
             if ndim>2: nx= int(round(ny*rXY))
             else: nx = 1
             self["blocks"]  = '( hex (0 1 2 3 4 5 6 7) ( {:d} {:d} {:d} ) simpleGrading (1 1 1) )'.format(nx, ny,nz)

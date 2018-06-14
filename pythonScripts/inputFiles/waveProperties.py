@@ -142,13 +142,14 @@ class WaveProperties( WriteParameterFile ) :
             self["mycase"] = initWaveCondition.pyFoamDict(version = version)
             self["seaLevel"]=  0.0
             self["initCoeffs"] = {"$mycase" : ''}
-            self["relaxationNames"] =  [ relax.name for relax in relaxZones if relax.relax]
-            for relax  in relaxZones :
-                if version=="foamStar": 
-                    relaxName = '"({}|{})Coeffs"'.format(foamStarPatch[relax.name],relax.name)
-                else:
-                    relaxName = "{}Coeff".foamat(relax.name)
-                self[relaxName] = relax.pyFoamDict(version = version)
+            if len(relaxZones)>0:
+                self["relaxationNames"] =  [ relax.name for relax in relaxZones if relax.relax]
+                for relax  in relaxZones :
+                    if version=="foamStar": 
+                        relaxName = '"({}|{})Coeffs"'.format(foamStarPatch[relax.name],relax.name)
+                    else:
+                        relaxName = "{}Coeff".foamat(relax.name)
+                    self[relaxName] = relax.pyFoamDict(version = version)
     
         elif version == "foamExtend" :
             self["relaxationNames"] =  [ relax.name for relax in relaxZones if relax.relax]
