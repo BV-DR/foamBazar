@@ -32,24 +32,6 @@ from inputFiles.snappyHexMeshDict import SnappyHexMeshDict
 from inputFiles.surfaceFeatureExtractDict import SurfaceFeatureExtractDict
 from inputFiles.blockMeshDict import BlockMeshDict
 
-def cmdOptions(argv):
-    global DEBUG
-    # default global parameters
-#    CMD_showLog = 'echo "\nlog-file: ./log.template"; tail -45 ./log.tempalte; echo "Please see log-file: ./log.template"'
-    #
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-f', dest='inputfile', help='read parameters from input file. Use this option to edit redefine parameters, e.g.: fsMesher2D.py -f myship.cfg ')
-    parser.add_argument('-nostl', dest='createStl', action='store_false', help='disable STL files generation from Homer inputs')
-    parser.add_argument('-norun', dest='runScript', action='store_false', help='disable run of Allrun script')
-    args = parser.parse_args()
-      
-    if args.inputfile==None:
-        call('echo "No option provided, please une -h for help"', shell=True)
-        raise SystemExit('')
-                
-    return args
-
-
 def readSections(inputFile,sections=[]):
     
     sdict = {}
@@ -214,7 +196,7 @@ def create2DMesh(param,sdict,runScript):
             snappyHexMeshDict = SnappyHexMeshDict(case                = mycase,
                                                   addLayers           = True,
                                                   stlname             = mysect,
-                                                  refinementLength    = length*param.refineLength,
+                                                  refinementLength    = [length*rf for rf in param.refineLength],
                                                   nSurfaceLayers      = 3,
                                                   expansionRatio      = 1.3,
                                                   finalLayerThickness = length*param.layerLength,
@@ -578,19 +560,27 @@ DEFAULT_PARAM = {'ndim'          : 2,
                  'gridName'      : None
                  }
 
-iParam = ['ndim','nRefBoxes','nfsRefBoxes']
-rParam = ['layerLength','rot','cellRatio']
-lParam = ['symmetry','OFplus']
-sParam = ['sectionsFile','stlFile','gridName']
-aParam = ['sections','gridLevel','xBounds','yBounds','zBounds','fsBounds','xRefineBox','yRefineBox','zRefineBox','fsRefineBox','refineLength']
+DEFAULT_ARG = {'createStl' : True,
+               'runScript' : True
+              }
 
-if __name__ == "__main__":
+class Struct:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+
+def fsMesher2D(userParam={}, userArgs={}):
     startTime = time.time()
-    arg = cmdOptions(sys.argv)
-    param = readInput(arg.inputfile,iParam=iParam,rParam=rParam,lParam=lParam,sParam=sParam,aParam=aParam,name='fsMesher2D',default=DEFAULT_PARAM)
+    param = DEFAULT_PARAM
+    param.update(userParam)
+    param = Struct(**param)
+    arg = DEFAULT_ARG
+    arg.update(userArgs)
+    arg =Struct(**arg)
+
     if abs(param.rot)>1e-3 and param.symmetry:
         print('ERROR: Mesh rotation cannot be applied with symmetry')
         os._exit(1)
+    
     if param.ndim==2:
         sectDict = readSections(param.sectionsFile,sections=param.sections)
         if arg.createStl: createSectionStl(sectDict)
