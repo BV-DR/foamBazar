@@ -10,7 +10,7 @@
 #########################################################################
 
 import re
-import os, sys, argparse
+import os, sys
 import shutil
 import time, datetime
 import math as mt
@@ -20,7 +20,6 @@ from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
 from fsTools import *
 from subprocess import call, Popen
 from scipy import interpolate as interp
-from droppy.Reader.readInput import readInput
 
 from inputFiles.fvSchemes import FvSchemes
 from inputFiles.fvSolution import FvSolution
@@ -33,24 +32,7 @@ from inputFiles.turbulenceProperties import writeTurbulenceProperties
 from inputFiles.transportProperties import TransportProperties
 from inputFiles.gravity import Gravity
 
-def cmdOptions(argv):
-    global DEBUG
-    # default global parameters
-#    CMD_showLog = 'echo "\nlog-file: ./log.template"; tail -45 ./log.tempalte; echo "Please see log-file: ./log.template"'
-    #
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-f', dest='inputfile', help='read parameters from input file. Use this option to edit redefine parameters, e.g.: fsMesher2D.py -f myship.cfg ')
-    parser.add_argument('-r', dest='overwrite', action='store_true', help='overwrite existing case (use with caution)')
-    parser.add_argument('-norun', dest='runScript', action='store_false', help='disable run of Allrun script')
-    parser.add_argument('-tar', dest='tar', action='store_true', help='activate compression of resulting folder')
-    args = parser.parse_args()
-      
-    if args.inputfile==None:
-        call('echo "No option provided, please une -h for help"', shell=True)
-        raise SystemExit('')
-                
-    return args
-    
+   
 def setBoundaries(param):
     mycase = os.path.join(param.case,'grid_'+str(param.gridLevel))
     
@@ -317,21 +299,30 @@ DEFAULT_PARAM = {'case'             : 'newCase',
                  'dispSignal'       : None,
                  'solver'           : 'foamStar',
                  'OFversion'        : 3,
-		 'translateLength'  : 0.0,
+                 'translateLength'  : 0.0,
                  'gravity'          : 9.81
-	        }
+                }
                  
-iParam = ['gridLevel','writeInterval','purgeWrite','nProcs','nOuterCorrectors','fsVersion','OFversion']
-rParam = ['endTime','timeStep','sideRelaxZone','translateLength','gravity']
-lParam = ['symmetry','outputForces']
-sParam = ['case','meshDir','meshTime','hullPatch','startTime','scheme','wave','dispSignal','solver']
-aParam = ['']
+DEFAULT_ARGS = {'overwrite' : False,
+                'runScript' : True,
+                'tar'       : False
+               }
 
-if __name__ == "__main__":
+class Struct:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+
+def fsTemplate2D(userParam={}, userArgs={}):
     startTime = time.time()
-    arg = cmdOptions(sys.argv)
-    param = readInput(arg.inputfile,iParam=iParam,rParam=rParam,lParam=lParam,sParam=sParam,aParam=aParam,name='fsTemplate2D',default=DEFAULT_PARAM)
-    mycase = os.path.join(param.case,'Grid_'+str(param.gridLevel))
+
+    param = DEFAULT_PARAM
+    param.update(userParam)
+    param = Struct(**param)
+    arg = DEFAULT_ARGS
+    arg.update(userArgs)
+    arg = Struct(**arg)
+
+    #mycase = os.path.join(param.case,'Grid_'+str(param.gridLevel))
     copyMesh(param,overwrite=arg.overwrite)
     create2DCase(param,runScript=arg.runScript)
     if arg.tar: tarCase(param)

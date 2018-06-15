@@ -40,7 +40,8 @@ def findBoundingBox(stlFile, verbose=True):
     boundingBox,error = p.communicate()
     if error:
         print( 'error: ', error)
-        raise SystemExit('abort ...')
+        print('abort ...')
+        os._exit(1)
     boundingBox = boundingBox.decode('ascii').split(' ')
     boundingBox = [float(i) for i in boundingBox]
     if verbose: print( "   ",boundingBox)
@@ -52,7 +53,8 @@ def findCFDBoundingBox(case, verbose=True):
     boundingBox,error = p.communicate()
     if error:
         print( 'error: ', error)
-        raise SystemExit('abort ...')
+        print('abort ...')
+        os._exit(1)
     boundingBox = boundingBox.decode('ascii').split(' ')
     boundingBox = [float(i) for i in boundingBox]
     if verbose: print( "   ", boundingBox)
@@ -63,11 +65,13 @@ def runCommand(cmd,showlog):
         subprocess.check_call(cmd, shell=True)
     except subprocess.CalledProcessError:
         subprocess.call(showlog, shell=True)
-        raise SystemExit('abort ...')
+        print('abort ...')
+        os._exit()
         pass
     except OSError:
         print( cmd)
-        raise SystemExit('executable not found ... abort')
+        print('executable not found ... abort')
+        os._exit(1)
         pass
     pass
     
@@ -95,7 +99,7 @@ def getBool(string):
         return False
     else:
         print( 'Invalid boolean entry : '+str(string))
-        raise SystemExit('')
+        os._exit(1)
     
 def checkError(file):
     error=False
@@ -110,7 +114,8 @@ def findSTLPatches(stlFile):
     patches,error = p.communicate()
     if error:
         print('error: ', error)
-        raise SystemExit('abort ...')
+        print('abort ...')
+        os._exit(1)
     return patches.decode('ascii').split(' ')
 
 def translateStl(inputStl, val, outputStl):
