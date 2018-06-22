@@ -6,7 +6,7 @@ from inputFiles.compatOF import application, surfaceElevation
 
 class ControlDict( WriteParameterFile ) :
 
-    def __init__(self , case ,  startFrom="latestTime", startTime=0 , endTime=60. , deltaT=None , autoDeltaTCo=None , writeControl="timeStep", writeInterval=0.1 , purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no", writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputMotions=False, vbmPatch=None, forcesPatch=None, outputLocalMotions=False, rhoWater = 1000, OFversion=3, version="foamStar"):
+    def __init__(self , case ,  startFrom="latestTime", startTime=0 , endTime=60. , deltaT=None , autoDeltaTCo=None , writeControl="timeStep", writeInterval=1, purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no", writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputInterval=1, outputMotions=False, vbmPatch=None, forcesPatch=None, pressuresPatch=None, outputLocalMotions=False, rhoWater = 1000, OFversion=3, version="foamStar"):
 
         WriteParameterFile.__init__(self , join(case , "system" , "controlDict" ))
         self["application"]       = application[version]
@@ -82,13 +82,32 @@ class ControlDict( WriteParameterFile ) :
             forcesDict["UName"]              = "U"
             forcesDict["log"]                = True
             if OFversion==5:
-                forcesDict["writeControl"]      = "timeStep"
-                forcesDict["writeInterval"]     = 1
+                forcesDict["writeControl"]   = "timeStep"
+                forcesDict["writeInterval"]  = outputInterval
             else:
-                forcesDict["outputControl"]      = "timeStep"
-                forcesDict["outputInterval"]     = 1
+                forcesDict["outputControl"]  = "timeStep"
+                forcesDict["outputInterval"] = outputInterval
             forcesDict["CofR"]               = "( 0 0 0 )"
             fDict["forces"] = forcesDict
+            
+        #Get forces on patch list
+        if pressuresPatch is not None :
+            pressuresDict = DictProxy()
+            pressuresDict["type"]               = "surfaceFieldValue"
+            pressuresDict["libs"]               = ['"libfieldFunctionObjects.so"']
+            pressuresDict["regionType"]         = "patch"
+            pressuresDict["name"]               = pressuresPatch
+            pressuresDict["surfaceFormat"]      = "foam"
+            pressuresDict["operation"]          = "none"
+            pressuresDict["log"]                = True
+            if OFversion==5:
+                pressuresDict["writeControl"]   = "timeStep"
+                pressuresDict["writeInterval"]  = 1
+            else:
+                pressuresDict["outputControl"   = "timeStep"
+                pressuresDict["outputInterval"] = 1
+            pressuresDict["fields"]             = ['p']
+            fDict["pressures"] = pressuresDict
             
         # localMotion
         if outputLocalMotions:

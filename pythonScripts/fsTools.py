@@ -39,7 +39,7 @@ def findBoundingBox(stlFile, verbose=True):
     p = subprocess.Popen("surfaceCheck "+stlFile+'.stl'+" | grep '^Bounding Box :' | sed \"s/.*: (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     boundingBox,error = p.communicate()
     if error:
-        print( 'error: ', error)
+        print( 'error: ', error.decode('ascii'))
         print('abort ...')
         os._exit(1)
     boundingBox = boundingBox.decode('ascii').split(' ')
@@ -52,7 +52,7 @@ def findCFDBoundingBox(case, verbose=True):
     p = subprocess.Popen("checkMesh -case "+case+" | grep 'Overall domain bounding box' | sed \"s/.*box (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     boundingBox,error = p.communicate()
     if error:
-        print( 'error: ', error)
+        print( 'error: ', error.decode('ascii'))
         print('abort ...')
         os._exit(1)
     boundingBox = boundingBox.decode('ascii').split(' ')
@@ -113,7 +113,7 @@ def findSTLPatches(stlFile):
     p = subprocess.Popen("grep '^[ \\t]*\<solid\>' "+stlFile+" | sed 's/solid//g' | tr '\n' ' ' | sed 's/^[ \t]*//;s/ \+/ /g;s/\s*$//g' "  , stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     patches,error = p.communicate()
     if error:
-        print('error: ', error)
+        print('error: ', error.decode('ascii'))
         print('abort ...')
         os._exit(1)
     return patches.decode('ascii').split(' ')
