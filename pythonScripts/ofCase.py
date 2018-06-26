@@ -18,11 +18,19 @@ class OfCase(object):
                                        dynamicMeshDict=None,
                                        transportProperties=None,
                                        decomposeParDict=None,
+                                       extrudeMeshDict=None,
+                                       refineMeshDict=None,
+                                       refineMeshDict1=None,
+                                       refineMeshDict2=None,
+                                       snappyHexMeshDict=None,
+                                       surfaceFeatureExtractDict=None,
+                                       blockMeshDict=None,
                                        turbulenceModel = "laminar",
                                        symmetry = False,
                                        gravity = 9.81,
                                        OFversion = 5,
-                                       version = "foamStar"
+                                       solver = "foamStar",
+                                       isMesher = False
                                        ) :
 
 
@@ -38,6 +46,14 @@ class OfCase(object):
         self.dynamicMeshDict = dynamicMeshDict
         self.transportProperties = transportProperties
         self.decomposeParDict = decomposeParDict
+        
+        self.extrudeMeshDict = extrudeMeshDict
+        self.refineMeshDict = refineMeshDict
+        self.refineMeshDict1 = refineMeshDict1
+        self.refineMeshDict2 = refineMeshDict2
+        self.snappyHexMeshDict = snappyHexMeshDict
+        self.surfaceFeatureExtractDict = surfaceFeatureExtractDict
+        self.blockMeshDict = blockMeshDict
 
         self.turbulenceModel = turbulenceModel
         self.turbulenceProperties = TurbulenceProperties(case , turbulenceModel )
@@ -47,23 +63,28 @@ class OfCase(object):
         self.gravity = gravity
 
         self.OFversion = OFversion
-        self.version = "foamStar"
+        self.solver = solver
+        self.isMesher = isMesher
 
 
         print('Create file tree')
+        
         self.sysfolder_ = os.path.join(self.case,"system")
         self.zerofolder_ = os.path.join(self.case,"0")
         self.orgfolder_ = os.path.join(self.case,"0","org")
         self.constfolder_ = os.path.join(self.case,"constant")
-        if not os.path.exists(self.sysfolder_):
-            os.makedirs(self.sysfolder_)
-        if not os.path.exists( os.path.join(self.zerofolder_, "org")):
-            os.makedirs( os.path.join(self.zerofolder_, "org"))
-        if not os.path.exists( self.zerofolder_):
-            os.makedirs( self.zerofolder_)
-        if not os.path.exists( self.constfolder_):
-            os.makedirs( self.constfolder_)
-
+        
+        if not os.path.exists(self.sysfolder_): os.makedirs(self.sysfolder_)
+        if not os.path.exists( os.path.join(self.zerofolder_, "org")): os.makedirs( os.path.join(self.zerofolder_, "org"))
+        if not os.path.exists( self.zerofolder_): os.makedirs( self.zerofolder_)
+        if not os.path.exists( self.constfolder_): os.makedirs( self.constfolder_)
+        
+        if isMesher:
+            self.polyfolder_ = os.path.join(self.case,"constant","polyMesh")
+            self.trifolder_ = os.path.join(self.case,"constant","triSurface")
+            if not os.path.exists( self.polyfolder_): os.makedirs( self.polyfolder_)
+            if not os.path.exists( self.trifolder_): os.makedirs( self.trifolder_)
+            
         self.createParaviewFile()
 
 
@@ -91,11 +112,12 @@ class OfCase(object):
 
     def createParaviewFile(self):
         #create file for Paraview
+        print('create '+os.path.join(self.case,'view.foam'))
         open(os.path.join(self.case,'view.foam'), 'a').close()
 
     @classmethod
-    def BuildFromAllParameters(cls, case):
-        return OfCase(case)
+    def BuildFromAllParameters(cls, case, isMesher=False):
+        return OfCase(case, isMesher)
 
 
     def writeFiles(self) :
@@ -106,31 +128,30 @@ class OfCase(object):
         self.controlDict.writeFile()
         self.fvSchemes.writeFile()
         self.fvSolution.writeFile()
-        self.turbulenceProperties.writeFile()
-        self.RASProperties.writeFile()
         self.decomposeParDict.writeFile()
-        self.transportProperties.writeFile()
-        self.dynamicMeshDict.writeFile()
-
-        if self.waveProperties is not None :
-            self.waveProperties.writeFile()
-
-
-
-
+        
+        if self.turbulenceProperties is not None:       self.turbulenceProperties.writeFile()
+        if self.RASProperties is not None:              self.RASProperties.writeFile()
+        if self.transportProperties is not None:        self.transportProperties.writeFile()
+        if self.dynamicMeshDict is not None:            self.dynamicMeshDict.writeFile()
+        if self.waveProperties is not None:             self.waveProperties.writeFile()
+        if self.extrudeMeshDict is not None:            self.extrudeMeshDict.writeFile()
+        if self.refineMeshDict is not None:             self.refineMeshDict.writeFile()
+        if self.refineMeshDict1 is not None:            self.refineMeshDict1.writeFile()
+        if self.refineMeshDict2 is not None:            self.refineMeshDict2.writeFile()
+        if self.snappyHexMeshDict is not None:          self.snappyHexMeshDict.writeFile()
+        if self.surfaceFeatureExtractDict is not None:  self.surfaceFeatureExtractDict.writeFile()
+        if self.blockMeshDict is not None:              self.blockMeshDict.writeFile()
 
     def runInit(self) :
         #run Allrun script
-        if not os.path.exists( "Allclean" ):
-            self.writeAllClean()
-
-        if not os.path.exists( "AllInit" ):
-            self.writeAllInit()
+        if not os.path.exists( "Allclean" ): self.writeAllclean()
+        if not os.path.exists( "Allinit" ): self.writeAllinit()
 
         p = subprocess.Popen(['./Allclean'], cwd=self.case)
         p.wait()
 
-        p = subprocess.Popen(['./AllInit'], cwd=self.case)
+        p = subprocess.Popen(['./Allinit'], cwd=self.case)
         p.wait()
 
     def run(self) :
@@ -140,7 +161,7 @@ class OfCase(object):
         p = subprocess.Popen(['./run'], cwd=self.case)
         p.wait()
 
-    def writeAllInit(self):
+    def writeAllinit(self):
         """To be implemented in subclass"""
         raise(NotImplementedError)
 

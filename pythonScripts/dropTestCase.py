@@ -19,39 +19,7 @@ from inputFiles.gravity import Gravity
 from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
 
 
-DEFAULT_PARAM = {
-                 'case'             : 'newCase',
-                 'meshDir'          : 'mesh',
-                 'meshTime'         : 'constant',
-                 'gridLevel'        : [1],
-                 'symmetry'         : False,
-                 'outputForces'     : False,
-                 'hullPatch'        : '',
-                 'startTime'        : 'latestTime',
-                 'endTime'          : 10,
-                 'timeStep'         : 0.01,
-                 'writeInterval'    : 1,
-                 'purgeWrite'       : 0,
-                 'scheme'           : 'Euler',
-                 'nProcs'           : 4,
-                 'nOuterCorrectors' : 5,
-                 'wave'             : "noWaves",
-                 'waveH'            : 0.0,
-                 'waveT'            : 0.0,
-                 'velocity'         : 0.0,
-                 'depth'            : 100.,
-                 'sideRelaxZone'    : None,
-                 'dispSignal'       : None,
-                 'solver'           : 'foamStar',
-                 'OFversion'        : 3,
-                 'translateLength'  : 0.0,
-                 'gravity'          : 9.81
-                }
-
-
-
 class DropTestCase( OfCase ) :
-
 
     @classmethod
     def BuildFromAllParameters(cls,      case,
@@ -60,6 +28,8 @@ class DropTestCase( OfCase ) :
                                          meshTime         = "constant",
                                          symmetry         = False,
                                          outputForces     = False,
+                                         outputPressures  = False,
+                                         outputInterval   = 1,
                                          hullPatch        = "",
                                          startTime        = "latestTime",
                                          endTime          = 10,
@@ -83,8 +53,6 @@ class DropTestCase( OfCase ) :
                                          turbulenceModel  = "laminar",
                                          ):
 
-
-
         print('Create system folder input files')
         #controlDict
         if outputForces:
@@ -92,6 +60,12 @@ class DropTestCase( OfCase ) :
             else: forcesPatch = section_name
         else:
             forcesPatch = None
+            
+        if outputPressures:
+            if len(hullPatch) > 0: pressuresPatch = hullPatch
+            else: pressuresPatch = section_name
+        else:
+            pressuresPatch = None
 
         controlDict = ControlDict( case                = case,
                                    startFrom           = startTime,
@@ -101,20 +75,22 @@ class DropTestCase( OfCase ) :
                                    purgeWrite          = purgeWrite,
                                    writePrecision      = 15,
                                    forcesPatch         = forcesPatch,
+                                   pressuresPatch      = pressuresPatch,
+                                   outputInterval      = outputInterval,
                                    rhoWater            = 1025,
                                    OFversion           = OFversion,
-                                   version             = "foamStar" )
+                                   version             = solver )
 
         #fvSchemes
         fvSchemes = FvSchemes( case     = case,
                                simType  = scheme,
                                orthogonalCorrection = "implicit",
-                               version  = "foamStar" )
+                               version  = solver )
 
         #fvSolution
         fvSolution = FvSolution( case    = case,
                                  useEuler = scheme == 'Euler',
-                                 version  = "foamStar" )
+                                 version  = solver )
 
         #decomposeParDict
         decomposeParDict = DecomposeParDict( case   = case,
@@ -126,14 +102,14 @@ class DropTestCase( OfCase ) :
                                            type      = 'solid',
                                            dispFile  = "dispSignal.dat",
                                            OFversion = OFversion,
-                                           version   = "foamStar")
+                                           version   = solver )
 
 
 
         #transportProperties
         transportProperties = TransportProperties( case = case,
                                                    rhoWater = 1025,
-                                                   version = "foamStar")
+                                                   version = solver )
 
 
 
@@ -146,7 +122,8 @@ class DropTestCase( OfCase ) :
                           transportProperties=transportProperties,
                           decomposeParDict=decomposeParDict,
                           turbulenceModel = turbulenceModel ,
-                          gravity = gravity
+                          gravity = gravity,
+                          solver = solver
                         )
 
         res.dispSignal = dispSignal
@@ -157,7 +134,7 @@ class DropTestCase( OfCase ) :
 
         res.copyMesh( meshDir, meshTime )
 
-        #Write controlDict to be able to ran checkMesh
+        #Write controlDict to be able to run checkMesh
         controlDict.writeFile()
 
 
@@ -177,7 +154,7 @@ class DropTestCase( OfCase ) :
         res.waveProperties = WaveProperties( filename,
                                          initWaveCondition = waveCond,
                                          relaxZones        = relaxZones,
-                                         version           = "foamStar" )
+                                         version           = solver )
 
         #cell.Set
         if sideRelaxZone is not None:
@@ -199,14 +176,14 @@ class DropTestCase( OfCase ) :
                             case2D = True,
                             symmetryPlane = self.symmetry,
                             struct = '"' + self.section_name + '|wetSurf"',
-                            version = "foamStar" )
+                            version = self.solver )
 
 
-    def writeAllInit(self):
-        #Allrun
-        print('Create run scripts')
-        arun = os.path.join(self.case,'AllInit')
-        with open(arun,'w') as f:
+    def writeAllinit(self):
+        #Allinit
+        print('Create init script')
+        ainit = os.path.join(self.case,'Allinit')
+        with open(ainit,'w') as f:
             f.write('#! /bin/bash\n')
             f.write('set -x\n\n')
             f.write('(\n')
@@ -221,9 +198,9 @@ class DropTestCase( OfCase ) :
             f.write('    decomposePar -cellDist\n')
             f.write('    mpirun -np {:d} initWaveField -parallel\n'.format(self.nProcs))
             f.write(') 2>&1 | tee log.init\n')
-        os.chmod(arun, 0o755)
+        os.chmod(ainit, 0o755)
 
-    def writeAllClean(self):
+    def writeAllclean(self):
         #Allclean
         aclean = os.path.join(self.case,'Allclean')
         with open(aclean,'w') as f:
