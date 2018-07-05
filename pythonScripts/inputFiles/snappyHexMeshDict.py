@@ -20,12 +20,13 @@ class SnappyHexMeshDict(WriteParameterFile):
     """
        SnappyHexMeshDict dictionary
     """
-    def __init__(self , case, castellatedMesh=True, snap=True, addLayers=False, stlname="body",
-                        locationInMesh=[1e-2,5.0,0.5], nCellsBetweenLevels=4, edgeLvl=1, hullLvl=[1,1],
-                        resolveFeatureAngle=45, refinementLength=None, allowFreeStandingZoneFaces=True,
-                        snapTol=4., nSolveIter=30, relativeSizes=False, nSurfaceLayers=3, expansionRatio=1.3, finalLayerThickness=0.1,
-                        minThickness=0.02, featureAngle=89, maxNonOrtho=55, minTwist=0.05, nSmoothScale=5,
-                        errorReduction=0.85, shipPatches=None, noLayers=None, ofp=False):
+    def __init__(self , case, castellatedMesh=True, snap=True, addLayers=False, patchName="ship",
+                        stlname="body", stlPatches=None, locationInMesh=[1e-2,5.0,0.5],
+                        nCellsBetweenLevels=4, edgeLvl=1, hullLvl=[1,1], resolveFeatureAngle=45,
+                        refinementLength=None, allowFreeStandingZoneFaces=True, snapTol=4.,
+                        nSolveIter=30, relativeSizes=False, nSurfaceLayers=3, expansionRatio=1.3,
+                        finalLayerThickness=0.1, minThickness=0.02, featureAngle=89, maxNonOrtho=55,
+                        minTwist=0.05, nSmoothScale=5, errorReduction=0.85, noLayers=None, ofp=False):
         WriteParameterFile.__init__(self,  name = join(case, "system" , "snappyHexMeshDict" )  )
         
         stlname = stlname.split('.stl')[0] #remove .stl extension
@@ -39,7 +40,7 @@ class SnappyHexMeshDict(WriteParameterFile):
         geometry = DictProxy()
         body = DictProxy() 
         body["type"]  = "triSurfaceMesh"
-        body["name"]  = stlname
+        body["name"]  = patchName
         body["patchInfo"]  = { "type" : "wall" }
         geometry['"'+stlname+'.stl"'] = body
         self["geometry"] = geometry
@@ -52,7 +53,7 @@ class SnappyHexMeshDict(WriteParameterFile):
         
         castel["locationInMesh"] = "({} {} {})".format(*locationInMesh)
         castel["features"] = [{'file': '"'+stlname+'.eMesh"', 'level': edgeLvl}]
-        castel["refinementSurfaces"] = { stlname : { "level" : "({} {})".format(*hullLvl) } }
+        castel["refinementSurfaces"] = { patchName : { "level" : "({} {})".format(*hullLvl) } }
         
         castel["resolveFeatureAngle"] = resolveFeatureAngle
         
@@ -61,7 +62,7 @@ class SnappyHexMeshDict(WriteParameterFile):
             lvl = ''
             for i, rl in enumerate(refinementLength):
                 lvl += ' ({:.3f} {:d})'.format(rl,nRefL-i)
-            castel["refinementRegions"] = { stlname : { "mode" : "distance", "levels" : "("+lvl+")" } }
+            castel["refinementRegions"] = { patchName : { "mode" : "distance", "levels" : "("+lvl+")" } }
         else:
             castel["refinementRegions"] = {}
 
@@ -85,17 +86,17 @@ class SnappyHexMeshDict(WriteParameterFile):
         addLayersControl["relativeSizes"] = relativeSizes
         
         patch = DictProxy()
-        if shipPatches is not None:
-            if  len(shipPatches)>1:
+        if stlPatches is not None:
+            if  len(stlPatches)>1:
                 if noLayers==None: noLayers = []
                 elif len(noLayers)>0: print("    disable layers on patch(es):", noLayers)
-                for sp in shipPatches:
+                for sp in stlPatches:
                     if sp in noLayers: continue
-                    patch["ship_"+str(sp)] = { "nSurfaceLayers" : nSurfaceLayers }
+                    patch[patchName+"_"+str(sp)] = { "nSurfaceLayers" : nSurfaceLayers }
             else:
-                patch["ship"] = { "nSurfaceLayers" : nSurfaceLayers }
+                patch[patchName] = { "nSurfaceLayers" : nSurfaceLayers }
         else:
-            patch[stlname] = { "nSurfaceLayers" : nSurfaceLayers }
+            patch[patchName] = { "nSurfaceLayers" : nSurfaceLayers }
         addLayersControl["layers"] = patch
         
         addLayersControl["nMedialAxisIter"] = 10
@@ -118,7 +119,7 @@ class SnappyHexMeshDict(WriteParameterFile):
             addLayersControl["meshShrinker"] = "displacementMotionSolver"
             addLayersControl["solver"] = "displacementLaplacian"
             dlc = DictProxy()
-            dlc["diffusivity"] = "quadratic inverseDistance 1("+stlname+")"
+            dlc["diffusivity"] = "quadratic inverseDistance 1("+patchName+")"
             addLayersControl["displacementLaplacianCoeffs"] = dlc
         self["addLayersControls"] = addLayersControl
             

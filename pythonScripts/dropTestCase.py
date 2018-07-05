@@ -23,14 +23,15 @@ class DropTestCase( OfCase ) :
 
     @classmethod
     def BuildFromAllParameters(cls,      case,
-                                         section_name ,
                                          meshDir          = "mesh",
                                          meshTime         = "constant",
                                          symmetry         = False,
                                          outputForces     = False,
+                                         forcesPatch      = None,
                                          outputPressures  = False,
+                                         pressuresPatch   = None,
                                          outputInterval   = 1,
-                                         hullPatch        = "",
+                                         hullPatch        = "ship",
                                          startTime        = "latestTime",
                                          endTime          = 10,
                                          timeStep         = 0.01,
@@ -44,6 +45,8 @@ class DropTestCase( OfCase ) :
                                          waveT            = 0.0,
                                          velocity         = 0.0,
                                          depth            = 100.,
+                                         frontRelaxZone    = None,
+                                         backRelaxZone    = None,
                                          sideRelaxZone    = None,
                                          dispSignal       = None,
                                          solver           = "foamStar",
@@ -55,17 +58,8 @@ class DropTestCase( OfCase ) :
 
         print('Create system folder input files')
         #controlDict
-        if outputForces:
-            if len(hullPatch) > 0: forcesPatch = hullPatch
-            else: forcesPatch = section_name
-        else:
-            forcesPatch = None
-            
-        if outputPressures:
-            if len(hullPatch) > 0: pressuresPatch = hullPatch
-            else: pressuresPatch = section_name
-        else:
-            pressuresPatch = None
+        if outputForces and (forcesPatch is None): forcesPatch = hullPatch
+        if outputPressures and (pressuresPatch is None): pressuresPatch = hullPatch
 
         controlDict = ControlDict( case                = case,
                                    startFrom           = startTime,
@@ -129,7 +123,7 @@ class DropTestCase( OfCase ) :
         res.dispSignal = dispSignal
         res.sideRelaxZone = sideRelaxZone
         res.translateLength = translateLength
-        res.section_name = section_name
+        res.hullPatch = hullPatch
         res.symmetry = symmetry
 
         res.copyMesh( meshDir, meshTime )
@@ -143,12 +137,22 @@ class DropTestCase( OfCase ) :
         waveCond  = WaveCondition( waveType   = wave )
 
         relaxZones = []
-        if sideRelaxZone is not None:
+        if any(x is not None for x in [frontRelaxZone,backRelaxZone,sideRelaxZone]):
             bBox = findCFDBoundingBox(case,False)
-            if sideRelaxZone > 0:
-                relaxSide = RelaxZone( "side" , relax=True, waveCondition=waveCond, origin=[0., bBox[4], 0.], orientation = [  0. , -1. , 0.], bound=sideRelaxZone)
-            else:
-                relaxSide = RelaxZone( "side" , relax=True, waveCondition=waveCond, origin=[0., bBox[4], 0.], orientation = [  0. , -1. , 0.], bound=0.5*bBox[4])
+            
+        if frontRelaxZone is not None:
+            if frontRelaxZone > 0: relaxFront = RelaxZone( "front" , relax=True, waveCondition=waveCond, origin=[bBox[0], 0., 0.], orientation = [ -1., 0., 0.], bound=frontRelaxZone)
+            else: relaxFront = RelaxZone( "front" , relax=True, waveCondition=waveCond, origin=[bBox[0], 0., 0.], orientation = [ -1., 0., 0.], bound=0.1*bBox[0])
+            relaxZones += [relaxFront]
+            
+        if backRelaxZone is not None:
+            if backRelaxZone > 0: relaxBack = RelaxZone( "back" , relax=True, waveCondition=waveCond, origin=[bBox[3], 0., 0.], orientation = [ 1., 0., 0.], bound=backRelaxZone)
+            else: relaxBack = RelaxZone( "back" , relax=True, waveCondition=waveCond, origin=[bBox[3], 0., 0.], orientation = [ 1., 0., 0.], bound=0.1*bBox[3])
+            relaxZones += [relaxBack]
+        
+        if sideRelaxZone is not None:
+            if sideRelaxZone > 0: relaxSide = RelaxZone( "side" , relax=True, waveCondition=waveCond, origin=[0., bBox[4], 0.], orientation = [  0., -1., 0.], bound=sideRelaxZone)
+            else: relaxSide = RelaxZone( "side" , relax=True, waveCondition=waveCond, origin=[0., bBox[4], 0.], orientation = [  0., -1., 0.], bound=0.5*bBox[4])
             relaxZones += [relaxSide]
 
         res.waveProperties = WaveProperties( filename,
@@ -175,7 +179,7 @@ class DropTestCase( OfCase ) :
         writeAllBoundaries( case  = self.case,
                             case2D = True,
                             symmetryPlane = self.symmetry,
-                            struct = '"' + self.section_name + '|wetSurf"',
+                            struct = '"' + self.hullPatch + '|wetSurf"',
                             version = self.solver )
 
 
@@ -232,7 +236,6 @@ class DropTestCase( OfCase ) :
             f.write('eval clean_0\n')
         os.chmod(aclean, 0o755)
 
-
     def setBoundaries(self):
         boundfile = os.path.join(self.constfolder_,"polyMesh","boundary")
         boundDict = ParsedParameterFile(boundfile,boundaryDict=True)
@@ -243,8 +246,6 @@ class DropTestCase( OfCase ) :
             elif self.symmetry and (boundDict[2*i] in ['domainY0']):
                 boundDict[2*i+1]['type'] = 'symmetryPlane'
         boundDict.writeFile()
-
-
 
     def writeSbatch(self):
         #run.sh

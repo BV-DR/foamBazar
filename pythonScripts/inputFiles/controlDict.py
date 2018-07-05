@@ -102,10 +102,11 @@ class ControlDict( WriteParameterFile ) :
             pressuresDict["log"]                = True
             if OFversion==5:
                 pressuresDict["writeControl"]   = "timeStep"
-                pressuresDict["writeInterval"]  = 1
+                pressuresDict["writeInterval"]  = outputInterval
+                pressuresDict["writeFields"]    = True
             else:
-                pressuresDict["outputControl"   = "timeStep"
-                pressuresDict["outputInterval"] = 1
+                pressuresDict["outputControl"]  = "timeStep"
+                pressuresDict["outputInterval"] = outputInterval
             pressuresDict["fields"]             = ['p']
             fDict["pressures"] = pressuresDict
             

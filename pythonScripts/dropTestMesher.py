@@ -19,7 +19,7 @@ import pandas as pd
 from io import StringIO
 from subprocess import call, Popen
 from scipy import interpolate as interp
-from fsTools import findBoundingBox
+from fsTools import findBoundingBox, findSTLPatches
 
 from ofCase import OfCase
 
@@ -42,6 +42,7 @@ class DropTestMesher( OfCase ):
                                          ndim             = 2,
                                          sectionsFile     = None,
                                          stlFile          = None,
+                                         hullPatch        = None,
                                          section          = 1,
                                          gridLevel        = 1,
                                          symmetry         = False,
@@ -61,11 +62,16 @@ class DropTestMesher( OfCase ):
                                          cellRatio        = 1,
                                          solver           = "snappyHexMesh",
                                          OFversion        = 3,
-                                         onLiger          = False
+                                         onLiger          = False,
+                                         overwrite        = False
                                          ):
         
+        if hullPatch is None:
+            if ndim==2: hullPatch='section_'+str(section)
+            elif ndim==3: hullPatch = 'ship'
+        
         #get STL size
-        if (ndim==2) and (stlFile is None): stlFile = os.path.join('stl','section_'+str(section)+'.stl')
+        if (ndim==2) and (stlFile is None): stlFile = os.path.join('stl',hullPatch+'.stl')
         stlFile = os.path.join(os.getcwd(),stlFile)
         
         bBox = findBoundingBox(stlFile, verbose=True)
@@ -124,17 +130,23 @@ class DropTestMesher( OfCase ):
                                          directions     = directions,
                                          useHexTopology = True,
                                          geometricCut   = False)
+                                         
+        #read stl patches
+        stlPatches = findSTLPatches(stlFile)
         
         #snappyHexMeshDict
         stlName = os.path.splitext(os.path.basename(stlFile))[0]
+        referenceLength = min(Beam*0.5,Depth)
         snappyHexMeshDict = SnappyHexMeshDict(case                = case,
                                               addLayers           = True,
                                               stlname             = stlName+'.stl',
-                                              refinementLength    = [Beam*0.5*rf for rf in refineLength],
+                                              patchName           = hullPatch,
+                                              stlPatches          = stlPatches,
+                                              refinementLength    = [referenceLength*rf for rf in refineLength],
                                               nSurfaceLayers      = 3,
                                               expansionRatio      = 1.3,
-                                              finalLayerThickness = Beam*0.5*layerLength,
-                                              minThickness        = Beam*0.5*layerLength*0.1,
+                                              finalLayerThickness = referenceLength*layerLength,
+                                              minThickness        = referenceLength*layerLength*0.1,
                                               ofp                 = OFversion=='P')
                                               
         #surfaceFeatureExtractDict
@@ -187,7 +199,8 @@ class DropTestMesher( OfCase ):
                           surfaceFeatureExtractDict=surfaceFeatureExtractDict,
                           blockMeshDict=blockMeshDict,
                           solver = solver,
-                          isMesher = True
+                          isMesher = True,
+                          overwrite = overwrite
                           )
 
         res.section = section
@@ -198,11 +211,12 @@ class DropTestMesher( OfCase ):
         res.Length = Length
         res.Beam = Beam
         res.Depth = Depth
-        if ndim==2:
-            res.section_name = 'section_'+str(section)
+        res.hullPatch = hullPatch
+        # if ndim==2:
+            # res.section_name = 'section_'+str(section)
             # res.sdict = res.readSections(sectionsFile,sections=[section])
-        elif ndim==3:
-            res.section_name = 'ship'
+        # elif ndim==3:
+            # res.section_name = 'ship'
         res.symmetry = symmetry
         res.nRefBoxes = nRefBoxes
         res.xRefineBox = xRefineBox
@@ -330,7 +344,7 @@ class DropTestMesher( OfCase ):
             f.write('    cp {:s} {:s}\n'.format(fstlin,fstlout))
             if abs(self.rot)>1e-3:
                 f.write('    mv {:s} {:s}\n'.format(fstlout,fstltmp))
-                f.write("    surfaceTransformPoints -yawPitchRoll '(0 0 {:.3f})' {} {}".format(self.rot,fstltmp,fstlout))
+                f.write("    surfaceTransformPoints -yawPitchRoll '(0 0 {:.3f})' {} {}\n".format(self.rot,fstltmp,fstlout))
                 f.write('    rm {:s}\n'.format(fstltmp))
             f.write('    surfaceFeatureExtract\n')
             f.write('}\n\n')
@@ -455,61 +469,3 @@ class DropTestMesher( OfCase ):
             elif self.OFversion == 'P' : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-v1712/etc/bashrc;\n')
             f.write('export LC_ALL=C\n\n')
             f.write('mpirun {} -parallel\n'.format(self.solver))
-
-        
-#*** Main execution start here *************************************************
-    #Read input file
-# DEFAULT_PARAM = {'ndim'          : 2,
-                 # 'sectionsFile'  : '',
-                 # 'stlFile'       : '',
-                 # 'sections'      : [],
-                 # 'gridLevel'     : [1],
-                 # 'rot'           : 0.0,
-                 # 'symmetry'      : False,
-                 # 'xBounds'       : [-0.5,0.5],
-                 # 'yBounds'       : [-9.,9.],
-                 # 'zBounds'       : [-2.,3.],
-                 # 'fsBounds'      : [-0.5,1.5],
-                 # 'nRefBoxes'     : 6,
-                 # 'xRefineBox'    : [-0.6,-0.5,-0.4,-0.3,-0.2,-0.1,1.6,1.5,1.4,1.3,1.2,1.1],
-                 # 'yRefineBox'    : [-6.5,-4.5,-3.0,-2.0,-1.5,-1.2,6.5,4.5,3.0,2.0,1.5,1.2],
-                 # 'zRefineBox'    : [-2.0,-2.0,-2.0,-1.5,-1.0,-0.5,3.0,2.5,2.0,1.8,1.6,1.4],
-                 # 'nfsRefBoxes'   : 5,
-                 # 'fsRefineBox'   : [-1.5,-1.0,-0.5,-0.3,-0.2,2.5,2.0,1.5,1.3,1.2],
-                 # 'refineLength'  : [0.1],
-                 # 'layerLength'   : 0.005,
-                 # 'cellRatio'     : 1,
-                 # 'OFplus'        : False,
-                 # 'gridName'      : None
-                 # }
-
-# DEFAULT_ARG = {'createStl' : True,
-               # 'runScript' : True
-              # }
-
-# class Struct:
-    # def __init__(self, **entries):
-        # self.__dict__.update(entries)
-
-# def fsMesher2D(userParam={}, userArgs={}):
-    # startTime = time.time()
-    # param = DEFAULT_PARAM
-    # param.update(userParam)
-    # param = Struct(**param)
-    # arg = DEFAULT_ARG
-    # arg.update(userArgs)
-    # arg =Struct(**arg)
-
-    # if abs(param.rot)>1e-3 and param.symmetry:
-        # print('ERROR: Mesh rotation cannot be applied with symmetry')
-        # os._exit(1)
-    
-    # if param.ndim==2:
-        # sectDict = readSections(param.sectionsFile,sections=param.sections)
-        # if arg.createStl: createSectionStl(sectDict)
-        # create2DMesh(param,sectDict,arg.runScript)
-    # elif param.ndim==3:
-        # create3DMesh(param,arg.runScript)
-
-    # endTime = time.time()
-    # print('Mesh generation completed in '+str(datetime.timedelta(seconds=(endTime-startTime))))
