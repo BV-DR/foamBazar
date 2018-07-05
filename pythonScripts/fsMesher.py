@@ -81,12 +81,12 @@ class UserInput(object):
         #       the validity of the existing file
         createShipStl(shipStl, filename, overwrite=True)
         shipPatches = findSTLPatches(filename)
-        print "Found patches in stl: ", shipPatches
+        print ("Found patches in stl: ", shipPatches)
         shipBB = findBoundingBox(filename)
         
         if opts['draft'] is not None:
             draft = math.fabs(float(opts['draft']))
-            print "Set draft:",draft
+            print ("Set draft:",draft)
             move = -shipBB[2] - draft
             translateStl(filename, [0.0,0.0,move], filename)
             shipBB[2] += move
@@ -95,7 +95,7 @@ class UserInput(object):
         if opts['refSurfExtra'] is not None:
             nameOnly = os.path.basename(opts['refSurfExtra'])
             surfFile = "./constant/triSurface/"+nameOnly
-            print "Create stl: "+surfFile
+            print ("Create stl: "+surfFile)
             runCommand("cp -f "+opts['refSurfExtra']+" "+surfFile)
             if opts['draft'] is not None:
                 translateStl(surfFile, [0.0,0.0,move], surfFile)
@@ -218,7 +218,7 @@ def cmdOptions(argv):
     args = parser.parse_args()
 
     if args.showConfig:
-        print "\nOutput default parameters to file:", DEFAULT_CFG_FILE
+        print ("\nOutput default parameters to file:", DEFAULT_CFG_FILE)
         subprocess.call('cat << EOF > '+DEFAULT_CFG_FILE + defaultParams_contents, shell=True)
         raise SystemExit('')
 
@@ -261,7 +261,7 @@ def cmdOptions(argv):
             elif val=="layer":
                 EXEC_ADDLAYERS=False
             else:
-                print "\nUnknown arg.: --skip", val,"\n"
+                print ("\nUnknown arg.: --skip", val,"\n")
                 parser.print_help()
                 raise SystemExit()
 
@@ -284,7 +284,7 @@ def cmdOptions(argv):
             elif val=="layer":
                 EXEC_ADDLAYERS=True
             else:
-                print "\nUnknown arg.: --run", val,"\n"
+                print ("\nUnknown arg.: --run", val,"\n")
                 parser.print_help()
                 raise SystemExit()
 
@@ -296,7 +296,7 @@ def cmdOptions(argv):
         CMD_refineMesh += ' -overwrite'
         #CMD_snappyHexMesh += ' -overwrite' # snappyHexMesh will be run in parallel!!! FIXME
     else:
-        print "Running in DEBUG mode ... "
+        print ("Running in DEBUG mode ... ")
 
     subprocess.call('echo "Executing fsMesh.py: $(hostname) @ $(date)" '+CMD_keepLog, shell=True)
     return inputdata
@@ -308,7 +308,7 @@ def readInputParams(filename):
     config.read(filename)
     name = 'fsMesher'
     
-    print "Read input paramters from file:", filename
+    print ("Read input paramters from file:", filename)
     
     # read stlFile(s)
     done=False
@@ -323,7 +323,7 @@ def readInputParams(filename):
             done=True
             pass
     if i is not 0:
-        print "    stlFile(s):", shipStl
+        print ("    stlFile(s):", shipStl)
 
     # heading
     try:
@@ -573,7 +573,7 @@ def rotateLogFile():
         return rotateLogFile()
         pass
     else:
-        print 'Log file:',logFile
+        print ('Log file:',logFile)
         return logFile
 
 def setValue(filename, variable, value):
@@ -617,11 +617,11 @@ def modifyFoamBlock(filename, blockName, variable, val):
         cmd += "{s/\(\<"+variable+"\>[ \\t]*\)[^;]*/\\1"+str(val)+"/}' -i "
         subprocess.call(cmd+filename, shell=True)
     else: # not found
-        print "modifyFoamBlock: Substitution failed"
-        print "filename: ", filename
-        print "blockName: ", blockName
-        print "keyword: ", variable
-        print "value: ", val
+        print ("modifyFoamBlock: Substitution failed")
+        print ("filename: ", filename)
+        print ("blockName: ", blockName)
+        print ("keyword: ", variable)
+        print ("value: ", val)
         raise SystemExit('abort ...')
 
 def runCommand(cmd):
@@ -632,20 +632,20 @@ def runCommand(cmd):
         raise SystemExit('abort ...')
         pass
     except OSError:
-        print cmd
+        print (cmd)
         raise SystemExit('executable not found ... abort')
         pass
     pass
     
 def createShipStl(shipStl, outputStl, overwrite=False):
-    print "Creating stl: "+outputStl
+    print ("Creating stl: "+outputStl)
     if os.path.isfile(outputStl) & (not overwrite):
-        print "    file already exist ... reuse existing file"
+        print ("    file already exist ... reuse existing file")
         return
 
     subprocess.call("rm -fr "+outputStl, shell=True)
     if len(shipStl)==0:
-        print "    stlFile not specified ..."
+        print ("    stlFile not specified ...")
         raise SystemExit('abort ...')
     foo = 0
     while foo < len(shipStl):
@@ -654,9 +654,9 @@ def createShipStl(shipStl, outputStl, overwrite=False):
         #if not stlFile[::-1][0:4][::-1]==".stl":
         if not stlFile.endswith('.stl'):
             stlFile = stlFile + '.stl'            
-        print "    append: " + stlFile
+        print ("    append: " + stlFile)
         if not os.path.isfile(stlFile):
-            print "\nFile not found:",stlFile,"\n"
+            print ("\nFile not found:",stlFile,"\n")
             raise SystemExit('abort ...')
         subprocess.call("mkdir -p $(dirname "+outputStl+")", shell=True)
         runCommand("cat "+ stlFile + " >> "+outputStl)
@@ -665,34 +665,34 @@ def findSTLPatches(stlFile):
     p = subprocess.Popen("grep '^[ \\t]*\<solid\>' "+stlFile+" | sed 's/solid//g' | tr '\n' ' ' | sed 's/^[ \t]*//;s/ \+/ /g;s/\s*$//g' "  , stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     patches,error = p.communicate()
     if error:
-        print 'error: ', error
+        print ('error: ', error)
         raise SystemExit('abort ...')
-    return patches.split(' ')
+    return patches.decode().split(" ")
     
 def findBoundingBox(stlFile, verbose=True):
     if verbose:
-        print "Compute bounding box: " + stlFile
+        print ("Compute bounding box: " + stlFile)
     p = subprocess.Popen("surfaceCheck "+stlFile+" | grep '^Bounding Box :' | sed \"s/.*: (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     boundingBox,error = p.communicate()
     if error:
-        print 'error: ', error
+        print ('error: ', error)
         raise SystemExit('abort ...')
-    boundingBox = boundingBox.split(' ')
+    boundingBox = boundingBox.decode().split(" ")
     boundingBox = [float(i) for i in boundingBox]
     if verbose:
-        print "   ",boundingBox
+        print ("   ",boundingBox)
     return boundingBox 
 
 def translateStl(inputStl, val, outputStl):
     val = "("+str(val[0])+" "+str(val[1])+" "+str(val[2])+")"
-    print "Translate stl by "+val+": " + inputStl
+    print ("Translate stl by "+val+": " + inputStl)
     subprocess.call("surfaceTransformPoints -translate '"+val+"' " + inputStl + " " + outputStl + " > /dev/null", shell=True)
     return True
 
 def rotateStl(inputStl, heading, outputStl):
     yaw = heading-180.0
     if str(yaw) == '0.0': return False
-    print "Rotate stl (0 0 " + str(yaw) + "): " + inputStl
+    print ("Rotate stl (0 0 " + str(yaw) + "): " + inputStl)
     subprocess.call("surfaceTransformPoints -rollPitchYaw '(0 0 "+str(heading-180.0)+")' " + inputStl + " " + outputStl + " > /dev/null", shell=True)
     return True
 
@@ -700,8 +700,8 @@ def createBoxStl(BB,name):
     Xmin,Ymin,Zmin,Xmax,Ymax,Zmax=BB[0],BB[1],BB[2],BB[3],BB[4],BB[5]
     tol = (Xmax-Xmin)*1e-6
     filename = "./constant/triSurface/" + name
-    print "Creating stl: " + filename
-    print "   ",BB
+    print ("Creating stl: " + filename)
+    print ("   ",BB)
     subprocess.call("surfaceTransformPoints -scale '("+str(Xmax-Xmin-tol)+" "+str(Ymax-Ymin-tol)+" "+str(Zmax-Zmin-tol)+")' fsMesher/fsMesher_box.stl "+filename+" > /dev/null", shell=True)
     subprocess.call("surfaceTransformPoints -translate '("+str(Xmin+0.5*tol)+" "+str(Ymin+0.5*tol)+" "+str(Zmin+0.5*tol)+")' "+filename+" "+filename+" > /dev/null", shell=True)
 
@@ -807,7 +807,7 @@ def createBlockMeshDict(data, fileName):
         YminDomain = data.domain[2]
         YmaxDomain = data.domain[3]
     else:
-        print "\nUnknown parameters, side=",data.side
+        print ("\nUnknown parameters, side=",data.side)
         raise SystemExit('abort ...')
     
     # compute vertical thickness of each box
@@ -870,7 +870,11 @@ def createBlockMeshDict(data, fileName):
     
     # compute vertical extension for all refBox
     dx = cellWidth/2.0
-    refBoxZdata = [zGrid[0] for i in range(nRefBox), zGrid[-1] for i in range(nRefBox)]
+
+    #Does not work in Python3 (and that is a strange formulation anyway):
+    #refBoxZdata = [zGrid[0] for i in range(nRefBox), zGrid[-1] for i in range(nRefBox)]
+    refBoxZdata = [(zGrid[0]) for i in range(2*nRefBox)]
+    
     for i in range(nRefBox):
         for j in range(len(zGridDelta)):
             if zGrid[j] >= ZminSurface:
@@ -896,14 +900,14 @@ def createBlockMeshDict(data, fileName):
     setValue(filename,'Xcells', Xcells)
     setValue(filename,'Ycells', Ycells)
 
-    print 'Domain bounding box:'
-    print "   ", [XminDomain, YminDomain, ZminDomain, XmaxDomain, YmaxDomain, ZmaxDomain]
+    print ('Domain bounding box:')
+    print ("   ", [XminDomain, YminDomain, ZminDomain, XmaxDomain, YmaxDomain, ZmaxDomain])
 
     # add z-cuts points
     # get line number at ($XminDomain $YmaxDomain $ZminDomain)
     p = subprocess.Popen("grep -n '//VERTICES' "+filename, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     line,error = p.communicate()
-    line = line.split(":")
+    line = line.decode().split(":")
     line = int(line[0])+1
     for val in zAllCut:
         subprocess.call('sed -i "'+str(line)+'i\    (\$XminDomain \$YminDomain '+str(val)+')" '+filename, shell=True)
@@ -919,7 +923,7 @@ def createBlockMeshDict(data, fileName):
     # get line number at "hex (...)"
     p = subprocess.Popen("grep -n '//HEX_BLOCK' "+filename, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     line,error = p.communicate()
-    line = line.split(":")
+    line = line.decode().split(":")
     line = int(line[0])+1
     idx = 0
     for i,val in enumerate(zAllCutNCells):
@@ -961,7 +965,7 @@ def createBlockMeshDict(data, fileName):
         if data.refBoxType=='wave':
             xCutMax = [XmaxDomain+1e-3 for val in xCutMin]
         elif data.refBoxType=='kelvin':
-            print "not yet implemented"
+            print ("not yet implemented")
         else:
             xCutMax = [(XmaxDomain-shipBBxMax)*val for val in xGradMax]
             del xCutMax[0], xCutMax[-1]
@@ -989,9 +993,9 @@ def createBlockMeshDict(data, fileName):
 
 def createBackGroundMesh(data):
     if EXEC_BLOCKMESH:
-        print "blockMesh: create a base mesh ..."
+        print ("blockMesh: create a base mesh ...")
         runCommand(CMD_blockMesh + CMD_keepLog)
-        print "autoPatch: create domain boundaries ..."
+        print ("autoPatch: create domain boundaries ...")
         runCommand(CMD_autoPatch + CMD_keepLog)
         renameFoamBlock('./constant/polyMesh/boundary', 'auto0', 'domainX0')
         renameFoamBlock('./constant/polyMesh/boundary', 'auto1', 'domainX1')
@@ -1008,20 +1012,20 @@ def createBackGroundMesh(data):
 #            print "decomposePar: nProcs =",NPROCS
 #            runCommand(CMD_decomposePar + CMD_keepLog)
     else:
-        print "blockMesh: ... skip"
-
+        print ("blockMesh: ... skip")
+    print ("refBoxZdata", data.refBoxZdata)
     # how many refinement box? minimum is 1
     refBoxData = list(data.refBoxData)
     nRefBox = int(refBoxData[0])
     del refBoxData[0]
     refBoxBB = []
     if len(data.refBoxData)>1:
-        if (nRefBox != (len(data.refBoxData))/4):
-    		raise SystemExit('Error: invalid data for refinement boxes, ', data.refBoxData)
+        if (nRefBox != (len(data.refBoxData))//4):
+            raise SystemExit('Error: invalid data for refinement boxes, ', data.refBoxData)
         for i in range(nRefBox):
             refBoxBB.append([refBoxData[i*4], refBoxData[i*4+2], data.refBoxZdata[i], refBoxData[i*4+1], refBoxData[i*4+3], data.refBoxZdata[-i-1]])
     else:
-		raise SystemExit('\nData for refinement box is missing.\nrefBoxData=[#n, #xmin,#xmax,#ymax,#ymax, #xmin,#xmax,#ymin,#ymax, ..., repeat n times]\nabort ...')
+        raise SystemExit('\nData for refinement box is missing.\nrefBoxData=[#n, #xmin,#xmax,#ymax,#ymax, #xmin,#xmax,#ymin,#ymax, ..., repeat n times]\nabort ...')
 
     shipBBxMin = data.shipBBRot[0]
     shipBByMin = data.shipBBRot[1]
@@ -1035,7 +1039,6 @@ def createBackGroundMesh(data):
 
     # refine free surface (using proximity method)
     distance = data.fsdZ*data.cellBuffer*2.0*(nxy-1.0 + nRefBox-1.0 + float(bool(data.refBow) | bool(data.refStern) | bool(data.refFS)))
-    
     lastInnerBox = refBoxBB[-1]
     if lastInnerBox[0] > (shipBBxMin - distance - data.cellWidth*data.cellBuffer/math.pow(2.0, float(nRefBox))):
         diff = lastInnerBox[0] - (shipBBxMin - distance - data.cellWidth*data.cellBuffer/math.pow(2.0, float(nRefBox)))
@@ -1061,7 +1064,6 @@ def createBackGroundMesh(data):
         diff = -lastInnerBox[5] + shipBBzMax + distance + data.zCellSize[1]*data.cellBuffer
         for i in range(len(refBoxBB)):
             refBoxBB[i][5] += diff
-
     #print "debug: refBoxData: ", data.refBoxData
     for BB in refBoxBB:
         refineBox(BB, 'xy')
@@ -1137,16 +1139,16 @@ def createSnappyMesh(data):
             isDecomposed,nProcs = caseAlreadyDecomposed()
             if not isDecomposed:
                 nProcs = NPROCS
-                print "decomposePar: nProcs =",nProcs
+                print ("decomposePar: nProcs =",nProcs)
                 runCommand(CMD_decomposePar + CMD_keepLog)
-            print "snappyHexMesh: snapping ... in parallel, nProcs =",nProcs
+            print ("snappyHexMesh: snapping ... in parallel, nProcs =",nProcs)
             cmd = "mpirun -np "+str(nProcs)+" "+CMD_snappyHexMesh + " -parallel "+ CMD_keepLog
         else:
-            print "snappyHexMesh: snapping ... "
+            print ("snappyHexMesh: snapping ... ")
             cmd = CMD_snappyHexMesh + CMD_keepLog
         runCommand(cmd)
     else:
-        print "snappyHexMesh: snap ... skip"
+        print ("snappyHexMesh: snap ... skip")
         pass
         
     if EXEC_ADDLAYERS:
@@ -1166,16 +1168,16 @@ def createSnappyMesh(data):
             isDecomposed,nProcs = caseAlreadyDecomposed()
             if not isDecomposed:
                 nProcs = NPROCS
-                print "decomposePar: nProcs =",nProcs
+                print ("decomposePar: nProcs =",nProcs)
                 runCommand(CMD_decomposePar + CMD_keepLog)
-            print "snappyHexMesh: add layers ... in parallel, nProcs =",nProcs
+            print ("snappyHexMesh: add layers ... in parallel, nProcs =",nProcs)
             cmd = "mpirun -np "+str(nProcs)+" "+CMD_snappyHexMesh + " -parallel "+ CMD_keepLog
         else:
-            print "snappyHexMesh: add layers ... "
+            print ("snappyHexMesh: add layers ... ")
             cmd = CMD_snappyHexMesh + CMD_keepLog
         runCommand(cmd)
     else:
-        print "snappyHexMesh: add layers ... skip"
+        print ("snappyHexMesh: add layers ... skip")
         pass
     pass
 
@@ -1203,7 +1205,7 @@ def selectBoxToCell(BB):
     xmin,ymin,zmin,xmax,ymax,zmax=BB[0],BB[1],BB[2],BB[3],BB[4],BB[5]
     BBtxt = '('+str(xmin)+' '+str(ymin)+' '+str(zmin)+') ('+str(xmax)+' '+str(ymax)+' '+str(zmax)+')'
     cmd = 'cellSet c0 new boxToCell '+BBtxt
-    print "SelectBoxToCell:",cmd
+    print ("SelectBoxToCell:",cmd)
     if EXEC_REFINEBOX:
         runCommand('echo "'+cmd+'" > .tmp_setSet')
         run_setSet()
@@ -1227,7 +1229,7 @@ def selectProximity(opts, stlFile, distance, BB=[0], outsidePoints=None):
     if len(BB)==6:
         BBtxt = '('+str(BB[0])+' '+str(BB[1])+' '+str(BB[2])+') ('+str(BB[3])+' '+str(BB[4])+' '+str(BB[5])+')'
         cmd += "\n" + 'cellSet c0 subset boxToCell '+BBtxt
-    print "selectProximity:",cmd
+    print ("selectProximity:",cmd)
     if EXEC_REFINEPROXIMITY:
         runCommand('echo "'+cmd+'" > .tmp_setSet')
         run_setSet()
@@ -1237,20 +1239,20 @@ def selectProximity(opts, stlFile, distance, BB=[0], outsidePoints=None):
 def refineBox(BB, direction):
     selectBoxToCell(BB)
     if EXEC_REFINEBOX:
-        print "refineBox:", direction
+        print ("refineBox:", direction)
         refineMesh_template('./system/refineMeshDict', direction)
         run_refineMesh()
     else:
-        print "refineBox:", direction," ... skip"
+        print ("refineBox:", direction," ... skip")
     pass
 
 def refineProximity(direction):
     if EXEC_REFINEPROXIMITY:
-        print "refineProximity:", direction
+        print ("refineProximity:", direction)
         refineMesh_template('./system/refineMeshDict', direction)
         run_refineMesh()
     else:
-        print "refineProximity:", direction," ... skip"
+        print ("refineProximity:", direction," ... skip")
     pass
 
 def getFoamTimeFolders(constant=False):
@@ -1282,9 +1284,9 @@ def caseAlreadyDecomposed():
 
 def clearEmptyZonesFiles(dryrun=False):
     if not dryrun:
-        print "Clear empty {point,cell,face}Zones ... "
+        print ("Clear empty {point,cell,face}Zones ... ")
     else:
-        print "Clear empty {point,cell,face}Zones ... dryrun"
+        print ("Clear empty {point,cell,face}Zones ... dryrun")
     files = ['polyMesh/faceZones','polyMesh/cellZones','polyMesh/pointZones']
     folders = getFoamTimeFolders(constant=True)
     for pwd in folders:    
@@ -1300,11 +1302,11 @@ def clearEmptyZonesFiles(dryrun=False):
                 p = subprocess.Popen(cmd+" | sed -n '18,19{/^0$/q1}' ", stdout=subprocess.PIPE, shell=True)
                 p.communicate()
                 if p.returncode==1: # found
-                    print "delete:",filename
+                    print ("delete:",filename)
                     if not dryrun:
                         try:
                             os.remove(filename)
-                        except OSError, e:
+                        except (OSError, e):
                             print ("Error: %s - %s." % (e.filename,e.strerror))
     pass
 
@@ -1326,7 +1328,7 @@ def foamCase_template():
         p = subprocess.Popen("grep -E '^numberOfSubdomains' system/decomposeParDict | sed 's/^numberOfSubdomains[ \\t]*//;s/;.*//g' ", stdout=subprocess.PIPE, shell=True)
         txt,error = p.communicate()
         if error:
-            print "error:",error
+            print ("error:",error)
             raise SystemExit('abort ...')
         else:
             NPROCS = int(txt)
@@ -1354,7 +1356,7 @@ def refineMesh_template(filename, dirString):
 def snappyMesh_template(filename, shipPatches, noLayers=None):
     # don't overwrite existing file
     if not os.path.isfile(filename):
-        print "Creating:",filename
+        print ("Creating:",filename)
         subprocess.call('mkdir -p $(dirname '+filename+")", shell=True)
         subprocess.call('cat << EOF > '+filename + snappyHexMeshDict_contents, shell=True)
         renameFoamBlock(filename, "DEFAULT_SHIP_STL", '\\"'+DEFAULT_SHIP_STL+'\\"')
@@ -1362,11 +1364,11 @@ def snappyMesh_template(filename, shipPatches, noLayers=None):
         # get line number at "//ADD_SHIP_PATCHES_HERE"
         p = subprocess.Popen("grep -n '//ADD_SHIP_PATCHES_HERE' "+filename, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         line,error = p.communicate()
-        line = line.split(":")
+        line = line.decode().split(":")
         line = int(line[0])+1
         if (len(shipPatches)>1):
             if noLayers==None: noLayers = []
-            if len(noLayers)>0: print "    disable layers on patch(es):",noLayers
+            if len(noLayers)>0: print ("    disable layers on patch(es):",noLayers)
             for val in shipPatches:
                 if val in noLayers: continue
                 subprocess.call('sed -i "'+str(line)+'i\        ship_'+str(val)+'  { nSurfaceLayers \$SHIP_BL_layers; }" '+filename, shell=True)
@@ -1377,21 +1379,21 @@ def snappyMesh_template(filename, shipPatches, noLayers=None):
 
     # "snappyHexMeshDict" already exists, check whether or not the "geometry" is OK
     else:
-        print "Reuse existing file:",filename
+        print ("Reuse existing file:",filename)
         OK,cmd = foamBlockExist(filename, DEFAULT_SHIP_STL)
         if not OK:
-            print "\n    Warning: geomtry definition not found for:",DEFAULT_SHIP_STL
-            print "\n    Please review:",filename
-            print "\n"
+            print ("\n    Warning: geomtry definition not found for:",DEFAULT_SHIP_STL)
+            print ("\n    Please review:",filename)
+            print ("\n")
             
     eMeshFile=os.path.splitext(DEFAULT_SHIP_STL)[0] if DEFAULT_SHIP_STL.endswith('.stl') else DEFAULT_SHIP_STL
     if not foamFileExist('./constant/triSurface/'+eMeshFile+'.eMesh'):
-        print "\nExtract surface features from file: ./constant/triSurface/"+DEFAULT_SHIP_STL
+        print ("\nExtract surface features from file: ./constant/triSurface/"+DEFAULT_SHIP_STL)
         subprocess.call('cat << EOF > ./system/surfaceFeatureExtractDict' + surfaceFeatureExtractDict_contents, shell=True)
         subprocess.call('sed -i "s/^ship.stl/'+DEFAULT_SHIP_STL+'/" '+filename, shell=True)
         runCommand(CMD_surfaceFeatureExtract + CMD_keepLog)
     else:
-        print "Reuse existing file: "+'./constant/triSurface/'+eMeshFile+'.eMesh'
+        print ("Reuse existing file: "+'./constant/triSurface/'+eMeshFile+'.eMesh')
     
     pass
 
@@ -2045,7 +2047,7 @@ EOF
 '''
 
 def computeProximityData(data):
-    print "debug: computeProximityData()"
+    print ("debug: computeProximityData()")
 
     # cell data
     cSize = data.fsdZ
@@ -2070,7 +2072,7 @@ def computeProximityData(data):
         rData['outsidePoints'] = list(outsidePoints)
 
    
-    print cSize,cBuffer, nlevel
+    print (cSize,cBuffer, nlevel)
     pprint.pprint(rData)
     pass
 
@@ -2088,5 +2090,5 @@ if __name__ == "__main__":
     #rotateStl('boundingBox.stl', dat.heading, 'boundingBoxRotated.stl')
 
     endTime = time.time()
-    print 'Completed meshing in %d minutes' % ((endTime-startTime)/60)
+    print ('Completed meshing in %d minutes' % ((endTime-startTime)/60))
     
