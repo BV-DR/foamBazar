@@ -404,7 +404,7 @@ def create3DMesh(param,runScript):
         snappyHexMeshDict = SnappyHexMeshDict(case                = mycase,
                                               addLayers           = True,
                                               stlname             = mystl,
-                                              refinementLength    = Beam*0.5*param.refineLength,
+                                              refinementLength    = [Beam*0.5*rf for rf in param.refineLength],
                                               nSurfaceLayers      = 3,
                                               expansionRatio      = 1.3,
                                               finalLayerThickness = Beam*0.5*param.layerLength,

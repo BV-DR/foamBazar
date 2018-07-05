@@ -9,9 +9,12 @@
 # Email:    alexis.benhamou@bureauveritas.com                           #
 #########################################################################
 
-import os, subprocess, time, math
-import numpy as np
+import os, subprocess, re
 import sys, argparse, configparser
+from io import StringIO
+import numpy as np
+import pandas as pd
+import math as mt
 import pprint
 
 # abenhamou: 2017-july-27
@@ -110,13 +113,12 @@ def checkError(file):
     return error
     
 def findSTLPatches(stlFile):
-    p = subprocess.Popen("grep '^[ \\t]*\<solid\>' "+stlFile+" | sed 's/solid//g' | tr '\n' ' ' | sed 's/^[ \t]*//;s/ \+/ /g;s/\s*$//g' "  , stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    patches,error = p.communicate()
-    if error:
-        print('error: ', error.decode('ascii'))
-        print('abort ...')
-        os._exit(1)
-    return patches.decode('ascii').split(' ')
+    res = []
+    with open(stlFile) as f: lines = f.readlines()
+    for item in lines:
+         if item.lstrip().startswith('solid'):
+            res.append(item.lstrip().split('solid')[-1].strip())
+    return res
 
 def translateStl(inputStl, val, outputStl):
     val = "("+str(val[0])+" "+str(val[1])+" "+str(val[2])+")"
@@ -139,3 +141,98 @@ def createBoxStl(BB,name):
     print("   ",BB)
     subprocess.call("surfaceTransformPoints -scale '("+str(Xmax-Xmin-tol)+" "+str(Ymax-Ymin-tol)+" "+str(Zmax-Zmin-tol)+")' fsMesher/fsMesher_box.stl "+filename+" > /dev/null", shell=True)
     subprocess.call("surfaceTransformPoints -translate '("+str(Xmin+0.5*tol)+" "+str(Ymin+0.5*tol)+" "+str(Zmin+0.5*tol)+")' "+filename+" "+filename+" > /dev/null", shell=True)
+    
+def readSections(inputFile,sections=[]):
+    
+    sdict = {}
+    
+    with open(inputFile) as f:
+        if len(sections)==0:
+            sect = re.findall(r'(#Section \d+)',f.read())
+            for s in sect:
+                sections += [int(i) for i in s.split() if i.isdigit()]
+
+    with open(inputFile,'r') as f:
+        lines = f.read()
+    
+    for isect in sections:
+        string = r'(#Section '+str(isect)+r'\n)+([^#]*)'
+        table = re.findall(string, lines)
+        table = list(table[0])
+        rows = StringIO(table[1])
+        data = pd.read_csv(rows,header=None,sep=r'\s+',names=['y','z'])
+        sdict[isect] = data[data.y>=0]
+        sdict[isect] = sdict[isect].assign(x= sdict[isect]['y'].values * 0.0)
+        sdict[isect] = sdict[isect].reindex(sorted(sdict[isect]),axis=1)
+            
+    return sdict
+
+def createSectionStl(sdict,redistribute=False):
+    if not os.path.exists('geo'): os.makedirs('geo')
+    if not os.path.exists('stl'): os.makedirs('stl')
+    
+    for isect in sdict.keys():
+        print('Section =',isect)
+        name = 'section_'+str(isect)
+        mysect = sdict[isect]
+        
+        fgeo=os.path.join(r'geo/',name+'.geo');
+        fstl=os.path.join(r'stl/',name+'.stl');
+    
+        #Create .geo file
+        thk = 10.0
+        
+        if redistribute:
+            #Redistribute points
+            s = np.sqrt((mysect.diff()**2).sum(axis=1)).cumsum()
+            ds = 0.5 * np.sqrt((mysect.diff()*2).sum(axis=1)).mean()
+            ss = np.linspace(s.min(), s.max(), mt.ceil((s.max()-s.min())/ds))
+            
+            #interpolate according to curvilinear abscissa
+            fx = interp.interp1d(s,mysect.x); x = fx(ss)
+            fy = interp.interp1d(s,mysect.y); y = fy(ss)
+            fz = interp.interp1d(s,mysect.z); z = fz(ss)
+            
+            ns = mt.ceil(16*len(ss))
+        else:
+            x = mysect.x
+            y = mysect.y
+            z = mysect.z
+            
+            ns = mt.ceil(16*len(z))
+
+        #create symmetric
+        interpsect = pd.DataFrame({ 'x': np.concatenate((x,x[1:])),
+                                    'y': np.concatenate(( -1.0*y[:0:-1],y)),
+                                    'z': np.concatenate(( z[:0:-1],z)) })
+        
+
+        pSize = len(interpsect)
+        
+        lSize=1.0
+        nx=1.0
+        ny=2.0*mt.ceil((interpsect.max().y-interpsect.min().y)/(thk/nx))
+
+        print('writing to file: ', fgeo)
+        f = open(fgeo,'w')
+        f.write('// Section {:d}\n'.format(isect))
+        f.write('thk={:.6e}; xmin=-0.5*thk;\n'.format(thk))   
+        f.write('p0=newp; pSize={:d};\n'.format(pSize))
+        for i in range(pSize):
+            f.write('Point(p0+{:d}) = {{xmin, {:.6e}, {:.6e}}};\n'.format(i,interpsect.loc[i].y,interpsect.loc[i].z))
+        f.write('l0=newl; lSize={:.2f};\n'.format(lSize))
+        f.write('Spline(l0+0) = {{p0:p0+{:d}}};\n'.format(pSize - 1))
+        f.write('Line(l0+lSize) = {p0+pSize-1,p0};\n')
+        f.write('Extrude {thk, 0, 0} {\n')
+        f.write(' Line{l0:l0+lSize};\n')
+        f.write(' Recombine;\n')
+        f.write('}\n')
+        f.write('Transfinite Line {{4, 5}} = {:.5f} Using Progression 1;\n'.format(nx))
+        f.write('Transfinite Line {{2, 6}} = {:.5f} Using Progression 1;\n'.format(ny))
+        f.write('Transfinite Line {{1, 3}} = {:.5f} Using Progression 1;'.format(ns))
+        f.write('Transfinite Surface "*";\n')
+        f.write('Recombine Surface "*";\n')
+        f.close()
+
+        #Create STL
+        subprocess.call('gmsh -2 -format stl -o "'+fstl+'" "'+fgeo+'"', shell=True)

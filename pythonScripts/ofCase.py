@@ -30,13 +30,14 @@ class OfCase(object):
                                        gravity = 9.81,
                                        OFversion = 5,
                                        solver = "foamStar",
-                                       isMesher = False
+                                       isMesher = False,
+                                       overwrite = False
                                        ) :
 
 
         self.case = case  # path to case
 
-        self.clean()
+        self.clean(overwrite)
         self.nProcs = nProcs
 
         self.controlDict = controlDict
@@ -187,3 +188,6 @@ class OfCase(object):
         shutil.copytree( os.path.join( meshDir , meshTimeFolder ,'polyMesh') , os.path.join( self.case , "constant/polyMesh"))
         shutil.copytree( os.path.join( meshDir , "constant" ,'triSurface') , os.path.join( self.case  , "constant/triSurface"))
 
+    def runSbatch(self):
+        self.writeSbatch()
+        subprocess.call(['sbatch', 'run.sh'], cwd=self.case)
