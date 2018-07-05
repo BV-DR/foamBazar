@@ -701,7 +701,6 @@ def createBoxStl(BB,name):
     tol = (Xmax-Xmin)*1e-6
     filename = "./constant/triSurface/" + name
     print ("Creating stl: " + filename)
-    print ("   ",BB)
     subprocess.call("surfaceTransformPoints -scale '("+str(Xmax-Xmin-tol)+" "+str(Ymax-Ymin-tol)+" "+str(Zmax-Zmin-tol)+")' fsMesher/fsMesher_box.stl "+filename+" > /dev/null", shell=True)
     subprocess.call("surfaceTransformPoints -translate '("+str(Xmin+0.5*tol)+" "+str(Ymin+0.5*tol)+" "+str(Zmin+0.5*tol)+")' "+filename+" "+filename+" > /dev/null", shell=True)
 
@@ -1013,7 +1012,6 @@ def createBackGroundMesh(data):
 #            runCommand(CMD_decomposePar + CMD_keepLog)
     else:
         print ("blockMesh: ... skip")
-    print ("refBoxZdata", data.refBoxZdata)
     # how many refinement box? minimum is 1
     refBoxData = list(data.refBoxData)
     nRefBox = int(refBoxData[0])
