@@ -27,7 +27,7 @@ from Pluto.Mesh.MeshHstar import Mesh
 
 
 
-
+createSTL = False
 createMeshes = True
 createfoamCases = True
 createLaunchScript = True
@@ -76,7 +76,7 @@ for code , loading in lShips :
     #runFreq( code , loading, speed  , AmgParam = {"MPAR" : "50 20\n"}, wadim = [ 0.3, 2.4 , 0.3 ] , nbproc = 2 )
     #runSpec( code, loading, speed, config, option = "time" )
     #runSpec( code, loading, speed, config, option = "spec" )
-    if (createMeshes == True):
+    if (createSTL == True):
       print (reg)
       
       # load intel mpi libraries for HydroStar 
@@ -102,31 +102,34 @@ for code , loading in lShips :
       mesh.writeSTL(join(OFfolder,r"ship_without_trim.stl"))
     
     # unload intelmpi libraries (incompatible with OpenFOAM mpi library)
-    print ("Unload intelmpi libraries")
-    proc=subprocess.Popen(['module unload intelmpi/5.0.3.048 && env -0'], stdout = subprocess.PIPE, shell = True)
-    a = proc.stdout.read()
-    for b in a.split(b"\x00")[:-1]:
-       (key,  value) = b.decode().split('=',1)
-       os.environ[key] = value
+      print ("Unload intelmpi libraries")
+      proc=subprocess.Popen(['module unload intelmpi/5.0.3.048 && env -0'], stdout = subprocess.PIPE, shell = True)
+      a = proc.stdout.read()
+      for b in a.split(b"\x00")[:-1]:
+         (key,  value) = b.decode().split('=',1)
+         os.environ[key] = value
 
     # load of5.x
-    print ("load OpenFOAM environment")
-    proc=subprocess.Popen(['module load gcc/4.9.3 openmpi/1.8.4-gcc lapack/3.6.1/gcc/4.9.3 && export FOAM_INST_DIR=/data/I1608251/OpenFOAM && source /data/I1608251/OpenFOAM/OpenFOAM-5.x/etc/bashrc && export LC_ALL=C && env -0'], stdout = subprocess.PIPE, shell = True)
-    a = proc.stdout.read()
-    for b in a.split(b"\x00")[:-1]:
-       (key,  value) = b.decode().split('=',1)
-       os.environ[key] = value
+      print ("load OpenFOAM environment")
+      proc=subprocess.Popen(['module load gcc/4.9.3 openmpi/1.8.4-gcc lapack/3.6.1/gcc/4.9.3 && export FOAM_INST_DIR=/data/I1608251/OpenFOAM && source /data/I1608251/OpenFOAM/OpenFOAM-5.x/etc/bashrc && export LC_ALL=C && env -0'], stdout = subprocess.PIPE, shell = True)
+      a = proc.stdout.read()
+      for b in a.split(b"\x00")[:-1]:
+         (key,  value) = b.decode().split('=',1)
+         os.environ[key] = value
  
     # rotate stl to exact trim
-    trim=getTrim(reg, loading, database=env["database"] )
-    print ("Apllied trim angle: ", trim)
+      trim=getTrim(reg, loading, database=env["database"] )
+      print ("Apllied trim angle: ", trim)
     
-    OFRotateCommand = 'surfaceTransformPoints -yawPitchRoll \'(0 ' + str(trim) + ' 0)\' ' + join(OFfolder,r"ship_without_trim.stl") + ' ' + join(OFfolder,r"ship.stl")
-    print (OFRotateCommand)
+      OFRotateCommand = 'surfaceTransformPoints -yawPitchRoll \'(0 ' + str(trim) + ' 0)\' ' + join(OFfolder,r"ship_without_trim.stl") + ' ' + join(OFfolder,r"ship.stl")
+      print (OFRotateCommand)
   
-    subprocess.call(['surfaceTransformPoints -yawPitchRoll \'(0 ' + str(trim) + ' 0)\' ' + join(OFfolder,r"ship_without_trim.stl") + ' ' + join(OFfolder,r"ship.stl")], shell = True)
+      subprocess.call(['surfaceTransformPoints -yawPitchRoll \'(0 ' + str(trim) + ' 0)\' ' + join(OFfolder,r"ship_without_trim.stl") + ' ' + join(OFfolder,r"ship.stl")], shell = True)
 
  #subprocess.call('transformPoints
+
+    if (createMeshes == True):
+       pass
 
     # launch fsMesher
     
