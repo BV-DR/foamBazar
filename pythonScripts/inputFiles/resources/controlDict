@@ -1,0 +1,147 @@
+defaults
+{
+    application     NOT_DEFINE;
+    startFrom       latestTime;
+    startTime       0;
+    stopAt          endTime;
+    endTime         1;
+    deltaT          0.01;
+    writeControl    timeStep;
+    writeInterval   100;
+    purgeWrite      0;
+    writeFormat     ascii;
+    writePrecision  15;
+    writeCompression compressed;
+    timeFormat      general;
+    timePrecision   8;
+    runTimeModifiable no;
+    adjustTimeStep  no;
+    maxCo           1;
+    maxAlphaCo      1;
+    maxDeltaT       0.01;
+    libs            ();
+    functions       {}
+}
+
+db
+{ 
+/* ************************************************************************* */
+
+    functions
+    {
+        "force.*"
+        {
+            _name_
+            {
+                type            forces; libs ("libforces.so"); log off;
+                writeControl    timeStep; writeInterval   1;
+                rhoInf          998.8;
+                rhoName         rho;
+                CofR            (0 0 0);
+                patches         (_patch_not_defined_);
+            };
+        }
+
+        "wave.*"
+        {
+            _name_
+            {
+                _exe_           setWaveProbes;
+                type            surfaceElevation; libs ("libfoamStar.so"); log off;
+                writeControl    timeStep; writeInterval 1; writePrecision 6;
+                fields          (alpha.water); interpolationScheme cellPointFace;
+                samplingParams  { type uniform; axis z; nPoints 100; }
+                sets
+                (
+                    p_1 {start (-0.09 0 -1); end (-0.09 0 1); $samplingParams; }
+                );
+            }
+        }
+
+        interfaceHeight /* this is wave probe found in the core library */
+        {
+            _name_
+            {
+                _exe_           setWaveProbes;
+                type            interfaceHeight; libs ("libfieldFunctionObjects.so");
+                alpha           alpha.water;
+                locations
+                (
+                    (300 0 0)
+                    (450 0 0)
+                    (600 0 0)
+                );
+            }
+        }
+
+        "vbm.*"
+        {
+            _name_
+            {
+                _exe_           setVBM;
+                type            internalLoads; libs ("libfoamStar.so"); log off;
+                writeControl    timeStep; writeInterval 1;
+                donFileName     "_not_defined_.don";
+                patches         (_patch_no_defined_);
+                motionData      ;
+            } 
+        }
+
+        localMotion
+        {
+            _name_
+            {
+                type            localMotion; libs ("libfoamStar.so"); log off;
+                writeControl    timeStep; writeInterval 1;
+                patches         (_patch_no_defined_);
+                motionData      _motion_from_this_body_;
+                flxPTS          _name_of_flx_points_;
+            }
+        }
+
+        surfaces    /* surface sampling for e.g. pressure on boundary faces */
+        {
+            _name_
+            {
+                type            surfaces; libs ("libsampling.so");
+                writeControl    timeStep; writeInterval 1;
+                surfaceFormat   raw; interpolationScheme cellPoint;
+                fields          (p p_rgh);
+                surfaces
+                (
+                    wettedSurface
+                    {
+                        type        patch;
+                        patches     (_patch_not_defined_);
+                        triangulate false;
+                    }
+                );
+            }
+        }
+
+        faceSource
+        {
+            _name_
+            {
+                type            faceSource; libs ("libfieldFunctionObjects.so"); log off;
+                valueOutput     true;
+                surfaceFormat   raw;
+                source          faceZone;
+                sourceName      _faceZone_not_defined_;
+                operation       areaIntegrate;
+                weightField     alpha.water;
+                fields          (p);
+            }
+        }
+    }
+
+    application {}
+
+/* ************************************************************************* */
+}
+
+alias
+{
+    "func.*"    functions;
+    "app.*"     application;
+}

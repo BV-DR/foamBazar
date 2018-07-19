@@ -1,0 +1,38 @@
+defaults
+{
+    numberOfSubdomains  2;
+    method              scotch;
+    distributed         no;
+    roots               ();
+}
+
+db
+{
+    method
+    {
+        "(normal|simple)"  simple
+        {
+            simpleCoeffs
+            {
+                n       (2 1 1);
+                delta   0.001;
+            }
+        };
+
+        "(xyz|hier.*|hierarchical)"  hierarchical
+        {
+            hierarchicalCoeffs
+            {
+                n       (2 1 1);
+                delta   0.001;
+                order   xyz;
+            }
+        };
+
+    }
+}
+
+alias
+{
+    "(np|nprocs.*|proc.*|nProc.*)"     numberOfSubdomains;
+}

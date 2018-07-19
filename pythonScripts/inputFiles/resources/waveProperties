@@ -1,0 +1,89 @@
+defaults
+{
+    #inputMode      overwrite;
+    seaLevel        0;
+    defaultWave     {};
+    initCoeffs      { $defaultWave; }
+    relaxationNames ();
+}
+
+db
+{
+    defaultWave
+    {
+        "(regular|sfw|SWF|streamFunc|streamFunction|streamFunctionWave)"
+        {
+            waveType    streamFunction;
+            height      _wave_height_;
+            period      _wave_period_;
+            depth       _water_depth_;
+            rampTime        _wave_rampTime_;    // Ramp time at wave start-up
+
+            refDirection    (1 0 0);    // default: (1 0 0), ref. direction for wave propagation
+            refPosition     (0 0 0);    // default: (0 0 0), ref. position for wave train
+            startTime       0;          // default: 0, start time for wave generator (noWaves before startTime)
+            refTime         0;          // default: 0, ref. time for wave generation (t = t - refTime)
+            phi             0;          // default: 0, constant phase for offset wave position
+            U0              (0 0 0);    // forward speed (def. in the global csys)
+
+            order               15;     // default: 15, order of the stream function approximation
+            relax               0.2;    // default: 0.2, apply under-relaxation when computing wave properties
+            absTol              1e-10;  // default: 1e-10, tolerance for converged wave properties
+            maxIter             1000;   // defaultL 1000, max. number of iteration
+            setEulerianCurrent  yes;    // default: yes, compute wave properties based the mean Eulerian current
+            EulerianCurrent     0;      // the time/depth average of the Eulerian current
+            driftVelocity       0;      // if "setEulerianCurrent = no", the mean drift velocity must be defined
+        }
+
+        "(st5.*|St5.*|stokes5.*|Stokes5.*)"
+        {
+            waveType    stokes5th;
+            height      _wave_height_;
+            period      _wave_period_;
+            depth       _water_depth_;            
+            rampTime    _wave_rampTime_;    // Ramp time at wave start-up
+            refDirection    (1 0 0);    // default: (1 0 0), ref. direction for wave propagation
+            refPosition     (0 0 0);    // default: (0 0 0), ref. position for wave train
+            startTime       0;          // default: 0, start time for wave generator (noWaves before startTime)
+            refTime         0;          // default: 0, ref. time for wave generation (t = t - refTime)
+            phi             0;          // default: 0, constant phase for offset wave position
+            U0              (0 0 0);    // forward speed (def. in the global csys)
+        }
+    }
+
+    initCoeffs
+    {
+        "noWave.*"
+        {
+            $defaultWave;
+            waveType noWave;
+        }
+        "wave.*"
+        {
+            $defaultWave;
+        }
+        "noRamp.*"
+        {
+            $defaultWave;
+            rampTime 0;
+        }
+    }
+
+    addPatch
+    {
+        $defaultWave;
+    }
+
+    addZone
+    {
+        zoneName    _not_defined_;
+        origin      _not_defined_;
+        orientation _not_defined_;
+    }
+}
+
+alias
+{
+    "(myCase|iWave|default|defaultWave.*)"  defaultWave;
+    "init.*"    initCoeffs;
+}

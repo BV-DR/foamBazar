@@ -1,0 +1,288 @@
+defaults
+{
+    solvers
+    {
+        alpha.water
+        {
+            nAlphaCorr      3;
+            nAlphaSubCycles 1;
+            cAlpha          0.5;
+            MULESCorr       yes;
+            nLimiterIter    5;
+            solver          smoothSolver;
+            smoother        symGaussSeidel;
+            tolerance       1e-08;
+            relTol          0;
+            maxIter         1000;
+            minIter         2;
+            alphaApplyPrevCorr no;
+        }
+
+        "(p_rgh|pd)"
+        {
+            solver          GAMG;
+            smoother        DIC;
+            agglomerator    faceAreaPair;
+            nVcycles        2;
+            mergeLevels     1;
+            nCellsInCoarsestLevel 10;
+            cacheAgglomeration yes;
+            nPreSweeps      2;
+            nPostSweeps     2;
+            nFinestSweeps   2;
+            maxIter         1000;
+            minIter         2;
+            tolerance       1e-08;
+            relTol          0;
+        }
+
+        "(p_rgh|pd)Final"
+        {
+            solver          PCG;
+            maxIter         1000;
+            minIter         2;
+            tolerance       1e-08;
+            relTol          0;
+            preconditioner
+            {
+                solver          GAMG;
+                smoother        DICGaussSeidel;
+                agglomerator    faceAreaPair;
+                nVcycles        2;
+                mergeLevels     1;
+                nCellsInCoarsestLevel 10;
+                cacheAgglomeration yes;
+                nPreSweeps      2;
+                nPostSweeps     2;
+                nFinestSweeps   2;
+                maxIter         1000;
+                minIter         2;
+                tolerance       1e-07;
+                relTol          0;
+            }
+        }
+
+        "pcorr.*"
+        {
+            solver          GAMG;
+            smoother        DIC;
+            agglomerator    faceAreaPair;
+            nVcycles        2;
+            mergeLevels     1;
+            nCellsInCoarsestLevel 10;
+            cacheAgglomeration yes;
+            nPreSweeps      2;
+            nPostSweeps     2;
+            nFinestSweeps   2;
+            maxIter         1000;
+            minIter         2;
+            tolerance       1e-08;
+            relTol          0;
+        }
+
+        "(U|k|epsilon)"
+        {
+            solver      smoothSolver;
+            smoother    GaussSeidel;
+            nSweeps     2;
+            maxIter     1000;
+            minIter     2;
+            tolerance   1e-08;
+            relTol      0;
+        }
+
+        "(U|k|epsilon)Final"
+        {
+            solver      smoothSolver;
+            smoother    GaussSeidel;
+            nSweeps     2;
+            maxIter     1000;
+            minIter     2;
+            tolerance   1e-08;
+            relTol      0;
+        }
+
+        "cellDisplacement.*"
+        {
+            solver          GAMG;
+            smoother        DIC;
+            agglomerator    faceAreaPair;
+            nVcycles        2;
+            mergeLevels     1;
+            nCellsInCoarsestLevel 10;
+            cacheAgglomeration yes;
+            nPreSweeps      2;
+            nPostSweeps     2;
+            nFinestSweeps   2;
+            maxIter         1000;
+            minIter         2;
+            tolerance       1e-08;
+            relTol          0;
+        }
+    }
+
+    PIMPLE
+    {
+        momentumPredictor   yes;
+        correctPhi          no;
+        fsiTol              1e-06;
+        nOuterCorrectors    25;
+        nCorrectors         4;
+        nNonOrthogonalCorrectors 0;
+        moveMeshOuterCorrectors yes;
+    }
+
+    relaxationFactors
+    {
+        fields
+        {
+            p_rgh   1;
+        }
+
+        equations
+        {
+            U   1;
+            "(k|epsilon)" 1;
+        }
+    }
+}
+
+db
+{
+/* ************************************************************************* */
+    solvers
+    {
+        CMULES
+        {
+            nAlphaCorr      3;
+            nAlphaSubCycles 1;
+            cAlpha          0.5;
+            MULESCorr       yes;
+            nLimiterIter    5;
+            solver          smoothSolver;
+            smoother        symGaussSeidel;
+            tolerance       1e-8;
+            relTol          0;
+            maxIter         1000;
+            minIter         2;
+            alphaApplyPrevCorr no;
+        }
+
+        GAMG
+        {
+            solver          GAMG;
+            smoother        DIC;
+            agglomerator    faceAreaPair;
+            nVcycles        2;
+            mergeLevels     1;
+            nCellsInCoarsestLevel 10;
+            cacheAgglomeration yes;
+            nPreSweeps      2;
+            nPostSweeps     2;
+            nFinestSweeps   2;
+            maxIter         1000;
+            minIter         2;
+            tolerance       1e-8;
+            relTol          0;
+        }
+
+        PCG
+        {
+            solver         PCG;
+            maxIter        1000;
+            minIter        2;
+            tolerance      1e-8;
+            relTol         0;
+            preconditioner
+            {
+                solver          GAMG;
+                smoother        DICGaussSeidel;
+                agglomerator    faceAreaPair;
+                nVcycles        2;
+                mergeLevels     1;
+                nCellsInCoarsestLevel 10;
+                cacheAgglomeration yes;
+                nPreSweeps      2;
+                nPostSweeps     2;
+                nFinestSweeps   2;
+                maxIter         1000;
+                minIter         2;
+                tolerance       1e-7;
+                relTol          0;
+            }
+        }
+
+        PBiCGStab
+        {
+            solver         PBiCGStab;
+            preconditioner DILU;
+            maxIter        1000;
+            minIter        2;
+            tolerance      1e-8;
+            relTol         0;
+        }
+
+        smoothSolver
+        {
+            solver    smoothSolver;
+            smoother  GaussSeidel;
+            nSweeps   2;
+            maxIter   1000;
+            minIter   2;
+            tolerance 1e-8;
+            relTol    0;
+        }
+
+        coupled
+        {
+            type           coupled;
+            solver         PBiCCCG;
+            preconditioner DILU;
+            tolerance      (1e-08 1e-08 1e-08);
+            relTol         (0 0 0);
+        }
+    }
+
+    PIMPLE
+    {
+        foamStar
+        {
+            momentumPredictor yes;
+            correctPhi        no;
+            fsiTol            1e-6;
+            nOuterCorrectors  25;
+            nCorrectors       4;
+            nNonOrthogonalCorrectors 0;
+            moveMeshOuterCorrectors  yes;
+        }
+
+        moveMesh
+        {
+            momentumPredictor no;
+            correctPhi        no;
+            nOuterCorrectors  1;
+            nCorrectors       1;
+            nNonOrthogonalCorrectors 0;
+            moveMeshOuterCorrectors  yes;
+        }
+    }    
+
+    relaxationFactors
+    {
+        none
+        {
+            fields {}
+            equations {}
+        }
+    }
+
+/* ************************************************************************* */
+}
+
+alias
+{
+    "sol.*"     solvers;
+    "relax.*"   relaxationFactors;
+    "pim.*"     PIMPLE;
+}
+

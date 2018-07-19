@@ -64,7 +64,7 @@ def stretch(method, n=None, r=None, opts=None):
     return
 
 def _stretch_ratio(n, r, opts):
-    print "DEBUG: Ratio-based stretching "
+    print("DEBUG: Ratio-based stretching ")
     return
     
 def _stretch_rate(n, r, opts):

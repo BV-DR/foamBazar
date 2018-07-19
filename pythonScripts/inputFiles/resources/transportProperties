@@ -1,0 +1,46 @@
+defaults
+{
+    phases (water air);
+
+    water
+    {
+        transportModel Newtonian;
+        nu  1.09e-06;
+        rho 998.9;
+    }
+
+    air
+    {
+        transportModel Newtonian;
+        nu  1.48e-05;
+        rho 1;
+    }
+
+    sigma 0;
+}
+
+db
+{
+    water
+    {
+        seaWater
+        {
+            transportModel Newtonian;
+            nu  1.09e-06;
+            rho 1025;
+        }
+
+        basin
+        {
+            transportModel Newtonian;
+            nu  1.09e-06;
+            rho 998.9;
+        }
+
+    }
+}
+
+alias
+{
+}
+

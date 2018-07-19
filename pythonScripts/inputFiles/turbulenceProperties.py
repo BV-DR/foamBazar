@@ -1,59 +1,24 @@
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
-from os.path import join
-from inputFiles.compatOF import alpha, p_rgh
-
+from inputFiles.ofDictionary import ofDictionary, ofResourcePath, getDefaultSettings
 """
-  Convenience class to simply write "TurbulenceProperties" and RASModel
+    Convenience class to simply write "turbulenceProperties" and RASModel
 """
 
-RASturbulenceModel = ["kOmegaSST" , ]  #navalFoam rhoKomegaSST
-
-class TurbulenceProperties(WriteParameterFile) :
-   """
-      FvSchemes dictionnary
-   """
-   def __init__(self , case, turbulenceModel = None ) :
-
-      WriteParameterFile.__init__(self,  name = join(case, "constant" , "turbulenceProperties" )  )
-
-      if turbulenceModel == "laminar" :
-         self[ "simulationType" ] =  "laminar"
-      elif turbulenceModel in RASturbulenceModel:
-         self[ "simulationType" ] =  "RASModel"
-      else :
-         print("Unknown turbulence model")
-
-
-class RASProperties(WriteParameterFile) :
-   """
-      RASProperties dictionnary
-   """
-   def __init__(self , case, turbulenceModel = "laminar" ) :
-      WriteParameterFile.__init__(self,  name = join(case, "constant" , "RASProperties" )  )
-      self["RASModel"] = turbulenceModel
-      
-      if turbulenceModel == "laminar" :
-         self["turbulence"] = False
-         self["printCoeffs"] = False
-      elif turbulenceModel in RASturbulenceModel :
-         self["turbulence"] = True
-         self["printCoeffs"] = True
-      else :
-         print("Unknown turbulence model")
-         
-def writeTurbulenceProperties( case , turbulenceModel ) :
-
-   R = TurbulenceProperties(case , turbulenceModel )
-   R.writeFile()
-   
-   T = RASProperties(case , turbulenceModel )
-   T.writeFile()
+class turbulenceProperties(ofDictionary) :
+    """
+        turbulenceProperties dictionnary
+    """
+    _db,_alias,_defaults = getDefaultSettings(ofResourcePath('turbulenceProperties'))
+    def __init__(self , root, fdir, fid="turbulenceProperties", **kwargs):
+        ofDictionary.__init__(self , root,fdir,fid,**kwargs)
 
 if __name__ == "__main__" :
-#    print  TurbulenceProperties("laminar" )
-#    print  RASProperties("laminar" )
-   
-   print(TurbulenceProperties(  ".", turbulenceModel = "kOmegaSST" ))
-   print(RASProperties("." , turbulenceModel = "kOmegaSST" ))
+    fv = turbulenceProperties(None,"test")
+    fv.update(type='none')
+    fv.update(type='laminar')
+    fv.update(model='les')
+    fv.update(model='ras')
+    fv.update(model='kOmegaSST')
+    print(fv)
 
 
+    

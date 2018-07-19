@@ -1,0 +1,60 @@
+defaults
+{
+    dynamicFvMesh staticFvMesh;
+}
+
+db
+{
+    dynamicFvMesh
+    {
+        "stat.*"    staticFvMesh;
+
+        "(fs|foamStar|multiBody)" multiBodyFvMesh
+        {
+            multiBodyFvMeshCoeffs
+            {
+                meshMotion      cpMorphing;
+                solver          RKCK45;
+                absTol          1e-8;
+                relTol          0;
+
+                bodyPatches (_patch_not_defined_);
+
+                _body_name_
+                {
+                    type            rigidBody;
+                    mass            _mass_not_defined_;
+                    momentOfInertia (xx yy zz xy xz yz);
+                    CoRInitial      (_cog_in_mesh_coordinate_not_defined_);
+
+                    loads
+                    {
+                        gravity { type gravity; value (0 0 -9.81); }
+                        fluid { type fluidForce; patches $bodyPatches; dynRelax off; relaxCoeff 0.5; }
+                    }
+
+                    constraints
+                    {
+                        hp { type fixVal; default "fixAll"; rampTime 1; except (heave pitch); }
+                    }
+
+                    outerDistance   _value_not_defined_;
+                    innerDistance   _value_not_defined_;
+                    motionPatches   $bodyPatches;
+                    rampTime        0;
+                    releaseTime     0;
+                }
+            }
+        };
+    }
+
+}
+
+alias
+{
+    "(type|mesh)"   dynamicFvMesh;
+}
+
+
+
+

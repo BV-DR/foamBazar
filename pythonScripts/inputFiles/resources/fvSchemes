@@ -1,0 +1,157 @@
+defaults
+{
+    ddtSchemes
+    {
+        default     Euler;
+        ddt(U)      Euler;
+    }
+
+    gradSchemes
+    {
+        default     Gauss linear ;
+        limitedGrad cellLimited Gauss linear 1 ;
+    }
+
+    divSchemes
+    {
+        default         Gauss linear ;
+        div(phi,U)      Gauss linearUpwind limitedGrad ;
+        div(rhoPhi,U)   Gauss linearUpwind limitedGrad ;
+        div(phi,alpha)  Gauss vanLeer01 ;
+        div(phirb,alpha) Gauss interfaceCompression ;
+        div(phi,k)      Gauss linearUpwind limitedGrad ;
+        div(phi,omega)  Gauss linearUpwind limitedGrad ;
+    }
+
+    laplacianSchemes
+    {
+        default     Gauss linear corrected ;
+    }
+
+    interpolationSchemes
+    {
+        default     linear;
+    }
+
+    snGradSchemes
+    {
+        default     corrected;
+    }
+
+    fluxRequired
+    {
+        default     no;
+        p_rgh       yes;
+        pcorr       yes;
+        alpha.water yes;
+    }
+}
+
+
+db
+{
+/* ************************************************************************* */
+    ddtSchemes
+    {
+        Euler
+        {
+            default Euler;
+            ddt(U)  Euler;
+        }
+
+        "CN.*"
+        {
+            default     _set_CN;
+            ddt(rho,U)  _set_CN;
+            ddt(U)      Euler;
+        }
+
+        "(bw|backward)"
+        {
+            default     backward;
+            ddt(alpha)  CrankNicolson 0.9;
+            ddt(U)      Euler;
+        }
+    }
+
+    gradSchemes
+    {
+        linear
+        {
+            default Gauss linear;
+            limitedGrad cellLimited Gauss linear 1;
+        }
+
+        cellLimited
+        {
+            default cellLimited Gauss linear 1;
+        }
+
+        leastSquares
+        {
+            default cellLimited leastSquares 1;
+        }
+
+    }
+
+    divSchemes
+    {
+        linearUpwind
+        {
+            default         Gauss linear;
+            div(phi,U)      Gauss linearUpwind limitedGrad;
+            div(rhoPhi,U)   Gauss linearUpwind limitedGrad;
+            div(phi,alpha)  Gauss vanLeer01;
+            div(phirb,alpha) Gauss interfaceCompression;
+            div(phi,k)      Gauss linearUpwind limitedGrad;
+            div(phi,omega)  Gauss linearUpwind limitedGrad;
+        }
+
+        quick
+        {
+            default quick_not_yet_defined;
+        }
+
+        muscl
+        {
+            default muscl_not_yet_defined;
+        }
+    }
+
+    laplacianSchemes
+    {
+        linearCorrected { default Gauss linear corrected; }
+        limited { default Gauss linear limited 0.5; }
+    }
+
+    interpolationSchemes
+    {
+        linear { default linear; }
+    }
+
+    snGradSchemes
+    {
+        corrected { default corrected; }
+        limited { default limited 0.5; }
+    }
+
+    fluxRequired
+    {
+        foamStar { default no; p_rgh yes; pcorr yes; alpha.water yes; }
+        foamExtend { default no; pd yes; pcorr yes; alpha1 yes; }
+    }
+
+/* ************************************************************************* */
+}
+
+alias
+{
+    "ddt.*"     ddtSchemes;
+    "grad.*"    gradSchemes;
+    "div.*"     divSchemes;
+    "lapl.*"    laplacianSchemes;
+    "interp.*"  interpolationSchemes;
+    "snGrad.*"  snGradSchemes;
+    "flux.*"    fluxRequired;
+}
+

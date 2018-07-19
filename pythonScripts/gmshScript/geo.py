@@ -50,16 +50,16 @@ class geo(object):
 
     def printDB(self):
         if not self.hasDB(Point):
-            print 'no data'
+            print('no data')
             return
         self._print_db(getDB(self,Point), prefix='p')
-        print 'next p:', getIDX(self,Point) + 1
+        print('next p:', getIDX(self,Point) + 1)
         self._print_db(getDB(self,Line), prefix='l')
-        print 'next l:', getIDX(self,Line) + 1
+        print('next l:', getIDX(self,Line) + 1)
         self._print_db(getDB(self,Surface), prefix='s')
-        print 'next s:', getIDX(self,Surface) + 1
+        print('next s:', getIDX(self,Surface) + 1)
         self._print_db(getDB(self,Volume), prefix='v')
-        print 'next v:', getIDX(self,Volume) + 1
+        print('next v:', getIDX(self,Volume) + 1)
         print
         self.printScript()
         return
@@ -67,13 +67,13 @@ class geo(object):
     def _print_db(self, db, prefix=''):
         idx = sorted(db, key=db.get)
         for i in idx:
-            print prefix + str(db[i]), ':', i
+            print(prefix + str(db[i]), ':', i)
         return
 
     def printScript(self):
         tmp = self._CODE
         for i in tmp:
-            print i
+            print(i)
         return
 
     def add(self, obj):

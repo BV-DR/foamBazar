@@ -1,36 +1,21 @@
-import PyFoam
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
-from PyFoam.Basics.DataStructures import Dimension, Vector
-from os.path import join
+from inputFiles.ofDictionary import ofDictionary, ofResourcePath, getDefaultSettings
 
 """
   Convenience class to simply write DecomposeParDict
 """
 
-class DecomposeParDict(WriteParameterFile) :
+class decomposeParDict(ofDictionary) :
     """
         DecomposeParDict dictionnary
     """
-    def __init__(self , case, nProcs = 1, method = "scotch", version = "foamStar") :
-        WriteParameterFile.__init__(self,  name = join(case, "system" , "decomposeParDict" )  )
-        
-        self["numberOfSubdomains"] = nProcs
-        self["method"] = method
-        
-        if method == "simple":
-            self["simpleCoeffs"] = {"n" : "( 1 3 1 )",
-                                    "delta" : 0.001 }
-            self["hierarchicalCoeffs"] = {"n" : "( 3 2 1 )",
-                                          "delta" : 0.001,
-                                          "order" : "xzy" }
-            self["manualCoeffs"] = {"dataFile" : '"cellDecomposition"'}
-            
-        elif method == "scotch":
-            self["distributed"] = "no"
-            self["roots"] = '()'
+    _db,_alias,_defaults = getDefaultSettings(ofResourcePath('decomposeParDict'))
+    def __init__(self , root, fdir, fid="decomposeParDict",**kwargs):
+        ofDictionary.__init__(self , root,fdir,fid,**kwargs)
 
-if __name__ == "__main__" : 
-   print(DecomposeParDict("test"))
+if __name__ == "__main__" :
+    fv = decomposeParDict(None,"test")
+    fv.update(np=42, method='metis')
+    print(fv)
 
 
 

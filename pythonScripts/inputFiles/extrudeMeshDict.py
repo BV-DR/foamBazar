@@ -1,45 +1,37 @@
-import PyFoam
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
-from PyFoam.Basics.DataStructures import Dimension, Vector, DictProxy
-from os.path import join
-from inputFiles.compatOF import namePatch
+from inputFiles.ofDictionary import ofDictionary
+from PyFoam.Basics.DataStructures import DictProxy
 
 """
   Convenience class to simply write DecomposeParDict
 """
+class extrudeMeshDict(ofDictionary) :
+    """
+        ExtrudeMeshDict dictionnary
+    """
+    def __init__(self , root, fdir, fid="extrudeMeshDict", **kwargs):
+        ofDictionary.__init__(self , root,fdir,fid,**kwargs)
+        if self.exists: return
 
-
-class ExtrudeMeshDict(WriteParameterFile) :
-   """
-      ExtrudeMeshDict dictionnary
-   """
-   def __init__(self , case, sourceCase='"./"', exposedPatchName="inlet", nLayers=1, expansionRatio=1, thickness=0.1, mergeFaces=False, mergeTol=0, version='foamStar'):
-        WriteParameterFile.__init__(self,  name = join(case, "system" , "extrudeMeshDict" )  )
-      
-        patch = namePatch[version]
-        
         self["constructFrom"] = "patch"
-        self["sourceCase"] = sourceCase
-        self["sourcePatches"] = [patch["outlet"]]
-        
-        self["exposedPatchName"] = patch[exposedPatchName]
-        
-        self["flipNormals"] = True
-        
+        self["sourceCase"] = "./"
+        self["sourcePatches"] = "()"
+        self["exposedPatchName"] = "NONE"
+        self["flipNormals"] = True        
         self["extrudeModel"] = "linearNormal"
-        self["nLayers"] = nLayers
-        self["expansionRatio"] = expansionRatio
+        self["nLayers"] = 1
+        self["expansionRatio"] = 1.1
       
         linCoef = DictProxy()
-        linCoef["thickness"]  = thickness
+        linCoef["thickness"]  = 0.1
         self["linearNormalCoeffs"] = linCoef
-        
-        self["mergeFaces"] = mergeFaces
-        self["mergeTol"] = mergeTol
-         
+        self["mergeFaces"] = False
+        self["mergeTol"] = 1e-8
+
+        # update according to user input
+        self.update(**kwargs)
 
 if __name__ == "__main__" : 
-   print(ExtrudeMeshDict("test"))
+   print(extrudeMeshDict("test"))
 
 
 
