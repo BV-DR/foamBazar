@@ -111,13 +111,15 @@ class BlockMeshDict(WriteParameterFile) :
         
         self["edges"]   = '()'
         
-        if ndim==2:
-            self["patches"] = patches
-        elif ndim==3:
-            faces = DictProxy()
-            faces["type"] = 'patch'
-            faces["faces"] = '()'
-            self["boundary"] = ["defaultFaces", faces]
+        self["patches"] = patches
+       
+        #if ndim==2:
+        #    self["patches"] = patches
+        #elif ndim==3:
+        #    faces = DictProxy()
+        #    faces["type"] = 'patch'
+        #    faces["faces"] = '()'
+        #    self["boundary"] = ["defaultFaces", faces]
         self["mergePatchPairs"]   = '()'
         
 if __name__ == "__main__" : 
