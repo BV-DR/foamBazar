@@ -25,7 +25,7 @@ class DropTestCase( OfCase ) :
     def BuildFromAllParameters(cls,      case,
                                          meshDir          = "mesh",
                                          meshTime         = "constant",
-                                         symmetry         = False,
+                                         symmetry         = 0,          # 0 = None ; 1 = symmetry ; 2 = symmetryPlane
                                          outputForces     = False,
                                          forcesPatch      = None,
                                          outputPressures  = False,
@@ -131,7 +131,6 @@ class DropTestCase( OfCase ) :
         #Write controlDict to be able to run checkMesh
         controlDict.writeFile()
 
-
         #waveProperties
         filename = os.path.join(case,'constant','waveProperties')
         waveCond  = WaveCondition( waveType   = wave )
@@ -178,7 +177,7 @@ class DropTestCase( OfCase ) :
         #alpha water, p_rgh, U, pointDisplacement
         writeAllBoundaries( case  = self.case,
                             case2D = True,
-                            symmetryPlane = self.symmetry,
+                            symmetry = self.symmetry,
                             struct = '"' + self.hullPatch + '|wetSurf"',
                             version = self.solver )
 
@@ -243,8 +242,9 @@ class DropTestCase( OfCase ) :
         for i in range(nbound):
             if boundDict[2*i] in ['domainX0','domainX1']:
                 boundDict[2*i+1]['type'] = 'empty'
-            elif self.symmetry and (boundDict[2*i] in ['domainY0']):
-                boundDict[2*i+1]['type'] = 'symmetryPlane'
+            elif self.symmetry>0 and (boundDict[2*i] in ['domainY0']):
+                if self.symmetry==1: boundDict[2*i+1]['type'] = 'symmetry'
+                elif self.symmetry==2: boundDict[2*i+1]['type'] = 'symmetryPlane'
         boundDict.writeFile()
 
     def writeSbatch(self):

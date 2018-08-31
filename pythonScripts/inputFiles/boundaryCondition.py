@@ -10,7 +10,7 @@ from inputFiles.compatOF import alpha, p_rgh , waveAlpha, waveVelocity, pointDis
 
 class BoundaryOmega(WriteParameterFile):
 
-    def __init__(self,  case, symmetryPlane=True, wallFunction=False, version="foamStar", namePatch=namePatch , omega = 2., case2D=False ) :
+    def __init__(self,  case, symmetry=1, wallFunction=False, version="foamStar", namePatch=namePatch , omega = 2., case2D=False ) :
     
         patch = namePatch[version]
         WriteParameterFile.__init__(self,  name = join(case, "0" , "org", "omega")  )
@@ -31,15 +31,14 @@ class BoundaryOmega(WriteParameterFile):
         bf["defaultFaces"] = { "type" : "empty"  }
         self["boundaryField"] = bf
     
-        if wallFunction :
-            self["boundaryField"][ patch["structure"]] = { "type" : "omegaWallFunction"   }
+        if wallFunction: self["boundaryField"][ patch["structure"]] = { "type" : "omegaWallFunction"   }
     
-        if symmetryPlane:
-            self["boundaryField"][patch["symmetryPlane"]] = { "type" : "symmetryPlane" }
+        if symmetry==1: self["boundaryField"][patch["symmetry"]] = { "type" : "symmetry" }
+        elif symmetry==2: self["boundaryField"][patch["symmetryPlane"]] = { "type" : "symmetryPlane" }
 
 
 class BoundaryK(WriteParameterFile):
-    def __init__(self,  case, symmetryPlane=True, wallFunction = False, version="foamStar", namePatch = namePatch , k = 0.00015, case2D=False ) :
+    def __init__(self,  case, symmetry=1, wallFunction = False, version="foamStar", namePatch = namePatch , k = 0.00015, case2D=False ) :
     
         patch = namePatch[version]
         WriteParameterFile.__init__(self,  name = join(case, "0" , "org", "k")  )
@@ -55,17 +54,16 @@ class BoundaryK(WriteParameterFile):
                                   "defaultFaces"     : { "type" : "empty"  },
                                 }
     
-        if wallFunction :
-            self["boundaryField"][patch["structure"]] = { "type" : "kqRWallFunction"   }
+        if wallFunction: self["boundaryField"][patch["structure"]] = { "type" : "kqRWallFunction"   }
     
-        if symmetryPlane:
-            self["boundaryField"][patch["symmetryPlane"]] = { "type" : "symmetryPlane" }
+        if symmetry==1: self["boundaryField"][patch["symmetry"]] = { "type" : "symmetry" }
+        elif symmetry==2: self["boundaryField"][patch["symmetryPlane"]] = { "type" : "symmetryPlane" }
 
 class BoundaryAlpha(WriteParameterFile) :
     """
         Alpha boundary
     """
-    def __init__(self , case, symmetryPlane=True, namePatch=namePatch, case2D=False, relaxZone=False, struct='', version="foamStar"):
+    def __init__(self , case, symmetry=1, namePatch=namePatch, case2D=False, relaxZone=False, struct='', version="foamStar"):
         
         patch = namePatch[version]
         WriteParameterFile.__init__(self,  name = join(case, "0", "org", alpha[version])  )
@@ -76,7 +74,8 @@ class BoundaryAlpha(WriteParameterFile) :
         if case2D:
             bf[patch["outlet"]] = { "type" : "empty" }
             bf[patch["inlet"]]  = { "type" : "empty" }
-            if symmetryPlane: bf[patch["side1"]] = { "type" : "symmetryPlane" }
+            if symmetry==1: bf[patch["side1"]] = { "type" : "symmetry" }
+            elif symmetry==2: bf[patch["side1"]] = { "type" : "symmetryPlane" }
             else: bf[patch["side1"]] = { "type" : waveAlpha[version], "value" : "uniform 0" }
             if relaxZone: bf[patch["side2"]] = { "type" : waveAlpha[version], "value" : "uniform 0" }
             else: bf[patch["side2"]] = { "type" : "zeroGradient" }
@@ -103,7 +102,7 @@ class BoundaryVelocity(WriteParameterFile) :
     """
         Velocity boundary
     """
-    def __init__(self , case, speed, symmetryPlane=True, namePatch=namePatch, case2D=False, relaxZone=False, struct='', version = "foamStar") :
+    def __init__(self , case, speed, symmetry=1, namePatch=namePatch, case2D=False, relaxZone=False, struct='', version = "foamStar") :
         
         patch = namePatch[version]
         WriteParameterFile.__init__(self,  name = join(case, "0" ,"org", "U")  )
@@ -114,7 +113,8 @@ class BoundaryVelocity(WriteParameterFile) :
         if case2D:
             bf[patch["outlet"]] = { "type" : "empty" }
             bf[patch["inlet"]] = { "type" : "empty" }
-            if symmetryPlane: bf[patch["side1"]] = { "type" : "symmetryPlane" }
+            if symmetry==1: bf[patch["side1"]] = { "type" : "symmetry" }
+            elif symmetry==2: bf[patch["side1"]] = { "type" : "symmetryPlane" }
             else: bf[patch["side1"]] = { "type" : waveVelocity[version], "value" : "uniform (0 0 0)" }
             if relaxZone: bf[patch["side2"]] = { "type" : waveVelocity[version], "value" : "uniform (0 0 0)" }
             else: bf[patch["side2"]] = { "type" : "fixedValue", "value" : "uniform (0. 0. 0.)" }
@@ -122,11 +122,13 @@ class BoundaryVelocity(WriteParameterFile) :
             bf[patch["outlet"]] = { "type" : waveVelocity[version], "value" : "uniform (0 0 0)" }
             bf[patch["inlet"]] = { "type" : waveVelocity[version], "value" : "uniform (0 0 0)" }
             if version=="foamStar":
-                if symmetryPlane: bf[patch["side1"]] = { "type" : "symmetryPlane" }
+                if symmetry==1: bf[patch["side1"]] = { "type" : "symmetry" }
+                elif symmetry==2: bf[patch["side1"]] = { "type" : "symmetryPlane" }
                 else: bf[patch["side1"]] = { "type" : waveVelocity[version], "value" : "uniform (0 0 0)" }
                 bf[patch["side2"]] = { "type" : waveVelocity[version], "value" : "uniform (0 0 0)" }
             else:
-                if symmetryPlane: bf[patch["side"]] = { "type" : "symmetryPlane" }
+                if symmetry==1: bf[patch["side"]] = { "type" : "symmetry" }
+                elif symmetry==2: bf[patch["side"]] = { "type" : "symmetryPlane" }
                 else: bf[patch["side"]] = { "type" : waveVelocity[version], "value" : "uniform (0 0 0)" }
                 
         bf[patch["bottom"]] = { "type" : "fixedValue", "value" : "uniform ({} 0. 0.)".format(-speed) }
@@ -141,7 +143,7 @@ class BoundaryVelocity(WriteParameterFile) :
 
 
 class BoundaryPressure(WriteParameterFile) :
-    def __init__(self , case,  symmetryPlane=True, namePatch=namePatch, case2D=False, struct='', version="foamStar") :
+    def __init__(self , case,  symmetry=1, namePatch=namePatch, case2D=False, struct='', version="foamStar") :
         
         patch = namePatch[version]
         WriteParameterFile.__init__(self,  name = join(case, "0" ,"org",  p_rgh[version])  )
@@ -153,15 +155,17 @@ class BoundaryPressure(WriteParameterFile) :
             if case2D:
                 bf[patch["outlet"]] = { "type" : "empty" }
                 bf[patch["inlet"]]  = { "type" : "empty" }
-                if symmetryPlane:
-                    bf[patch["side1"]]  = { "type" : "symmetryPlane" }
-                else:
-                    bf[patch["side1"]]  = { "type" : "fixedFluxPressure", "value" : "uniform 0" }
+                if symmetry==1: bf[patch["side1"]]  = { "type" : "symmetry" }
+                elif symmetry==2: bf[patch["side1"]]  = { "type" : "symmetryPlane" }
+                else: bf[patch["side1"]]  = { "type" : "fixedFluxPressure", "value" : "uniform 0" }
                 bf[patch["side2"]]  = { "type" : "fixedFluxPressure", "value" : "uniform 0" }
             else:
                 bf[patch["outlet"]] = { "type" : "fixedFluxPressure" }
                 bf[patch["inlet"]]  = { "type" : "fixedFluxPressure" }
-                if symmetryPlane:
+                if symmetry==1:
+                    bf[patch["side1"]] = { "type" : "symmetry" }
+                    bf[patch["side2"]] = { "type" : "symmetry" }
+                elif symmetry==2:
                     bf[patch["side1"]] = { "type" : "symmetryPlane" }
                     bf[patch["side2"]] = { "type" : "symmetryPlane" }
                 else:
@@ -192,13 +196,12 @@ class BoundaryPressure(WriteParameterFile) :
                                     "defaultFaces"     : { "type" : "empty"  },
                                     }
     
-            if symmetryPlane:
-                self["boundaryField"][patch["symmetryPlane"]] = { "type" : "symmetryPlane" }
-            elif symmetryPlane == "2D" :
-                self["boundaryField"][patch["frontBack"]] = { "type" : "empty" }
+            if symmetry==1: self["boundaryField"][patch["symmetryPlane"]] = { "type" : "symmetry" }
+            elif symmetry==2: self["boundaryField"][patch["symmetryPlane"]] = { "type" : "symmetryPlane" }
+            elif symmetry=="2D": self["boundaryField"][patch["frontBack"]] = { "type" : "empty" }
 
 class BoundaryPointDisplacement(WriteParameterFile) :
-    def __init__(self , case,  symmetryPlane=True, namePatch=namePatch, case2D=False, version="foamStar") :
+    def __init__(self , case,  symmetry=1, namePatch=namePatch, case2D=False, version="foamStar") :
         
         patch = namePatch[version]
         WriteParameterFile.__init__(self,  name = join(case, "0" ,"org",  pointDisp[version])  )
@@ -212,7 +215,10 @@ class BoundaryPointDisplacement(WriteParameterFile) :
             if case2D:
                 bf[patch["side1"]] = { "type" : "empty" }
                 bf[patch["side2"]] = { "type" : "empty" }
-            elif symmetryPlane:
+            elif symmetry==1:
+                bf[patch["side1"]] = { "type" : "symmetry" }
+                bf[patch["side2"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
+            elif symmetry==2:
                 bf[patch["side1"]] = { "type" : "symmetryPlane" }
                 bf[patch["side2"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
             bf[patch["bottom"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
@@ -225,7 +231,7 @@ class BoundaryLevelSetDiff(WriteParameterFile) :
     """
         Velocity boundary
     """
-    def __init__(self , case, symmetryPlane=True, namePatch = namePatch, case2D=False, version = "swenseFoam") :
+    def __init__(self , case, symmetry=1, namePatch = namePatch, case2D=False, version = "swenseFoam") :
         
         patch = namePatch[version]
         WriteParameterFile.__init__(self,  name = join(case, "0" ,"org", "levelSetDiff")  )
@@ -240,8 +246,8 @@ class BoundaryLevelSetDiff(WriteParameterFile) :
                                     patch["structure"]     : { "type" : "zeroGradient" }  ,
                                     "defaultFaces"     : { "type" : "empty"  },
                                 }
-        if symmetryPlane:
-            self["boundaryField"][patch["symmetryPlane"]] = { "type" : "symmetryPlane" }
+        if symmetry==1: self["boundaryField"][patch["symmetry"]] = { "type" : "symmetry" }
+        elif symmetry==2: self["boundaryField"][patch["symmetryPlane"]] = { "type" : "symmetryPlane" }
         else:
             self["boundaryField"][patch["side"]] = { "type" : "fixedValue" , "value" : "uniform 0" } ,
 
@@ -250,7 +256,7 @@ class BoundaryUdiff(WriteParameterFile) :
     """
         Velocity boundary
     """
-    def __init__(self , case, speed, symmetryPlane=True, namePatch = namePatch, case2D=False, version = "foamStar") :
+    def __init__(self , case, speed, symmetry=1, namePatch = namePatch, case2D=False, version = "foamStar") :
         
         patch = namePatch[version]
         WriteParameterFile.__init__(self,  name = join(case, "0" ,"org","UDiff")  )
@@ -265,10 +271,9 @@ class BoundaryUdiff(WriteParameterFile) :
                                     patch["structure"]     : { "type" : "movingWallVelocity" , "value" : "uniform (0 0 0)"  }  ,
                                     "defaultFaces"     : { "type" : "empty"  },
                                 }
-        if symmetryPlane:
-            self["boundaryField"][patch["symmetryPlane"]] = { "type" : "symmetryPlane" }
-        else:
-            self["boundaryField"][patch["side"]] = { "type" : "inletOutlet" , "value" : "uniform (0 0 0)" , "inletValue" : "uniform (0 0 0)"  } ,
+        if symmetry==1: self["boundaryField"][patch["symmetry"]] = { "type" : "symmetry" }
+        elif symmetry==2: self["boundaryField"][patch["symmetryPlane"]] = { "type" : "symmetryPlane" }
+        else: self["boundaryField"][patch["side"]] = { "type" : "inletOutlet" , "value" : "uniform (0 0 0)" , "inletValue" : "uniform (0 0 0)"  } ,
 
 class BoundaryUinc(BoundaryUdiff):
     def __init__(self , case, speed, **kwargs) :
@@ -276,27 +281,27 @@ class BoundaryUinc(BoundaryUdiff):
         self.name = join( case, "0" , "org", "UInc" )
 
 
-def writeAllBoundaries(case, version, speed=0.0,  symmetryPlane=True, case2D=False, relaxZone=False, struct='', namePatch=namePatch) :
+def writeAllBoundaries(case, version, speed=0.0,  symmetry=1, case2D=False, relaxZone=False, struct='', namePatch=namePatch) :
 
-    a = BoundaryAlpha( case, symmetryPlane=symmetryPlane, case2D=case2D, relaxZone=relaxZone, struct=struct, version=version)
+    a = BoundaryAlpha( case, symmetry=symmetry, case2D=case2D, relaxZone=relaxZone, struct=struct, version=version)
     a.writeFile()
     
-    a = BoundaryVelocity( case, speed=speed, symmetryPlane=symmetryPlane, case2D=case2D, relaxZone=relaxZone, struct=struct, version=version)
+    a = BoundaryVelocity( case, speed=speed, symmetry=symmetry, case2D=case2D, relaxZone=relaxZone, struct=struct, version=version)
     a.writeFile()
     
-    a = BoundaryPressure( case, symmetryPlane=symmetryPlane, case2D=case2D, struct=struct, version=version)
+    a = BoundaryPressure( case, symmetry=symmetry, case2D=case2D, struct=struct, version=version)
     a.writeFile()
     
     if not case2D:
-        a = BoundaryPointDisplacement( case, symmetryPlane=symmetryPlane, case2D=case2D, version=version)
+        a = BoundaryPointDisplacement( case, symmetry=symmetry, case2D=case2D, version=version)
         a.writeFile()
     
     if version == "swenseFoam" :
-        a = BoundaryUdiff( case , speed = speed, symmetryPlane = symmetryPlane , version = version)
+        a = BoundaryUdiff( case , speed = speed, symmetry=symmetry , version = version)
         a.writeFile()
-        a = BoundaryUinc( case , speed = speed, symmetryPlane = symmetryPlane , version = version)
+        a = BoundaryUinc( case , speed = speed, symmetry=symmetry , version = version)
         a.writeFile()
-        a = BoundaryLevelSetDiff( case , symmetryPlane = symmetryPlane , version = version)
+        a = BoundaryLevelSetDiff( case , symmetry=symmetry , version = version)
         a.writeFile()
 
 if __name__ == "__main__" :
