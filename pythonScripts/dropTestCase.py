@@ -51,12 +51,11 @@ class DropTestCase( OfCase ) :
                                          dispSignal       = None,
                                          solver           = "foamStar",
                                          OFversion        = 3,
-                                         translateLength  = 0.0,
+                                         translate        = [0.0,0.0,0.0],
                                          gravity          = 0.0,
                                          turbulenceModel  = "laminar",
                                          ):
 
-        print('Create system folder input files')
         #controlDict
         if outputForces and (forcesPatch is None): forcesPatch = hullPatch
         if outputPressures and (pressuresPatch is None): pressuresPatch = hullPatch
@@ -108,6 +107,7 @@ class DropTestCase( OfCase ) :
 
 
         res =  cls( case, nProcs=nProcs,
+                          OFversion=OFversion,
                           controlDict=controlDict,
                           fvSchemes=fvSchemes,
                           fvSolution=fvSolution,
@@ -122,7 +122,7 @@ class DropTestCase( OfCase ) :
 
         res.dispSignal = dispSignal
         res.sideRelaxZone = sideRelaxZone
-        res.translateLength = translateLength
+        res.translate = translate
         res.hullPatch = hullPatch
         res.symmetry = symmetry
 
@@ -178,7 +178,7 @@ class DropTestCase( OfCase ) :
         writeAllBoundaries( case  = self.case,
                             case2D = True,
                             symmetry = self.symmetry,
-                            struct = '"' + self.hullPatch + '|wetSurf"',
+                            struct = '"' + self.hullPatch + '.*"',
                             version = self.solver )
 
 
@@ -196,8 +196,8 @@ class DropTestCase( OfCase ) :
                 f.write('    setSet -batch cell.Set\n')
                 f.write('    setsToZones -noFlipMap\n')
             f.write('    cp -rf 0/org/* 0/\n')
-            if self.translateLength != 0. :
-                f.write('    transformPoints -translate "( 0. 0. {})"\n'.format(self.translateLength))
+            if any(self.translate)!=0.:
+                f.write('    transformPoints -translate "( {:.3f} {:.3f} {:.3f})"\n'.format(*self.translate))
             f.write('    decomposePar -cellDist\n')
             f.write('    mpirun -np {:d} initWaveField -parallel\n'.format(self.nProcs))
             f.write(') 2>&1 | tee log.init\n')
@@ -249,6 +249,7 @@ class DropTestCase( OfCase ) :
 
     def writeSbatch(self):
         #run.sh
+       	print('Write run.sh batch file')
         run = os.path.join(self.case,'run.sh')
         with open(run,'w') as f:
             f.write('#!/bin/bash -l\n')

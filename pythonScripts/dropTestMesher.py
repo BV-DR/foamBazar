@@ -46,7 +46,8 @@ class DropTestMesher( OfCase ):
                                          section          = 1,
                                          gridLevel        = 1,
                                          symmetry         = False,
-                                         rot              = 0.0,
+                                         trans            = [0.0,0.0,0.0],
+                                         rot              = [0.0,0.0,0.0],
                                          xBounds          = [-0.5,0.5],
                                          yBounds          = [-9.,9.],
                                          zBounds          = [-2.,3.],
@@ -207,6 +208,7 @@ class DropTestMesher( OfCase ):
         res.stlFile = stlFile
         res.stlName = stlName
         res.ndim = ndim
+        res.trans = trans
         res.rot = rot
         res.Length = Length
         res.Beam = Beam
@@ -342,9 +344,13 @@ class DropTestMesher( OfCase ):
             fstlout = os.path.join('constant','triSurface',self.stlName+'.stl')
             fstltmp = os.path.join('constant','triSurface',self.stlName+'_tmp.stl')
             f.write('    cp {:s} {:s}\n'.format(fstlin,fstlout))
-            if abs(self.rot)>1e-3:
+            if any(self.trans)!=0.0:
                 f.write('    mv {:s} {:s}\n'.format(fstlout,fstltmp))
-                f.write("    surfaceTransformPoints -yawPitchRoll '(0 0 {:.3f})' {} {}\n".format(self.rot,fstltmp,fstlout))
+                f.write("    surfaceTransformPoints -translate '({:.6f} {:.6f} {:.6f})' {} {}\n".format(*self.trans,fstltmp,fstlout))
+                f.write('    rm {:s}\n'.format(fstltmp))
+            if any(self.rot)!=0.0:
+                f.write('    mv {:s} {:s}\n'.format(fstlout,fstltmp))
+                f.write("    surfaceTransformPoints -rollPitchYaw '({:.3f} {:.3f} {:.3f})' {} {}\n".format(*self.rot,fstltmp,fstlout))
                 f.write('    rm {:s}\n'.format(fstltmp))
             f.write('    surfaceFeatureExtract\n')
             f.write('}\n\n')
@@ -458,7 +464,7 @@ class DropTestMesher( OfCase ):
             f.write('#SBATCH -J {}\n\n'.format(self.case))
             f.write('# 5 hour wall-clock\n')
             f.write('#SBATCH --account I1608251\n')
-            f.write('#SBATCH -t 3-00:00:00\n')
+            f.write('#SBATCH -t 0-02:00:00\n')
             f.write('#SBATCH -n {:d}\n'.format(self.nProcs))
             f.write('#SBATCH -o log.run-%j\n\n')
             f.write('module load gcc/4.9.3 openmpi/1.8.4-gcc lapack/3.6.1/gcc/4.9.3\n')

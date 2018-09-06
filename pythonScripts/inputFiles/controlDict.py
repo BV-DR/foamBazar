@@ -24,6 +24,7 @@ class ControlDict( WriteParameterFile ) :
         self["timeFormat"]        = "general"
         self["timePrecision"]     = 6
         self["runTimeModifiable"] = runTimeModifiable
+        if OFversion==5: self["fileHandler"] = "collated"
       
       
         if adjustTimeStep is not None :
@@ -72,23 +73,28 @@ class ControlDict( WriteParameterFile ) :
         
         #Get forces on patch list
         if forcesPatch is not None :
-            forcesDict = DictProxy()
-            forcesDict["type"]               = "forces"
-            forcesDict["functionObjectLibs"] = ['"libforces.so"']
-            forcesDict["patches"]            = [forcesPatch]
-            forcesDict["rhoInf"]             = rhoWater
-            forcesDict["rhoName"]            = "rho"
-            forcesDict["pName"]              = "p"
-            forcesDict["UName"]              = "U"
-            forcesDict["log"]                = True
-            if OFversion==5:
-                forcesDict["writeControl"]   = "timeStep"
-                forcesDict["writeInterval"]  = outputInterval
-            else:
-                forcesDict["outputControl"]  = "timeStep"
-                forcesDict["outputInterval"] = outputInterval
-            forcesDict["CofR"]               = "( 0 0 0 )"
-            fDict["forces"] = forcesDict
+            for fpatch in forcesPatch:
+                forcesDict = DictProxy()
+                forcesDict["type"]               = "forces"
+                forcesDict["functionObjectLibs"] = ['"libforces.so"']
+                forcesDict["patches"]            = [fpatch]
+                if OFversion==5:
+                    forcesDict["rhoInf"]         = rhoWater
+                    forcesDict["rhoName"]        = "rho"
+                    forcesDict["pName"]          = "p"
+                    forcesDict["UName"]          = "U"
+                    forcesDict["writeControl"]   = "timeStep"
+                    forcesDict["writeInterval"]  = outputInterval
+                else:
+                    forcesDict["rhoInf"]         = rhoWater
+                    forcesDict["rhoName"]        = "rho"
+                    forcesDict["pName"]          = "p"
+                    forcesDict["UName"]          = "U"
+                    forcesDict["outputControl"]  = "timeStep"
+                    forcesDict["outputInterval"] = outputInterval
+                forcesDict["CofR"]               = "( 0 0 0 )"
+                forcesDict["log"]                = True
+                fDict["forces_"+fpatch] = forcesDict
             
         #Get forces on patch list
         if pressuresPatch is not None :
