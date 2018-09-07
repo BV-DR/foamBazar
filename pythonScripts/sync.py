@@ -44,7 +44,10 @@ tree = [x.strip()[2:] for x in tree if x.startswith('./')]
 print('Synchronize directories')
 for f in tree:
     directory = os.path.dirname(f)
-    if not os.path.exists(directory): os.makedirs(directory)
-    #string = '( cd '+directory+'; scp -r '+server+':'+os.path.join(src,f)+' .; )'
-    string = '( cd '+directory+'; rsync --recursive --times --progress --links --backup --itemize-changes -s -e "ssh -q -i '+sshkey+'" '+server+':'+os.path.join(src,f)+' ./ ;)'
+    if len(directory)>0:
+        if not (os.path.exists(directory)): os.makedirs(directory)
+        #string = '( cd '+directory+'; scp -r '+server+':'+os.path.join(src,f)+' .; )'
+        string = '( cd '+directory+'; rsync --recursive --times --progress --links --backup --itemize-changes -s -e "ssh -q -i '+sshkey+'" '+server+':'+os.path.join(src,f)+' ./ ;)'
+    else:
+        string = '(rsync --recursive --times --progress --links --backup --itemize-changes -s -e "ssh -q -i '+sshkey+'" '+server+':'+os.path.join(src,f)+' ./ ;)'
     sub.call(string,shell=True)
