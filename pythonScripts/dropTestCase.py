@@ -25,6 +25,7 @@ class DropTestCase( OfCase ) :
     def BuildFromAllParameters(cls,      case,
                                          meshDir          = "mesh",
                                          meshTime         = "constant",
+                                         ndim             = 2,
                                          symmetry         = 0,          # 0 = None ; 1 = symmetry ; 2 = symmetryPlane
                                          outputForces     = False,
                                          forcesPatch      = None,
@@ -125,6 +126,7 @@ class DropTestCase( OfCase ) :
         res.translate = translate
         res.hullPatch = hullPatch
         res.symmetry = symmetry
+        res.ndim = ndim
 
         res.copyMesh( meshDir, meshTime )
 
@@ -155,9 +157,9 @@ class DropTestCase( OfCase ) :
             relaxZones += [relaxSide]
 
         res.waveProperties = WaveProperties( filename,
-                                         initWaveCondition = waveCond,
-                                         relaxZones        = relaxZones,
-                                         version           = solver )
+                                             initWaveCondition = waveCond,
+                                             relaxZones        = relaxZones,
+                                             version           = solver )
 
         #cell.Set
         if sideRelaxZone is not None:
@@ -176,8 +178,9 @@ class DropTestCase( OfCase ) :
 
         #alpha water, p_rgh, U, pointDisplacement
         writeAllBoundaries( case  = self.case,
-                            case2D = True,
+                            case2D = (self.ndim==2),
                             symmetry = self.symmetry,
+                            wave = False,
                             struct = '"' + self.hullPatch + '.*"',
                             version = self.solver )
 
@@ -241,7 +244,8 @@ class DropTestCase( OfCase ) :
         nbound = int(len(boundDict)/2)
         for i in range(nbound):
             if boundDict[2*i] in ['domainX0','domainX1']:
-                boundDict[2*i+1]['type'] = 'empty'
+                if self.ndim>2: boundDict[2*i+1]['type'] = 'patch'
+                else: boundDict[2*i+1]['type'] = 'empty'
             elif self.symmetry>0 and (boundDict[2*i] in ['domainY0']):
                 if self.symmetry==1: boundDict[2*i+1]['type'] = 'symmetry'
                 elif self.symmetry==2: boundDict[2*i+1]['type'] = 'symmetryPlane'
