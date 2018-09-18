@@ -142,7 +142,7 @@ def createBoxStl(BB,name):
     subprocess.call("surfaceTransformPoints -scale '("+str(Xmax-Xmin-tol)+" "+str(Ymax-Ymin-tol)+" "+str(Zmax-Zmin-tol)+")' fsMesher/fsMesher_box.stl "+filename+" > /dev/null", shell=True)
     subprocess.call("surfaceTransformPoints -translate '("+str(Xmin+0.5*tol)+" "+str(Ymin+0.5*tol)+" "+str(Zmin+0.5*tol)+")' "+filename+" "+filename+" > /dev/null", shell=True)
     
-def readSections(inputFile,sections=[]):
+def readSections(inputFile,sections=[],sym=False):
     
     sdict = {}
     
@@ -161,9 +161,14 @@ def readSections(inputFile,sections=[]):
         table = list(table[0])
         rows = StringIO(table[1])
         data = pd.read_csv(rows,header=None,sep=r'\s+',names=['y','z'])
+        
         sdict[isect] = data[data.y>=0]
         sdict[isect] = sdict[isect].assign(x= sdict[isect]['y'].values * 0.0)
         sdict[isect] = sdict[isect].reindex(sorted(sdict[isect]),axis=1)
+        
+        if sym:
+            rsect = rsec = ((sdict[isect]*[1,-1,1]).iloc[1:,:]).iloc[::-1]
+            sdict[isect] = rsect.append(sdict[isect],ignore_index=True)
             
     return sdict
 
