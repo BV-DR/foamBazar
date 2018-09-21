@@ -99,21 +99,28 @@ class ControlDict( WriteParameterFile ) :
         #Get forces on patch list
         if pressuresPatch is not None :
             pressuresDict = DictProxy()
-            pressuresDict["type"]               = "surfaceFieldValue"
-            pressuresDict["libs"]               = ['"libfieldFunctionObjects.so"']
-            pressuresDict["regionType"]         = "patch"
-            pressuresDict["name"]               = pressuresPatch
-            pressuresDict["surfaceFormat"]      = "foam"
+            if OFversion==5:
+                pressuresDict["type"]               = "surfaceFieldValue"
+                pressuresDict["libs"]               = ['"libfieldFunctionObjects.so"']
+                pressuresDict["regionType"]         = "patch"
+                pressuresDict["name"]               = pressuresPatch
+                pressuresDict["surfaceFormat"]      = "foam"
+                pressuresDict["writeControl"]       = "timeStep"
+                pressuresDict["writeInterval"]      = outputInterval
+                pressuresDict["writeFields"]        = True
+            else:
+                pressuresDict["type"]               = "faceSource"
+                pressuresDict["functionObjectLibs"] = ['"libfieldFunctionObjects.so"']
+                pressuresDict["valueOutput"]        = "true"
+                pressuresDict["source"]             = "patch"
+                pressuresDict["sourceName"]         = pressuresPatch[0]
+                pressuresDict["surfaceFormat"]      = "foamFile"
+                pressuresDict["outputControl"]      = "timeStep"
+                pressuresDict["outputInterval"]     = outputInterval            
+
             pressuresDict["operation"]          = "none"
             pressuresDict["log"]                = True
-            if OFversion==5:
-                pressuresDict["writeControl"]   = "timeStep"
-                pressuresDict["writeInterval"]  = outputInterval
-                pressuresDict["writeFields"]    = True
-            else:
-                pressuresDict["outputControl"]  = "timeStep"
-                pressuresDict["outputInterval"] = outputInterval
-            pressuresDict["fields"]             = ['p']
+            pressuresDict["fields"]             = ['p','p_rgh']
             fDict["pressures"] = pressuresDict
             
         # localMotion

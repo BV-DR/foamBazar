@@ -58,8 +58,8 @@ class DropTestCase( OfCase ) :
                                          ):
 
         #controlDict
-        if outputForces and (forcesPatch is None): forcesPatch = hullPatch
-        if outputPressures and (pressuresPatch is None): pressuresPatch = hullPatch
+        if outputForces and (forcesPatch is None): forcesPatch = [hullPatch]
+        if outputPressures and (pressuresPatch is None): pressuresPatch = [hullPatch]
 
         controlDict = ControlDict( case                = case,
                                    startFrom           = startTime,
