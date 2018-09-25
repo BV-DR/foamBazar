@@ -40,6 +40,8 @@ def compareCase( dir1 , dir2 , version = "s"  ) :
                 r"constant/polyMesh/blockMeshDict" ,
                 r"constant/turbulenceProperties" ,
                 r"constant/g" ,
+		r"constant/wavesProperties", 
+		r"constant/dynamicMeshDict",
                 r"constant/transportProperties" ,
                 r"system/fvSchemes" ,
                 r"system/decomposeParDict" ,
@@ -52,13 +54,13 @@ def compareCase( dir1 , dir2 , version = "s"  ) :
       f1 =  join(dir1,f)
       f2 =  join(dir2,f)
       if os.path.exists(f1) and os.path.exists(f2) :
-         print "!------- {} -------!".format(os.path.basename(f))
+         print("!------- {:^40} -------!".format(os.path.basename(f)))
          compareFile( f1 , f2 , name1 = "1" , name2 = "2", valName = os.path.basename(f) )
-         print "!------------------!\n"
+         print("!--------------------------------------------------------!\n")
       elif not os.path.exists(f1) and os.path.exists(f2) :
-         print "{} not in {}".format( f, dir1 )
+         print("{} not in {}".format( f, dir1 ))
       elif not os.path.exists(f2) and os.path.exists(f1) :
-         print "{} not in {}".format( f, dir2 )
+         print("{} not in {}".format( f, dir2 ))
 
 
 
@@ -82,9 +84,9 @@ def comparePyFoam(d1 , d2 , name1 = "1" , name2 = "2", valName = ""):
       for k in s1.intersection(s2) :
          comparePyFoam( d1[k] , d2[k] , name1 , name2,  valName + "/" + str(k) )
       for k in s1.difference(s2) :
-         print "{:48s} {:25s} {:20s} != {:20s}".format(valName, str(k), str(d1[k]) , "-")
+         print("{:48s} {:25s} {:20s} != {:20s}".format(valName, str(k), str(d1[k]) , "-"))
       for k in s2.difference(s1) :
-         print "{:48s} {:25s} {:20s} != {:20s}".format(valName, str(k), "-"  , str(d2[k]))
+         print("{:48s} {:25s} {:20s} != {:20s}".format(valName, str(k), "-"  , str(d2[k])))
 
       #Regex stuff :
       s1 = set([l[0] for l in d1._regex])
@@ -95,10 +97,10 @@ def comparePyFoam(d1 , d2 , name1 = "1" , name2 = "2", valName = ""):
          comparePyFoam( d1._regex[iReg1][2], d2._regex[iReg2][2] , name1 , name2,  valName + "/" + str(k) )
       for k in s1.difference(s2) :
          iReg1 = [l[0] for l in d1._regex].index(k)
-         print "{:48s} {:25s} {:20s} != {:20s}".format(valName, str(k), str(d1._regex[iReg1][2]) , "-")
+         print("{:48s} {:25s} {:20s} != {:20s}".format(valName, str(k), str(d1._regex[iReg1][2]) , "-"))
       for k in s2.difference(s1) :
          iReg2 = [l[0] for l in d2._regex].index(k)
-         print "{:48s} {:25s} {:20s} != {:20s}".format(valName, str(k), "-"  , str(d2._regex[iReg2][2]))
+         print("{:48s} {:25s} {:20s} != {:20s}".format(valName, str(k), "-"  , str(d2._regex[iReg2][2])))
 
 
    elif type(d1)== type(d2) == list :
@@ -106,39 +108,29 @@ def comparePyFoam(d1 , d2 , name1 = "1" , name2 = "2", valName = ""):
          for i in range(len(d1)) :
             comparePyFoam(d1[i] , d2[i] , name1 = "1" , name2 = "2", valName = valName + "/" + str(i+1))
       else :
-         print "list {:s20} is different {:} != {:}".format( valName, d1 , d2 )
+         print("list {:s20} is different {:} != {:}".format( valName, d1 , d2 ))
 
    else :
       if d1.__repr__() != d2.__repr__() :
          try :
             if float(d1) != float(d2) :
-               print "{:74s} {:20s} != {:20s}".format( valName, str(d1) , str(d2) )
+               print("{:74s} {:20s} != {:20s}".format( valName, str(d1) , str(d2) ))
          except :
-            print "{:74s} {:20s} != {:20s}".format( valName, str(d1) , str(d2) )
+            print("{:74s} {:20s} != {:20s}".format( valName, str(d1) , str(d2) ))
 
 
 if __name__ == "__main__" :
 
-   if False :
+   if True :
       import argparse
       parser = argparse.ArgumentParser(description='FoamStar log parser')
       parser.add_argument( "file1" )
       parser.add_argument( "file2" )
       args = parser.parse_args()
       compareCase(args.file1 ,args.file2)
+   
+   else:
+      file1 = r"\\10.67.24.192\bigr\openFoam\2Dwave\Run_rev1\g1_foamExtend_Speed_0.0"
+      file2 = r"\\10.67.24.192\bigr\openFoam\2Dwave\Run\g1_foamExtendVuko_Speed_0.0"
 
-   file1 = r"\\10.67.24.192\bigr\openFoam\2Dwave\Run_rev1\g1_foamExtend_Speed_0.0"
-   file2 = r"\\10.67.24.192\bigr\openFoam\2Dwave\Run\g1_foamExtendVuko_Speed_0.0"
-
-   #compareFile("t1.txt" , "t2.txt")
-   compareCase(file1 ,file2)
-
-
-#    file1 = r"\\10.67.24.192\bigr\openFoam\2Dwave\RunFine\rev_CrankNicolson_0.9_Speed_swenseFoam0.0"
-#    file2 = r"\\10.67.24.192\bigr\openFoam\2Dwave\Run\swenseFoam_g1_Speed_0.0"
-#    compareCase(file1 ,file2)
-
-
-
-
-
+      compareCase(file1 ,file2)
