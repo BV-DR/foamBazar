@@ -32,6 +32,7 @@ def concatData(args):
         newtlist = []
         for t in tlist:
             try:
+                float(t)
                 newtlist.append(t)
             except:
                 continue
