@@ -39,7 +39,7 @@ class ControlDict( WriteParameterFile ) :
             self["maxDeltaT"]      = 1.
       
         if version == "foamStar" :
-            self ["libs"] =  ['"libfoamStar.so"' , ]
+            self ["libs"] =  ['"libfoamStar.so"' , '"libBVtabulated6DoFMotion.so"', ]
         elif version == "snappyHexMesh" :
             pass
         else :
@@ -103,7 +103,7 @@ class ControlDict( WriteParameterFile ) :
                 pressuresDict["type"]               = "surfaceFieldValue"
                 pressuresDict["libs"]               = ['"libfieldFunctionObjects.so"']
                 pressuresDict["regionType"]         = "patch"
-                pressuresDict["name"]               = pressuresPatch
+                pressuresDict["name"]               = pressuresPatch[0]
                 pressuresDict["surfaceFormat"]      = "foam"
                 pressuresDict["writeControl"]       = "timeStep"
                 pressuresDict["writeInterval"]      = outputInterval

@@ -53,6 +53,8 @@ class DropTestCase( OfCase ) :
                                          solver           = "foamStar",
                                          OFversion        = 3,
                                          translate        = [0.0,0.0,0.0],
+                                         rotate           = [0.0,0.0,0.0],
+                                         COG              = [0.0,0.0,0.0],
                                          gravity          = 0.0,
                                          turbulenceModel  = "laminar",
                                          ):
@@ -95,6 +97,7 @@ class DropTestCase( OfCase ) :
         dynamicMeshDict = DynamicMeshDict( case      = case,
                                            type      = 'solid',
                                            dispFile  = "dispSignal.dat",
+                                           COG       = COG,
                                            OFversion = OFversion,
                                            version   = solver )
 
@@ -124,6 +127,8 @@ class DropTestCase( OfCase ) :
         res.dispSignal = dispSignal
         res.sideRelaxZone = sideRelaxZone
         res.translate = translate
+        res.rotate = rotate
+        res.COG = COG
         res.hullPatch = hullPatch
         res.symmetry = symmetry
         res.ndim = ndim
@@ -199,8 +204,8 @@ class DropTestCase( OfCase ) :
                 f.write('    setSet -batch cell.Set\n')
                 f.write('    setsToZones -noFlipMap\n')
             f.write('    cp -rf 0/org/* 0/\n')
-            if any(self.translate)!=0.:
-                f.write('    transformPoints -translate "( {:.3f} {:.3f} {:.3f})"\n'.format(*self.translate))
+            if any(self.rotate)!=0.: f.write('    BVtransformPoints -EulerZYX "( {:.3f} {:.3f} {:.3f})"  -CoR "( {:.3f} {:.3f} {:.3f})" \n'.format(*self.rotate,*self.COG))
+            if any(self.translate)!=0.: f.write('    BVtransformPoints -translate "( {:.3f} {:.3f} {:.3f})"\n'.format(*self.translate))
             f.write('    decomposePar -cellDist\n')
             f.write('    mpirun -np {:d} initWaveField -parallel\n'.format(self.nProcs))
             f.write(') 2>&1 | tee log.init\n')

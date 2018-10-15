@@ -12,7 +12,7 @@ class DynamicMeshDict(WriteParameterFile):
     """
         DynamicMeshDict dictionnary
     """
-    def __init__(self , case, type='', hullPatch=None, addDamping=False, dispFile='', lpp=0, bc=0, OFversion=3, version="foamStar") :
+    def __init__(self , case, type='', hullPatch=None, addDamping=False, dispFile='', COG=[0.,0.,0.], lpp=0, bc=0, OFversion=3, version="foamStar") :
         WriteParameterFile.__init__(self,  name = join(case, "constant", "dynamicMeshDict" ) )
         self.header["class"] = "dictionary"
     
@@ -25,16 +25,16 @@ class DynamicMeshDict(WriteParameterFile):
                 self["solidBodyMotionFunction"] = "tabulated6DoFMotion"
                 tab = DictProxy()
                 tab["timeDataFileName"] = '"'+dispFile+'"'
-                tab["CofG"] = '(0 0 0)'
+                tab["CofG"] = '( {:.6f} {:.6f} {:.6f} )'.format(*COG)
                 self["tabulated6DoFMotionCoeffs"] = tab
             else:
                 self["dynamicFvMesh"] = "solidBodyMotionFvMesh"
                 sdc = DictProxy()
-                sdc["solidBodyMotionFunction"] = "tabulated6DoFMotion"
+                sdc["solidBodyMotionFunction"] = "BVtabulated6DoFMotion"
                 tab = DictProxy()
                 tab["timeDataFileName"] = '"'+dispFile+'"'
-                tab["CofG"] = '(0 0 0)'
-                sdc["tabulated6DoFMotionCoeffs"] = tab
+                tab["CofG"] = '( {:.6f} {:.6f} {:.6f} )'.format(*COG)
+                sdc["BVtabulated6DoFMotionCoeffs"] = tab
                 self["solidBodyMotionFvMeshCoeffs"] = sdc
         else:
             self["dynamicFvMesh"] = "sixDofDomainFvMesh"
