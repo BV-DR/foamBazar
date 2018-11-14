@@ -1,3 +1,4 @@
+#! /usr/bin/env upython3
 from inputFiles.ofDictionary import ofDictionary, bcDictionary
 from PyFoam.Basics.DataStructures import Dimension, Vector
 

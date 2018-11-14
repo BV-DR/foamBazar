@@ -1,3 +1,4 @@
+#! /usr/bin/env upython3
 import PyFoam
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import Vector, SymmTensor, DictProxy

@@ -1,3 +1,4 @@
+#! /usr/bin/env upython3
 """
    Prepare input for wave probes
 """

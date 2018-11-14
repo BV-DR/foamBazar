@@ -1,3 +1,4 @@
+#! /usr/bin/env upython3
 from inputFiles.ofDictionary import ofDictionary, ofResourcePath, getDefaultSettings
 """
     Convenience class to simply write "turbulenceProperties" and RASModel

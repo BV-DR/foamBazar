@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+# shebang in POSIX allows only one arguments !!!
+python3 -u $@
+

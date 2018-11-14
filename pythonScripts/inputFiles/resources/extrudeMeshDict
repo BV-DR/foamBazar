@@ -1,0 +1,24 @@
+defaults
+{
+    constructFrom       patch;
+    sourceCase          "./";
+    sourcePatches       ();
+    exposedPatchName    NONE;
+    flipNormals         yes;
+    extrudeModel        linearNormal;
+    nLayers             1;
+    expansionRatio      1.1;
+    linearNormalCoeffs  { thickness 0.1; }
+    mergeFaces          no;
+    mergeTol            1e-08;
+}
+
+db
+{
+}
+
+alias
+{
+}
+
+

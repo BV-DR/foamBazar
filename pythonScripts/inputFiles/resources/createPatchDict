@@ -1,0 +1,15 @@
+defaults
+{
+    pointSync   no;
+    patches     ();
+}
+
+db
+{
+}
+
+
+alias
+{
+}
+

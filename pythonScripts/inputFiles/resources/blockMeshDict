@@ -1,0 +1,29 @@
+defaults
+{
+    fastMerge       yes;
+    convertToMeters 1;
+    /* Domain bounding box*/
+    xmin            _to_be_set_;
+    xmax            _to_be_set_;
+    ymin            _to_be_set_;
+    ymax            _to_be_set_;
+    zmin            _to_be_set_;
+    zmax            _to_be_set_;
+
+    vertices    ();
+    blocks      ();
+    edges       ();
+    patches     ();
+    mergePatchPairs     ();
+}
+
+db
+{
+}
+
+
+alias
+{
+}
+
+

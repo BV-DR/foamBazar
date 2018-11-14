@@ -1,4 +1,4 @@
-#!/usr/bin/env upython
+#!/usr/bin/env upython3
 #########################################################################
 # Filename: caseFolder.py                                               #
 # Date:     2017-July-02                                                #

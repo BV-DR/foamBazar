@@ -1,3 +1,4 @@
+#! /usr/bin/env upython3
 from inputFiles.ofDictionary import ofDictionary, ofResourcePath, getDefaultSettings
 from PyFoam.Basics.DataStructures import DictProxy
 from copy import deepcopy

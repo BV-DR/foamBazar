@@ -1,3 +1,4 @@
+#! /usr/bin/env upython3
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile, ParsedParameterFile
 from PyFoam.Basics.DataStructures import DictProxy, TupleProxy
 from PyFoam.ThirdParty.six import PY3

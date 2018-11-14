@@ -87,3 +87,4 @@ alias
     "(myCase|iWave|default|defaultWave.*)"  defaultWave;
     "init.*"    initCoeffs;
 }
+
