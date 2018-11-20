@@ -786,20 +786,20 @@ def createBlockMeshDict(data):
     if not os.path.exists(polyfolder): os.makedirs(polyfolder)
     
     #Write blockMeshDict file
-    blockMeshDict = BlockMeshDict( case     = '.',
-                                   ndim     = 3,
-                                   waveMesh = True,
-                                   xmin     = XminDomain,
-                                   xmax     = XmaxDomain,
-                                   ymin     = YminDomain,
-                                   ymax     = YmaxDomain,
-                                   zmin     = ZminDomain,
-                                   zmax     = zAllCut,
-                                   Xcells   = Xcells,
-                                   Ycells   = Ycells,
-                                   Zcells   = zAllCutNCells,
-                                   Zgrading = zAllCutRatio)
-    blockMeshDict.writeFile()
+    blockMeshDict = BlockMeshDict( case        = '.',
+                                   ndim        = 3,
+                                   waveMesh    = True,
+                                   xmin        = XminDomain,
+                                   xmax        = XmaxDomain,
+                                   ymin        = YminDomain,
+                                   ymax        = YmaxDomain,
+                                   zmin        = ZminDomain,
+                                   zmax        = zAllCut,
+                                   Xcells      = Xcells,
+                                   Ycells      = Ycells,
+                                   Zcells      = zAllCutNCells,
+                                   Zgrading    = zAllCutRatio
+                                   createPatch = False)
     
     # update data
     data.zAllCut = zAllCut

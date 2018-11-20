@@ -65,8 +65,9 @@ class BlockMeshDict(WriteParameterFile) :
    """
       blockMeshDict dictionary
    """
-   def __init__(self , case, ndim = 3, waveMesh=False, xmin=-0.05, xmax=0.05, ymin=None, ymax=None, zmin=None, zmax=None, 
-                       fsmin=None, fsmax=None, Xcells=None, Ycells=12, Zcells=None, cellRatio=1, Zgrading=None, sym=False, gridlvl=1, ofp=False):
+   def __init__(self , case, ndim = 3, waveMesh=False, xmin=-0.05, xmax=0.05, ymin=None, ymax=None, zmin=None, zmax=None,
+                       fsmin=None, fsmax=None, Xcells=None, Ycells=12, Zcells=None, cellRatio=1, Zgrading=None, sym=False,
+                       createPatch= True, gridlvl=1, ofp=False):
         if ofp: WriteParameterFile.__init__(self,  name = join(case, "system" , "blockMeshDict" ) )
         else:   WriteParameterFile.__init__(self,  name = join(case, "constant" , "polyMesh", "blockMeshDict" ) )
         self["fastMerge"]  = "yes"
@@ -110,16 +111,15 @@ class BlockMeshDict(WriteParameterFile) :
             self["blocks"]  = '( hex (0 1 2 3 4 5 6 7) ( {:d} {:d} {:d} ) simpleGrading (1 1 1) )'.format(nx, ny,nz)
         
         self["edges"]   = '()'
-        
-        self["patches"] = patches
        
-        #if ndim==2:
-        #    self["patches"] = patches
-        #elif ndim==3:
-        #    faces = DictProxy()
-        #    faces["type"] = 'patch'
-        #    faces["faces"] = '()'
-        #    self["boundary"] = ["defaultFaces", faces]
+        if createPatch:
+           self["patches"] = patches
+        else:
+           faces = DictProxy()
+           faces["type"] = 'patch'
+           faces["faces"] = '()'
+           self["boundary"] = ["defaultFaces", faces]
+           
         self["mergePatchPairs"]   = '()'
         
 if __name__ == "__main__" : 
