@@ -798,8 +798,9 @@ def createBlockMeshDict(data):
                                    Xcells      = Xcells,
                                    Ycells      = Ycells,
                                    Zcells      = zAllCutNCells,
-                                   Zgrading    = zAllCutRatio
+                                   Zgrading    = zAllCutRatio,
                                    createPatch = False)
+    blockMeshDict.writeFile()
     
     # update data
     data.zAllCut = zAllCut
