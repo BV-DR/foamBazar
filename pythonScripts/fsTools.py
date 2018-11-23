@@ -241,3 +241,47 @@ def createSectionStl(sdict,redistribute=False):
 
         #Create STL
         subprocess.call('gmsh -2 -format stl -o "'+fstl+'" "'+fgeo+'"', shell=True)
+        
+# return a list of numbers btw. 0 .. 1
+# dNd1_Ratio=dN/d1
+# x[0]=0, x[N]=1
+# x[1] = 1/sum(c^i)_(i=0..N-1) = (1-c)/(1-c^N) (for all c != 1)
+# x[n] = x1*sum(c^i)_(i=0..n-1) = x1*(1-c^n)/(1-c) (for all c != 1, n=1..N)
+# c = dNd1_Ratio^(1/(N-1))
+def simpleGrading(N, dNd1_Ratio):
+    x = [0,1]
+    if N <= 1:
+        return [0,1]
+    c = mt.pow(dNd1_Ratio, 1.0/(N-1))
+    if mt.fabs(c-1.0)<1e-6:
+        x = np.linspace(0,1,N+1)
+        return x.tolist()
+    x[1]=(1-c)/(1-mt.pow(c,float(N)))
+    for n in range(2,N):
+        x.append(x[1]*(1-mt.pow(c,float(n)))/(1.0-c))
+    x.append(1)
+    return x
+
+# given x1 compute N which produce the closest dNd1_Ratio 
+def simpleGradingN(x1, dNd1_Ratio):
+    x1pre,N=1.0,0
+    while x1pre>x1:
+        N += 1
+        x = simpleGrading(N, float(dNd1_Ratio))
+        if x[1]<=x1:
+            if mt.fabs(x1pre-x1) < mt.fabs(x[1]-x1):
+                N -= 1
+            break
+        else:
+            x1pre=x[1]
+    return N
+    
+def caseAlreadyDecomposed():
+    isDecomposed = False
+    nProcs = 1
+    for val in os.listdir('.'):
+        if val.startswith('processor'):
+            isDecomposed=True
+            nProcs = max(nProcs, int(val[9:])+1)
+        pass
+    return isDecomposed, nProcs
