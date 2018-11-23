@@ -19,12 +19,11 @@ class OfCase(object):
                                        transportProperties=None,
                                        decomposeParDict=None,
                                        extrudeMeshDict=None,
-                                       refineMeshDict=None,
-                                       refineMeshDict1=None,
-                                       refineMeshDict2=None,
+                                       refineMeshDicts=None,
                                        snappyHexMeshDict=None,
                                        surfaceFeatureExtractDict=None,
                                        blockMeshDict=None,
+                                       setSelections=None,
                                        turbulenceModel = "laminar",
                                        symmetry = False,
                                        gravity = 9.81,
@@ -49,12 +48,11 @@ class OfCase(object):
         self.decomposeParDict = decomposeParDict
         
         self.extrudeMeshDict = extrudeMeshDict
-        self.refineMeshDict = refineMeshDict
-        self.refineMeshDict1 = refineMeshDict1
-        self.refineMeshDict2 = refineMeshDict2
+        self.refineMeshDicts = refineMeshDicts
         self.snappyHexMeshDict = snappyHexMeshDict
         self.surfaceFeatureExtractDict = surfaceFeatureExtractDict
         self.blockMeshDict = blockMeshDict
+        self.setSelections = setSelections
 
         self.turbulenceModel = turbulenceModel
         self.turbulenceProperties = TurbulenceProperties(case , turbulenceModel )
@@ -137,12 +135,15 @@ class OfCase(object):
         if self.dynamicMeshDict is not None:            self.dynamicMeshDict.writeFile()
         if self.waveProperties is not None:             self.waveProperties.writeFile()
         if self.extrudeMeshDict is not None:            self.extrudeMeshDict.writeFile()
-        if self.refineMeshDict is not None:             self.refineMeshDict.writeFile()
-        if self.refineMeshDict1 is not None:            self.refineMeshDict1.writeFile()
-        if self.refineMeshDict2 is not None:            self.refineMeshDict2.writeFile()
         if self.snappyHexMeshDict is not None:          self.snappyHexMeshDict.writeFile()
         if self.surfaceFeatureExtractDict is not None:  self.surfaceFeatureExtractDict.writeFile()
         if self.blockMeshDict is not None:              self.blockMeshDict.writeFile()
+        if self.refineMeshDicts is not None:
+            for refDict in self.refineMeshDicts:
+                refDict.writeFile()
+        if self.setSelections is not None:
+            for setSel in self.setSelections:
+                setSel.writeFile()
 
     def runInit(self) :
         #run Allrun script

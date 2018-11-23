@@ -12,16 +12,16 @@ class RefineMeshDict(WriteParameterFile) :
     """
        RefineMeshDict dictionary
     """
-    def __init__(self , case, orient=None, set="freesurface", refineUptoCellLevel=None, coordinateSystem="global", directions="normal", patch=None, useHexTopology=False, geometricCut=True, writeMesh=False):
-        if orient==None: suffix = ''
-        else: suffix = '.'+orient
+    def __init__(self , case, orient=None, set="freesurface", refineUptoCellLevel=None, coordinateSystem="global", directions="normal", name=None, patch=None, useHexTopology=False, geometricCut=True, writeMesh=False):
+        suffix = ''
+        if orient is not None: suffix += '.'+orient
+        if name is not None: suffix += '.'+name
         
         WriteParameterFile.__init__(self,  name = join(case, "system" , "refineMeshDict"+suffix )  )
       
         self["set"] = set
         if refineUptoCellLevel is not None:
             self["refineUptoCellLevel"] = refineUptoCellLevel
-        
         
         self["coordinateSystem"] = coordinateSystem
         

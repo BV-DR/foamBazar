@@ -1080,7 +1080,7 @@ def createSnappyMesh(data):
                                               finalLayerThickness        = finalLayerThickness,
                                               minThickness               = minThickness,
                                               featureAngle               = 60,
-                                              shipPatches                = data.shipPatches,
+                                              stlPatches                = data.shipPatches,
                                               noLayers                   = data.noLayers,
                                               maxNonOrtho                = 65,
                                               minTwist                   = 0.02,

@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 
 #########################################################################
-# Filename: fsMesher2D.py                                               #
+# Filename: dropTestMesher.py                                           #
 # Date:     2018-May-07                                                 #
 # Version:  1.                                                          #
 # Author:   Alexis Benhamou                                             #
 # Org.:     Bureau Veritas, (HO, France)                                #
 # Email:    alexis.benhamou@bureauveritas.com                           #
+#########################################################################
+#  This class can be used to generate a mesh for a drop test case i.e.  #
+#  with no wave propagation. It work for both 2D and 3D configurations. #
 #########################################################################
 
 import re
@@ -32,7 +35,6 @@ from inputFiles.refineMeshDict import RefineMeshDict
 from inputFiles.snappyHexMeshDict import SnappyHexMeshDict
 from inputFiles.surfaceFeatureExtractDict import SurfaceFeatureExtractDict
 from inputFiles.blockMeshDict import BlockMeshDict
-
 
 class DropTestMesher( OfCase ):
 
@@ -193,9 +195,7 @@ class DropTestMesher( OfCase ):
                           fvSolution=fvSolution,
                           decomposeParDict=decomposeParDict,
                           extrudeMeshDict=extrudeMeshDict,
-                          refineMeshDict=refineMeshDict,
-                          refineMeshDict1=refineMeshDict1,
-                          refineMeshDict2=refineMeshDict2,
+                          refineMeshDicts=[refineMeshDict,refineMeshDict1,refineMeshDict2]
                           snappyHexMeshDict=snappyHexMeshDict,
                           surfaceFeatureExtractDict=surfaceFeatureExtractDict,
                           blockMeshDict=blockMeshDict,

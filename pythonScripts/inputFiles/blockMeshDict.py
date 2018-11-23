@@ -32,7 +32,7 @@ vertices = '''
 )
 '''
 
-patches = '''
+default_patches = '''
 (
         patch domainX0
         (
@@ -67,7 +67,7 @@ class BlockMeshDict(WriteParameterFile) :
    """
    def __init__(self , case, ndim = 3, waveMesh=False, xmin=-0.05, xmax=0.05, ymin=None, ymax=None, zmin=None, zmax=None,
                        fsmin=None, fsmax=None, Xcells=None, Ycells=12, Zcells=None, cellRatio=1, Zgrading=None, sym=False,
-                       createPatch= True, gridlvl=1, ofp=False):
+                       createPatch= True, patches=None, gridlvl=1, ofp=False):
         if ofp: WriteParameterFile.__init__(self,  name = join(case, "system" , "blockMeshDict" ) )
         else:   WriteParameterFile.__init__(self,  name = join(case, "constant" , "polyMesh", "blockMeshDict" ) )
         self["fastMerge"]  = "yes"
@@ -113,7 +113,8 @@ class BlockMeshDict(WriteParameterFile) :
         self["edges"]   = '()'
        
         if createPatch:
-           self["patches"] = patches
+            if patches is not None: self["patches"] = patches
+            else: self["patches"] = default_patches
         else:
            faces = DictProxy()
            faces["type"] = 'patch'
