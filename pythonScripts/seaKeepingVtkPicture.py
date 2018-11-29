@@ -3,8 +3,10 @@ from __future__ import print_function
 import vtk
 import os
 
-try :  from System.Chrono import Chrono
-except :  print( 'Chrono module not found , please add "shared-code/python" in your PYTHON_PATH' )
+try :
+    from Pluto.System import Chrono
+except :
+    print( 'Chrono module not found , please add "shared-code/python" in your PYTHON_PATH' )
 
 
 def is_number(s):
@@ -15,10 +17,11 @@ def getAvailableTimeData(caseDir , parallel ) :
    if parallel : d = os.path.join(caseDir , "processor0")
    else : d = caseDir
    return sorted([float(f) for f in os.listdir(d) if is_number(f) and os.path.isdir(os.path.join(d , f)) ])
-   
 
 
-def getMeshPicture(meshFile,  camPosition , targetPosition , pictureFile, timeList = [0], startInteractive = False, mag = 4 , parallel = "auto", zoom = 1.0 , scale = (1,1,1)):
+
+def getMeshPicture(meshFile,  camPosition , targetPosition , pictureFile, timeList = [0],
+                   startInteractive = False, mag = 4 , parallel = "auto", zoom = 1.0 , scale = (1,1,1), hullPatch = "ship"):
    """
    Function to generate picture out of openFoam results
 
@@ -66,9 +69,7 @@ def getMeshPicture(meshFile,  camPosition , targetPosition , pictureFile, timeLi
    vtk_r.CreateCellToPointOn()
    vtk_r.DisableAllPatchArrays()
    vtk_r.SetPatchArrayStatus( "internalMesh", 1 )
-   vtk_r.SetPatchArrayStatus( "structure", 1 )
-
-   exe = vtk_r.GetExecutive()
+   vtk_r.SetPatchArrayStatus( hullPatch, 1 )
 
    #--------------------------------- Free-surface
    aa = vtk.vtkAssignAttribute()
@@ -174,12 +175,15 @@ def getMeshPicture(meshFile,  camPosition , targetPosition , pictureFile, timeLi
    camera.SetPosition( camPosition )
    camera.SetFocalPoint( targetPosition )
    camera.SetViewUp( 1. , 1. , 1.)
+   renderer.ResetCamera()
    camera.Zoom(zoom)
-   
+
    c.printLap ('init')
    vtk_r.Update()
    c.printLap ('Update 1')
-   exe.SetUpdateTimeStep( 0, timeList[0] )
+
+   vtk_r.SetTimeValue(  timeList[0] )
+
    vtk_r.Update()  # not mandatory, but just postpone the waiting time
    vtk_r.Modified()
    c.printLap ('Update {}'.format(timeList[0]) )
@@ -203,21 +207,24 @@ def getMeshPicture(meshFile,  camPosition , targetPosition , pictureFile, timeLi
       for itime, time in enumerate(timeList):
          print ("time" , time)
          if itime != 0:
-            exe.SetUpdateTimeStep( 0, time )
-            vtk_r.Update()
+            #exe.SetUpdateTimeStep( 0, time )
+            #vtk_r.SetTimeValue( time )
+            #vtk_r.Update()
+            vtk_r.UpdateTimeStep(time)
             vtk_r.Modified()   #Require to update the time step data
-   
+
          renWin.Render()
          w2if = vtk.vtkRenderLargeImage()
          w2if.SetMagnification(mag)   # => Resoulition of the picture
-   
+
          w2if.SetInput(renderer)
          w2if.Update()
          pictureFile =  "{:}_{:03}{:}".format(baseFile, itime , ext)
-   
+
          writer.SetFileName(pictureFile)
          writer.SetInputConnection(w2if.GetOutputPort())
          writer.Write()
+         c.printLap ('Chrono t={} {}'.format(time, time) )
 
 
 
