@@ -12,7 +12,7 @@ def compareFile(file1 ,file2, name1 = "1" , name2 = "2" , valName = "") :
 
    comparePyFoam(f1.content , f2.content , name1 = name1, name2 = name2 , valName = valName)
 
-def compareCase( dir1 , dir2 , version = "s"  ) :
+def compareCase( dir1 , dir2 , version = "s", exclude = []  ) :
 
    fileList = [
                 r"0/org/pd" ,
@@ -40,14 +40,18 @@ def compareCase( dir1 , dir2 , version = "s"  ) :
                 r"constant/polyMesh/blockMeshDict" ,
                 r"constant/turbulenceProperties" ,
                 r"constant/g" ,
-		r"constant/wavesProperties", 
-		r"constant/dynamicMeshDict",
+                r"constant/wavesProperties",
+                r"constant/dynamicMeshDict",
                 r"constant/transportProperties" ,
                 r"system/fvSchemes" ,
                 r"system/decomposeParDict" ,
                 r"system/fvSolution" ,
                 r"system/controlDict" ,
                ]
+
+   for f in exclude :
+       if f in fileList :
+           fileList.remove(f)
 
    #print "Comparing {} with {}".format(dir1 , dir2)
    for f in fileList :
@@ -124,10 +128,11 @@ if __name__ == "__main__" :
    if True :
       import argparse
       parser = argparse.ArgumentParser(description='FoamStar log parser')
+      parser.add_argument('-exclude',  help='delimited list input', type= lambda s: s.split(',') )
       parser.add_argument( "file1" )
       parser.add_argument( "file2" )
       args = parser.parse_args()
-      compareCase(args.file1 ,args.file2)
+      compareCase(args.file1 ,args.file2, exclude = args.exclude)
    
    else:
       file1 = r"\\10.67.24.192\bigr\openFoam\2Dwave\Run_rev1\g1_foamExtend_Speed_0.0"
