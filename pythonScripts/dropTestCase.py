@@ -21,6 +21,28 @@ from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
 
 class DropTestCase( OfCase ) :
 
+    def __init__(self, case, *kwargs) :
+        OfCase.__init__(self, case, extrudeMeshDict=None,
+                                    refineMeshDict=None,
+                                    refineMeshDict1=None,
+                                    refineMeshDict2=None,
+                                    snappyHexMeshDict=None,
+                                    surfaceFeatureExtractDict=None,
+                                    blockMeshDict=None,
+                                    **kwargs  #Argument of OfCase
+                                    ):
+
+        #Mesh stuff
+        self.extrudeMeshDict = extrudeMeshDict
+        self.refineMeshDict = refineMeshDict
+        self.refineMeshDict1 = refineMeshDict1
+        self.refineMeshDict2 = refineMeshDict2
+        self.snappyHexMeshDict = snappyHexMeshDict
+        self.surfaceFeatureExtractDict = surfaceFeatureExtractDict
+        self.blockMeshDict = blockMeshDict
+
+
+
     @classmethod
     def BuildFromAllParameters(cls,      case,
                                          meshDir          = "mesh",
@@ -177,6 +199,15 @@ class DropTestCase( OfCase ) :
 
     def writeFiles(self) :
         OfCase.writeFiles(self)
+
+        if self.extrudeMeshDict is not None:            self.extrudeMeshDict.writeFile()
+        if self.refineMeshDict is not None:             self.refineMeshDict.writeFile()
+        if self.refineMeshDict1 is not None:            self.refineMeshDict1.writeFile()
+        if self.refineMeshDict2 is not None:            self.refineMeshDict2.writeFile()
+        if self.snappyHexMeshDict is not None:          self.snappyHexMeshDict.writeFile()
+        if self.surfaceFeatureExtractDict is not None:  self.surfaceFeatureExtractDict.writeFile()
+        if self.blockMeshDict is not None:              self.blockMeshDict.writeFile()
+
         shutil.copyfile(self.dispSignal, os.path.join(self.case,"dispSignal.dat"))
 
         self.setBoundaries()

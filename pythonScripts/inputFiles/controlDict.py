@@ -1,49 +1,54 @@
 from os.path import join
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
-from PyFoam.Basics.DataStructures import Vector, DictProxy
+from inputFiles import ReadWriteFile
+from PyFoam.Basics.DataStructures import DictProxy
 from inputFiles.waveProbes import setWaveProbes
 from inputFiles.compatOF import application, surfaceElevation
 
-class ControlDict( WriteParameterFile ) :
+class ControlDict( ReadWriteFile ) :
 
-    def __init__(self , case ,  startFrom="latestTime", startTime=0 , endTime=60. , deltaT=None , autoDeltaTCo=None , writeControl="timeStep", writeInterval=1, purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no", writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputInterval=1, outputMotions=False, vbmPatch=None, forcesPatch=None, pressuresPatch=None, outputLocalMotions=False, rhoWater = 1000, OFversion=3, version="foamStar"):
+    @classmethod
+    def Build(cls, case, deltaT, endTime, startFrom="latestTime", startTime=0., autoDeltaTCo=None, writeControl="timeStep", 
+              writeInterval=1, purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no",
+              writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputInterval=1,
+              outputMotions=False, vbmPatch=None, forcesPatch=None, pressuresPatch=None, outputLocalMotions=False, rhoWater = 1000,
+              OFversion=5, version="foamStar"):
 
-        WriteParameterFile.__init__(self , join(case , "system" , "controlDict" ))
-        self["application"]       = application[version]
-        self["startFrom"]         = startFrom
-        self["startTime"]         = startTime
-        self["stopAt"]            = "endTime"
-        self["endTime"]           = endTime
-        self["deltaT"]            = deltaT
-        self["writeControl"]      = writeControl
-        self["writeInterval"]     = writeInterval
-        self["purgeWrite"]        = purgeWrite
-        self["writeFormat"]       = "ascii"
-        self["writePrecision"]    = writePrecision
-        self["writeCompression"]  = writeCompression
-        self["timeFormat"]        = "general"
-        self["timePrecision"]     = 6
-        self["runTimeModifiable"] = runTimeModifiable
-        if OFversion==5: self["fileHandler"] = "collated"
+        res = cls(join(case , "system" , "controlDict" ), read = False)
+        res["application"]       = application[version]
+        res["startFrom"]         = startFrom
+        res["startTime"]         = startTime
+        res["stopAt"]            = "endTime"
+        res["endTime"]           = endTime
+        res["deltaT"]            = deltaT
+        res["writeControl"]      = writeControl
+        res["writeInterval"]     = writeInterval
+        res["purgeWrite"]        = purgeWrite
+        res["writeFormat"]       = "ascii"
+        res["writePrecision"]    = writePrecision
+        res["writeCompression"]  = writeCompression
+        res["timeFormat"]        = "general"
+        res["timePrecision"]     = 6
+        res["runTimeModifiable"] = runTimeModifiable
+        if OFversion==5: res["fileHandler"] = "collated"
       
       
         if adjustTimeStep is not None :
-            self["adjustTimeStep"] = "yes"
-            self["maxCo"]          = adjustTimeStep[0]
-            self["maxAlphaCo"]     = adjustTimeStep[1]
-            self["maxDeltaT"]      = adjustTimeStep[2]
+            res["adjustTimeStep"] = "yes"
+            res["maxCo"]          = adjustTimeStep[0]
+            res["maxAlphaCo"]     = adjustTimeStep[1]
+            res["maxDeltaT"]      = adjustTimeStep[2]
         else :
-            self["adjustTimeStep"] = "no"
-            self["maxCo"]          = 0.5
-            self["maxAlphaCo"]     = 0.5
-            self["maxDeltaT"]      = 1.
+            res["adjustTimeStep"] = "no"
+            res["maxCo"]          = 0.5
+            res["maxAlphaCo"]     = 0.5
+            res["maxDeltaT"]      = 1.
       
         if version == "foamStar" :
-            self ["libs"] =  ['"libfoamStar.so"' , '"libBVtabulated6DoFMotion.so"', ]
+            res ["libs"] =  ['"libfoamStar.so"' , '"libBVtabulated6DoFMotion.so"', ]
         elif version == "snappyHexMesh" :
             pass
         else :
-            self ["libs"] =  [ '"libforces.so"' , ]
+            res ["libs"] =  [ '"libforces.so"' , ]
         
         # Set functions
         fDict = DictProxy()
@@ -136,8 +141,9 @@ class ControlDict( WriteParameterFile ) :
             fDict[surfaceElevation[version]] = setWaveProbes( waveProbesList , version = version , writeProbesInterval = writeProbesInterval )
          
         if len(fDict)>0:
-            self["functions"] = fDict
+            res["functions"] = fDict
+        return res
 
 
 if __name__ == "__main__" :
-   print(ControlDict( "test" , waveProbesList = ( (10.,0.,-1.,+1 , 100) , (15.,0.,-1.,+1 , 100) ) , forcesPatch = ["test"] ))
+   print(ControlDict.Build( "test" , deltaT = 0.10, endTime = 60., waveProbesList = ( (10.,0.,-1.,+1 , 100) , (15.,0.,-1.,+1 , 100) ) , forcesPatch = ["test"] ))

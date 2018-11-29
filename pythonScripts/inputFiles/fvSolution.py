@@ -1,5 +1,5 @@
 import PyFoam
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
+from inputFiles import ReadWriteFile
 from PyFoam.Basics.DataStructures import DictProxy
 from os.path import join
 
@@ -7,13 +7,15 @@ from os.path import join
   Convenience class to simply write "fvSheme"
 """
 
-class FvSolution(WriteParameterFile) :
+class FvSolution(ReadWriteFile) :
     """
         FvSchemes dictionnary
     """
-    def __init__(self , case, fsiTol = 1e-8, useEuler=False, nOuterCorrectors=5, version = "foamStar") :
+    
+    @classmethod
+    def Build(cls , case, fsiTol = 1e-8, useEuler=False, nOuterCorrectors=5, version = "foamStar") :
 
-        WriteParameterFile.__init__(self,  name = join(case, "system" , "fvSolution" )  )
+        res = cls ( name = join(case, "system" , "fvSolution" ), read = False )
 
         #-------- ddtSchemes
         solvers = DictProxy()
@@ -123,10 +125,11 @@ class FvSolution(WriteParameterFile) :
         
         relax = { "equations" : { "U": 1, "UFinal" : 1, "p_rgh" : 1, "p_rghFinal" : 1 } }
                 
-        self["solvers"] = solvers
-        self["PIMPLE"] = pimp
-        self["relaxationFactors"] = relax
+        res["solvers"] = solvers
+        res["PIMPLE"] = pimp
+        res["relaxationFactors"] = relax
+        return res
         
 
 if __name__ == "__main__" :
-   print(FvSolution("test" , version = "foamStar"))
+   print(FvSolution.Build("test" , version = "foamStar"))
