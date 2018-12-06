@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
 from PyFoam.Basics.DataStructures import DictProxy
 import os

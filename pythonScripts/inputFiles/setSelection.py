@@ -30,10 +30,10 @@ class SetSelection() :
             includeOutside=' no'
             curvature=' -1e6'
             distance = " " + str(distance)
-            self.cmd = 'cellSet c0 '+opts+' surfaceToCell \\"'+ stlFile +'\\"'+ outsidePoints + includeCutCells + includeInside + includeOutside + distance + curvature
+            self.cmd = 'cellSet c0 '+opts+' surfaceToCell "'+ stlFile +'"'+ outsidePoints + includeCutCells + includeInside + includeOutside + distance + curvature
             if BB is not None:
                 BBtxt = '({} {} {}) ({} {} {})'.format(*BB)
-                self.cmd += "\n" + 'cellSet c0 subset boxToCell '+BBtxt
+                self.cmd += '\n' + 'cellSet c0 subset boxToCell '+BBtxt
         
         #set command file name
         if case==None: self.path = '.'

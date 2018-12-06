@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
 #########################################################################
-# Filename: dropTestMesher.py                                           #
-# Date:     2018-May-07                                                 #
+# Filename: waveCaseMesher.py                                           #
+# Date:     2018-Dec-06                                                 #
 # Version:  1.                                                          #
 # Author:   Alexis Benhamou                                             #
 # Org.:     Bureau Veritas, (HO, France)                                #
 # Email:    alexis.benhamou@bureauveritas.com                           #
 #########################################################################
-#  This class can be used to generate a mesh for a drop test case i.e.  #
-#  with no wave propagation. It work for both 2D and 3D configurations. #
+#  This class can be used to generate a mesh for a wave test case i.e.  #
+#                  with ship and 3D wave propagation.                   #
 #########################################################################
 
 import re
@@ -18,12 +18,8 @@ import shutil
 import time, datetime
 import math as mt
 import numpy as np
-import pandas as pd
 from io import StringIO
-from subprocess import call, Popen
-from scipy import interpolate as interp
-from fsTools import findBoundingBox, findSTLPatches, foamFileExist, translateStl, rotateStl, runCommand, simpleGrading, simpleGradingN
-from PyFoam.Basics.DataStructures import DictProxy
+from fsTools import findBoundingBox, findSTLPatches, foamFileExist, translateStl, rotateStl, simpleGrading, simpleGradingN
 
 from ofCase import OfCase
 
@@ -136,23 +132,19 @@ class WaveCaseMesher( OfCase ):
                                   writePrecision    = 15,
                                   writeCompression  = "compressed",
                                   runTimeModifiable = "true")
-        # controlDict.writeFile()
         
         #fvSchemes
         fvSchemes = FvSchemes(case        = case,
                               simType     = "CrankNicolson",
                               limitedGrad = True,
                               orthogonalCorrection = "implicit")
-        # fvSchemes.writeFile()
         
         #fvSolution
         fvSolution = FvSolution(case = case )
-        # fvSolution.writeFile()
     
         #decomposeParDict
         decomposeParDict = DecomposeParDict(case   = case,
                                             nProcs = nProcs)
-        # decomposeParDict.writeFile()
         
         ###FORMER ROUTINE : createBlockMeshDict
         nRefBox = int(refBoxData[0])    # how many refinement box? minimum is 1
@@ -265,9 +257,6 @@ class WaveCaseMesher( OfCase ):
     
         print('Domain bounding box:')
         print("   ", [domain[0], domain[2], domain[4], domain[1], domain[3], domain[5]])
-
-        #polyfolder = os.path.join("constant","polyMesh")
-        #if not os.path.exists(polyfolder): os.makedirs(polyfolder)
         
         ptype = {}
         ptype['X0'], ptype['X1'] = "patch", "patch"
@@ -307,7 +296,6 @@ class WaveCaseMesher( OfCase ):
                                        createPatch = True,
                                        patches     = patches,
                                        ofp         = OFversion=='P')
-        # blockMeshDict.writeFile()
 
         # compute x,y data for refBox
         if (len(refBoxData) == 1):
@@ -362,17 +350,13 @@ class WaveCaseMesher( OfCase ):
                 
                 
         ###FORMER ROUTINE : createBackGroundMesh
-        #run blockMesh
-        # runCommand('blockMesh')
-        # runCommand('autoPatch -overwrite 80')
-        
         # how many refinement boxes ? minimum is 1 
         refBoxBB = []
         if len(refBoxData)>1:
             if nRefBox != (len(refBoxData)-1)/4.:
                 raise SystemExit('Error: invalid data for refinement boxes, ', refBoxData)
             for i in range(nRefBox):
-                refBoxBB.append([refBoxData[i*4], refBoxData[i*4+2], refBoxZdata[i], refBoxData[i*4+1], refBoxData[i*4+3], refBoxZdata[-i-1]])
+                refBoxBB.append([refBoxData[i*4+1], refBoxData[i*4+3], refBoxZdata[i], refBoxData[i*4+2], refBoxData[i*4+4], refBoxZdata[-i-1]])
         else:
             raise SystemExit('\nData for refinement box is missing.\nrefBoxData=[#n, #xmin,#xmax,#ymax,#ymax, #xmin,#xmax,#ymin,#ymax, ..., repeat n times]\nabort ...')
 
@@ -410,7 +394,7 @@ class WaveCaseMesher( OfCase ):
         
         refineMeshDicts = []
         setSelections = []
-
+        
         for i, BB in enumerate(refBoxBB):
             tmp = BB[4]
             BB[4]=domain[3] # YmaxDomain
@@ -605,20 +589,12 @@ class WaveCaseMesher( OfCase ):
                                                   geometricCut   = False))
         
         ###FORMER ROUTINE : createSnappyMesh
-        
-        #surfaceFeatureExtract (if not already done)
-        if not foamFileExist('./constant/triSurface/'+stlName+'.eMesh'):
-            print("\nExtract surface features from file: ./constant/triSurface/"+stlName)
-            surfaceFeatureExtractDict = SurfaceFeatureExtractDict(case = case,
-                                                                  stlname = stlName)
-            # surfaceFeatureExtractDict.writeFile()
-            # runCommand('surfaceFeatureExtract')
-        else:
-            print("Reuse existing file: "+'./constant/triSurface/'+stlName+'.eMesh')
-            
-        minThickness = float(shipBL[3])*shipBL[2]/(pow(shipBL[1],float(shipBL[0]-1)))
-    
+        #surfaceFeatureExtract
+        surfaceFeatureExtractDict = SurfaceFeatureExtractDict(case = case,
+                                                              stlname = stlName)
+
         #snappyHexMesh
+        minThickness = float(shipBL[3])*shipBL[2]/(pow(shipBL[1],float(shipBL[0]-1)))
         snappyHexMeshDict = SnappyHexMeshDict(case                       = case,
                                               stlname                    = stlName,
                                               castellatedMesh            = True,
@@ -645,7 +621,6 @@ class WaveCaseMesher( OfCase ):
                                               nSmoothScale               = 5,
                                               errorReduction             = 0.75,
                                               ofp                        = OFversion=='P')
-        # snappyHexMeshDict.writeFile()
         
         res =  cls( case, nProcs=nProcs,
                           controlDict=controlDict,
@@ -674,9 +649,6 @@ class WaveCaseMesher( OfCase ):
         
         res.writeFiles()
         return res
-        
-    # def writeFiles(self) :
-        # OfCase.writeFiles(self)
         
     def writeAllinit(self):
         #Allinit
@@ -728,16 +700,6 @@ class WaveCaseMesher( OfCase ):
                 f.write('refineMesh -dict "system/refineMeshDict.z"\n')
             f.write('}\n\n')
             
-            #refineFS
-            # f.write('function refineFS()\n')
-            # f.write('{\n')
-            # f.write('    REFLEVEL=$1\n')
-            # f.write('    PARAM=$2\n')
-            # f.write('    shift; shift\n')
-            # f.write('    echo "cellSet c0 new boxToCell $PARAM" | setSet -latestTime\n')
-            # f.write('    eval BVrefineMesh -dict "system/refineMeshDict.z" -refineUpToLevel $REFLEVEL $@\n')
-            # f.write('}\n\n')
-            
             #snap
             f.write('function snap()\n')
             f.write('{\n')
@@ -757,8 +719,8 @@ class WaveCaseMesher( OfCase ):
             f.write('(\n')
             f.write('    moveSTL\n')
             f.write('    blockMesh\n')
-            # f.write('    autoPatch -overwrite 80\n')
             f.write('    refineBox\n')
+            f.write('    surfaceFeatureExtract\n')
             f.write('    snap\n')
             f.write(') 2>&1 | tee log.mesh\n\n')
             if not (self.onLiger and self.nProcs>1): f.write('checkMesh -latestTime 2>&1 | tee log.checkMesh\n')
