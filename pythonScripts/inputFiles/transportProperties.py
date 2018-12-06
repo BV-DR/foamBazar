@@ -1,4 +1,4 @@
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
+from inputFiles import ReadWriteFile
 from PyFoam.Basics.DataStructures import Vector, Field, Dimension, DictProxy
 from os.path import join
 from inputFiles.compatOF import water, air
@@ -8,32 +8,35 @@ from inputFiles.compatOF import water, air
 """
 
 
-class TransportProperties(WriteParameterFile) :
+class TransportProperties(ReadWriteFile) :
    """
       TransportProperties dictionnary
    """
-   def __init__(self , case, rhoWater = 1000 , nuWater = 1e-6, rhoAir = 1. , nuAir = 1.48e-05, sigma = 0.0 ,  version = "foamStar") :
-      WriteParameterFile.__init__(self,  name = join(case, "constant" , "transportProperties" )  )
-      self.header["class"] = "dictionary"
+   @classmethod
+   def Build(cls , case, rhoWater = 1000 , nuWater = 1e-6, rhoAir = 1. , nuAir = 1.48e-05, sigma = 0.0 ,  version = "foamStar") :
+      res = cls( name = join(case, "constant" , "transportProperties" ) , read = False )
+      res.header["class"] = "dictionary"
 
-      if version == "foamStar" : self["phases"] = ["water" , "air"]
+      if version == "foamStar" : res["phases"] = ["water" , "air"]
       
       dw = DictProxy()
       dw["transportModel"] =  "Newtonian"
       dw["nu"]             =  "nu [0 2 -1 0 0 0 0] {}".format(nuWater)
       dw["rho"]            =  "rho [1 -3 0 0 0 0 0] {}".format(rhoWater)
-      self['"'+water[version]+'"'] = dw
+      res['"'+water[version]+'"'] = dw
 
       da = DictProxy() 
       da["transportModel"] =  "Newtonian",
       da["nu"]             =  "nu [0 2 -1 0 0 0 0] {}".format(nuAir)
       da["rho"]            =  "rho [1 -3 0 0 0 0 0] {}".format(rhoAir)
-      self['"'+air[version]+'"'] = da
+      res['"'+air[version]+'"'] = da
 
-      self[r"sigma"] = "sigma [1 0 -2 0 0 0 0] {}".format(sigma)
+      res[r"sigma"] = "sigma [1 0 -2 0 0 0 0] {}".format(sigma)
+      
+      return res
 
 if __name__ == "__main__" : 
-   print(TransportProperties("test" , version = "foamExtend"))
+   print(TransportProperties.Build("test" , version = "foamExtend"))
 
 
 

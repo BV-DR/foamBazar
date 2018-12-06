@@ -1,19 +1,21 @@
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
+from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile, ParsedParameterFile
 from PyFoam.Basics.DataStructures import DictProxy
 from os.path import join
 from inputFiles.compatOF import alpha, p_rgh
+from inputFiles import ReadWriteFile
 
 """
   Convenience class to simply write "fvSheme"
 """
 
-class FvSchemes(WriteParameterFile) :
+class FvSchemes(ReadWriteFile) :
     """
         FvSchemes dictionnary
     """
-    def __init__(self , case, version = "foamStar", prsJump = False,  orthogonalCorrection = False, blendCN = 0.9, simType = "steady", limitedGrad=False):
-
-        WriteParameterFile.__init__(self,  name = join(case, "system" , "fvSchemes" )  )
+    
+    @classmethod
+    def Build( cls , case, version = "foamStar", prsJump = False,  orthogonalCorrection = False, blendCN = 0.9, simType = "steady", limitedGrad=False):
+        res = cls( name = join(case, "system" , "fvSchemes" ) , read = False )
 
         #-------- ddtSchemes
         ddt = DictProxy()
@@ -26,8 +28,9 @@ class FvSchemes(WriteParameterFile) :
             ddt["ddt(U)"]  = "Euler"
         else:
             ddt["default"] = "CrankNicolson {}".format(blendCN)
-            ddt["ddt(U)"]  = "Euler"
-        self["ddtSchemes"] = ddt
+            ddt["ddt(rho,U)"]  = "backward"
+            ddt["ddt(U)"]  = "backward"
+        res["ddtSchemes"] = ddt
 
         #-------- gradSchemes
         grad = DictProxy()
@@ -37,7 +40,7 @@ class FvSchemes(WriteParameterFile) :
         else:
             grad["default"] = "Gauss linear"
             if prsJump : grad["snGradCorr(pd)"] = "interfaceGauss linear"
-        self["gradSchemes"] = grad
+        res["gradSchemes"] = grad
 
         #-------- divSchemes
         if simType=="steady": bounded = "bounded"
@@ -61,7 +64,7 @@ class FvSchemes(WriteParameterFile) :
                 div["div(phi,levelSetDiff)"] = "Gauss vanLeerDC"
                 div["div(phi,UInc)"]         = "Gauss linear"
                 div["div(phi,levelSetInc)"]  = "Gauss linear"
-        self["divSchemes"] = div
+        res["divSchemes"] = div
 
         #-------- laplacianSchemes
         lapl = DictProxy()
@@ -80,13 +83,13 @@ class FvSchemes(WriteParameterFile) :
             if prsJump : 
                 lapl["laplacian(rAU,pd)"] = "interfaceGauss linear interfaceUncorrected"
                 lapl["laplacian(rAU,p)"] = "interfaceGauss linear interfaceUncorrected"
-        self["laplacianSchemes"] = lapl
+        res["laplacianSchemes"] = lapl
 
         #-------- interpolationSchemes
         interp = DictProxy()
         interp["default"] = "linear"
         # interp["interpolate(y)"] = "linear"
-        self["interpolationSchemes"] = interp
+        res["interpolationSchemes"] = interp
 
         #-------- snGradSchemes
         sng = DictProxy()
@@ -99,7 +102,7 @@ class FvSchemes(WriteParameterFile) :
             else :
                 sng["default"] = "uncorrected"
                 if prsJump : sng["snGrad(pd)"] = "interfaceUncorrected"
-        self["snGradSchemes"] = sng
+        res["snGradSchemes"] = sng
 
         #-------- fluxRequired
         flux = DictProxy()
@@ -107,7 +110,9 @@ class FvSchemes(WriteParameterFile) :
         flux[p_rgh[version]] = ""
         flux["pcorr"]        = ""
         flux[alpha[version]] = ""
-        self["fluxRequired"] = flux
+        res["fluxRequired"] = flux
+        return res
 
 if __name__ == "__main__" :
-   print(FvSchemes("test" , version = "foamStar" , orthogonalCorrection = "implicit"))
+   a = FvSchemes.Build("test" , version = "foamStar" , orthogonalCorrection = "implicit") 
+   #a.writeFile()

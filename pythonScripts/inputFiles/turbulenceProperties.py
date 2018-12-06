@@ -1,4 +1,4 @@
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
+from inputFiles import ReadWriteFile
 from os.path import join
 from inputFiles.compatOF import alpha, p_rgh
 
@@ -8,52 +8,56 @@ from inputFiles.compatOF import alpha, p_rgh
 
 RASturbulenceModel = ["kOmegaSST" , ]  #navalFoam rhoKomegaSST
 
-class TurbulenceProperties(WriteParameterFile) :
+class TurbulenceProperties(ReadWriteFile) :
    """
       FvSchemes dictionnary
    """
-   def __init__(self , case, turbulenceModel = None ) :
+   @classmethod
+   def Build(cls , case, turbulenceModel = None ) :
 
-      WriteParameterFile.__init__(self,  name = join(case, "constant" , "turbulenceProperties" )  )
+      res = cls( join(case, "constant" , "turbulenceProperties" ) , read = False )
 
       if turbulenceModel == "laminar" :
-         self[ "simulationType" ] =  "laminar"
+         res[ "simulationType" ] =  "laminar"
       elif turbulenceModel in RASturbulenceModel:
-         self[ "simulationType" ] =  "RASModel"
+         res[ "simulationType" ] =  "RASModel"
       else :
          print("Unknown turbulence model")
+         
+      return res
 
 
-class RASProperties(WriteParameterFile) :
+class RASProperties(ReadWriteFile) :
    """
       RASProperties dictionnary
    """
-   def __init__(self , case, turbulenceModel = "laminar" ) :
-      WriteParameterFile.__init__(self,  name = join(case, "constant" , "RASProperties" )  )
-      self["RASModel"] = turbulenceModel
+   @classmethod
+   def Build(cls , case, turbulenceModel = "laminar" ) :
+      res = cls( name = join(case, "constant" , "RASProperties" ) , read = False )
+      res["RASModel"] = turbulenceModel
       
       if turbulenceModel == "laminar" :
-         self["turbulence"] = False
-         self["printCoeffs"] = False
+         res["turbulence"] = False
+         res["printCoeffs"] = False
       elif turbulenceModel in RASturbulenceModel :
-         self["turbulence"] = True
-         self["printCoeffs"] = True
+         res["turbulence"] = True
+         res["printCoeffs"] = True
       else :
          print("Unknown turbulence model")
          
 def writeTurbulenceProperties( case , turbulenceModel ) :
 
-   R = TurbulenceProperties(case , turbulenceModel )
+   R = TurbulenceProperties.Build(case , turbulenceModel )
    R.writeFile()
    
-   T = RASProperties(case , turbulenceModel )
+   T = RASProperties.Build(case , turbulenceModel )
    T.writeFile()
 
 if __name__ == "__main__" :
 #    print  TurbulenceProperties("laminar" )
 #    print  RASProperties("laminar" )
    
-   print(TurbulenceProperties(  ".", turbulenceModel = "kOmegaSST" ))
-   print(RASProperties("." , turbulenceModel = "kOmegaSST" ))
+   print(TurbulenceProperties.Build(  ".", turbulenceModel = "kOmegaSST" ))
+   print(RASProperties.Build("." , turbulenceModel = "kOmegaSST" ))
 
 
