@@ -22,6 +22,7 @@ from io import StringIO
 from fsTools import findBoundingBox, findSTLPatches, foamFileExist, translateStl, rotateStl, simpleGrading, simpleGradingN
 
 from ofCase import OfCase
+from ofMesher import OfMesher
 
 from inputFiles.fvSchemes import FvSchemes
 from inputFiles.fvSolution import FvSolution
@@ -35,36 +36,99 @@ from inputFiles.blockMeshDict import BlockMeshDict
 from inputFiles.setSelection import SetSelection
 from inputFiles.compatOF import namePatch
 
-class WaveCaseMesher( OfCase ):
+class SeakeepingMesher( OfMesher ):
     @classmethod
     def BuildFromAllParameters(cls,      case,
-                                         nProcs           = 4,
-                                         stlFiles         = None,
-                                         stlName          = 'ship',
-                                         cellBuffer       = 4, # cells between each level
-                                         domain           = [-3.0,2.5, -2.0,2.0, -1.5,0.5],
-                                         side             = 'port',
-                                         LOA              = None,
-                                         draft            = None,
-                                         refSurfExtra     = None,
-                                         heading          = 180,
-                                         fs               = None,
-                                         fsdZ             = None,
-                                         refBow           = False,
-                                         refBowLength     = None,
-                                         refStern         = False,
-                                         refSternLength   = None,
-                                         refFS            = True,
-                                         noLayers         = [],
-                                         fsCellRatio      = 4,
-                                         refBoxData       = [3],
-                                         refBoxType       = 'wave',
-                                         refBoxGrad       = 3,
-                                         shipBL           = [3, 1.3, 0.7, 0.7],
-                                         solver           = "snappyHexMesh",
-                                         OFversion        = 3,
-                                         onLiger          = False
+                                         nProcs           = 4,                              
+                                         stlFiles         = None,                           
+                                         stlName          = 'ship',                         
+                                         cellBuffer       = 4,                              
+                                         domain           = [-3.0,2.5, -2.0,2.0, -1.5,0.5], 
+                                         side             = 'port',                         
+                                         LOA              = None,                           
+                                         draft            = None,                           
+                                         refSurfExtra     = None,                           
+                                         heading          = 180,                            
+                                         fs               = None,                           
+                                         fsdZ             = None,                           
+                                         refBow           = False,                          
+                                         refBowLength     = None,                           
+                                         refStern         = False,                          
+                                         refSternLength   = None,                           
+                                         refFS            = True,                           
+                                         noLayers         = [],                             
+                                         fsCellRatio      = 4,                              
+                                         refBoxData       = [3],                            
+                                         refBoxType       = 'wave',                         
+                                         refBoxGrad       = 3,                              
+                                         shipBL           = [3, 1.3, 0.7, 0.7],             
+                                         solver           = "snappyHexMesh",                
+                                         OFversion        = 3,                              
+                                         onLiger          = False,                          
+                                         clean            = False                           
                                          ):
+        """Build mesh for CFD seakeeping case.
+        
+        Parameters
+        ----------
+        case : str
+            Name of case to create
+        nProcs : int, default 4
+            Number of processors used to build the mesh
+        stlFiles : list of stings
+            List of STl files names to be used for snapping
+        stlName : str, default 'ship'
+            Name used for final merged STL patch
+        cellBuffer : int, default 4
+            Number of cells between each level
+        domain : list of floats, default [-3.0,2.5,-2.0,2.0,-1.5,0.5]
+            Coeficients defining domain size (relative to LOA) [Xmin, Xmax, Ymin, Ymax, Zmin, Zmax]
+        side : str, default 'port'
+            Side to mesh ('port' or 'starboard')
+        LOA : float, default value taken from STL
+            LOA (taken from STL file by default)
+        draft : float
+            Draft
+        refSurfExtra :
+            TODO
+        heading : float, default 180.
+            Heading of ship
+        fs :
+            TODO
+        fsdZ :
+            TODO
+        refBow : boolean, default False
+            Logical defining if bow area should be refined
+        refBowLength : flaot
+            Lengh of selection for bow refinement
+        refStern : boolean, default False
+            Logical defining if stern area should be refined
+        refSternLength : boolean, default False
+            Lengh of selection for stern refinement
+        refFS: boolean, default True
+            TODO
+        noLayers: list
+            TODO
+        fsCellRatio : int, default 4
+            Ratio of free surface cells
+        refBoxData : list of int, default [3]
+            TODO
+        refBoxType : str, default 'wave'
+            Type of refinement box
+        refBoxGrad, int, default 3
+            TODO
+        shipBL : list of float, default [3, 1.3, 0.7, 0.7]
+            TODO
+        solver : str, default 'snappyHexMesh'
+            Solver to run
+        OFversion : int, default 3
+            OpenFOAM version
+        onLiger : boolean, default False
+            Logical defining if case is run on Liger cluster
+        clean : boolean, default False
+            Logical to force case overwrite
+     
+        """
 
         ###FORMER ROUTINE : UserInput
         # create ship.stl and compute bounding box(es)
@@ -634,7 +698,7 @@ class WaveCaseMesher( OfCase ):
                           setSelections=setSelections,
                           solver = solver,
                           isMesher = True,
-                          #overwrite = overwrite
+                          clean = clean
                           )
                           
         res.stlName = stlName
