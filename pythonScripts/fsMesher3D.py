@@ -1,4 +1,4 @@
-#!/usr/bin/env upython
+#!/usr/bin/env python
 
 #########################################################################
 # Filename: fsMesher.py                                                 #
@@ -939,12 +939,11 @@ def createBackGroundMesh(data):
         diff = -lastInnerBox[5] + shipBBzMax + distance + data.zCellSize[1]*data.cellBuffer
         for i in range(len(refBoxBB)):
             refBoxBB[i][5] += diff
-
     #print("debug: refBoxData: ", data.refBoxData)
     #for BB in refBoxBB:
     #    refineBox(BB, 'xy')
     #    pass    
-
+    
     for BB in refBoxBB:
         tmp = BB[4]
         BB[4]=data.domain[3] # YmaxDomain
@@ -1080,7 +1079,7 @@ def createSnappyMesh(data):
                                               finalLayerThickness        = finalLayerThickness,
                                               minThickness               = minThickness,
                                               featureAngle               = 60,
-                                              stlPatches                = data.shipPatches,
+                                              shipPatches                = data.shipPatches,
                                               noLayers                   = data.noLayers,
                                               maxNonOrtho                = 65,
                                               minTwist                   = 0.02,
