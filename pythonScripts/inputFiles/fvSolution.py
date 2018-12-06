@@ -2,10 +2,63 @@ import PyFoam
 from inputFiles import ReadWriteFile
 from PyFoam.Basics.DataStructures import DictProxy
 from os.path import join
-
+from copy import deepcopy
 """
   Convenience class to simply write "fvSheme"
 """
+
+
+
+GAMG_prec_1 = DictProxy()
+GAMG_prec_1["preconditioner"] = "GAMG"
+GAMG_prec_1["tolerance"] = 1e-7
+GAMG_prec_1["relTol"] = 0
+GAMG_prec_1["smoother"] = "DICGaussSeidel"
+GAMG_prec_1["nPreSweeps"] = 0
+GAMG_prec_1["nPostSweeps"] = 2
+GAMG_prec_1["nFinestSweeps"] = 2
+GAMG_prec_1["cacheAgglomeration"] = "false"
+GAMG_prec_1["nCellsInCoarsestLevel"] = 10
+GAMG_prec_1["agglomerator"] = "faceAreaPair"
+GAMG_prec_1["mergeLevels"] = 1
+
+
+GAMG_prec_2 = DictProxy()
+GAMG_prec_2["preconditioner"] = "GAMG"
+GAMG_prec_2["tolerance"] = 1e-7
+GAMG_prec_2["relTol"] = 0
+GAMG_prec_2["nVcycles"] = 2
+GAMG_prec_2["smoother"] = "DICGaussSeidel"
+GAMG_prec_2["nPreSweeps"] = 2
+GAMG_prec_2["nPostSweeps"] = 2
+GAMG_prec_2["nFinestSweeps"] = 2
+GAMG_prec_2["cacheAgglomeration"] = "true"
+GAMG_prec_2["nCellsInCoarsestLevel"] = 10
+GAMG_prec_2["agglomerator"] = "faceAreaPair"
+GAMG_prec_2["mergeLevels"] = 1
+
+GAMG_1 = DictProxy()
+GAMG_1["solver"] = "GAMG"
+GAMG_1["tolerance"] = 1e-8
+GAMG_1["relTol"] = 0
+GAMG_1["smoother"] = "DIC"
+GAMG_1["nPreSweeps"] = 0
+GAMG_1["nPostSweeps"] = 2
+GAMG_1["nFinestSweeps"] = 2
+GAMG_1["cacheAgglomeration"] = "true"
+GAMG_1["nCellsInCoarsestLevel"] = 10
+GAMG_1["agglomerator"] = "faceAreaPair"
+GAMG_1["mergeLevels"] = 1
+GAMG_1["minIter"] = 2
+
+PCG_1 = DictProxy()
+PCG_1["solver"] = "PCG"
+PCG_1["preconditioner"] = GAMG_prec_2
+PCG_1["tolerance"] = 1e-8
+PCG_1["relTol"] = 0
+PCG_1["maxIter"] = 1000
+PCG_1["minIter"] = 2
+
 
 class FvSolution(ReadWriteFile) :
     """
@@ -13,8 +66,7 @@ class FvSolution(ReadWriteFile) :
     """
     
     @classmethod
-    def Build(cls , case, fsiTol = 1e-8, useEuler=False, nOuterCorrectors=5, version = "foamStar") :
-
+    def Build(cls , case, fsiTol = 1e-8, useEuler=False, nOuterCorrectors=5, nInnerCorrectors = 4, version = "foamStar") :
         res = cls ( name = join(case, "system" , "fvSolution" ), read = False )
 
         #-------- ddtSchemes
@@ -33,63 +85,9 @@ class FvSolution(ReadWriteFile) :
         alpha["minIter"] = 2
         solvers['"alpha.water.*"'] = alpha
         
-        pcorr = DictProxy()
-        pcorr["solver"] = "PCG"
-        prec = DictProxy()
-        prec["preconditioner"] = "GAMG"
-        prec["tolerance"] = 1e-7
-        prec["relTol"] = 0
-        prec["smoother"] = "DICGaussSeidel"
-        prec["nPreSweeps"] = 0
-        prec["nPostSweeps"] = 2
-        prec["nFinestSweeps"] = 2
-        prec["cacheAgglomeration"] = "false"
-        prec["nCellsInCoarsestLevel"] = 10
-        prec["agglomerator"] = "faceAreaPair"
-        prec["mergeLevels"] = 1
-        pcorr["preconditioner"] = prec
-        pcorr["tolerance"] = 1e-8
-        pcorr["relTol"] = 0
-        pcorr["maxIter"] = 1000
-        pcorr["minIter"] = 2
-        solvers['"pcorr.*"'] = pcorr
-        
-        prgh = DictProxy()
-        prgh["solver"] = "GAMG"
-        prgh["tolerance"] = 1e-8
-        prgh["relTol"] = 0
-        prgh["smoother"] = "DIC"
-        prgh["nPreSweeps"] = 0
-        prgh["nPostSweeps"] = 2
-        prgh["nFinestSweeps"] = 2
-        prgh["cacheAgglomeration"] = "true"
-        prgh["nCellsInCoarsestLevel"] = 10
-        prgh["agglomerator"] = "faceAreaPair"
-        prgh["mergeLevels"] = 1
-        prgh["minIter"] = 2
-        solvers['p_rgh'] = prgh
-
-        prghf = DictProxy()
-        prghf["solver"] = "PCG"
-        prec = DictProxy()
-        prec["preconditioner"] = "GAMG"
-        prec["tolerance"] = 1e-7
-        prec["relTol"] = 0
-        prec["nVcycles"] = 2
-        prec["smoother"] = "DICGaussSeidel"
-        prec["nPreSweeps"] = 2
-        prec["nPostSweeps"] = 2
-        prec["nFinestSweeps"] = 2
-        prec["cacheAgglomeration"] = "true"
-        prec["nCellsInCoarsestLevel"] = 10
-        prec["agglomerator"] = "faceAreaPair"
-        prec["mergeLevels"] = 1
-        prghf["preconditioner"] = prec
-        prghf["tolerance"] = 1e-8
-        prghf["relTol"] = 0
-        prghf["maxIter"] = 1000
-        prghf["minIter"] = 2
-        solvers['p_rghFinal'] = prghf
+        solvers['p_rgh'] = deepcopy(PCG_1)
+        solvers['"(p_rghFinal|pcorr|pcorrFinal)"'] = deepcopy(PCG_1)
+                
         
         uke = DictProxy()
         uke["solver"] = "smoothSolver"
@@ -113,12 +111,13 @@ class FvSolution(ReadWriteFile) :
         solvers['"cellDisplacement.*"'] = cdisp
 
         pimp = DictProxy()
-        if not useEuler: pimp["EulerCells"] = "EulerCells"
+        if useEuler:
+            pimp["EulerCells"] = "EulerCells"
         pimp["momentumPredictor"] = "yes"
         pimp["nOuterCorrectors"] = nOuterCorrectors
         pimp["fsiTol"] = fsiTol
         pimp["fsiMaxIter"] = 23
-        pimp["nCorrectors"] = 4
+        pimp["nCorrectors"] = nInnerCorrectors
         pimp["nNonOrthogonalCorrectors"] = 0
         pimp["correctPhi"] = "no"
         pimp["moveMeshOuterCorrectors"] = "yes"

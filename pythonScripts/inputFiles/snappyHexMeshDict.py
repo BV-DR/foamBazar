@@ -1,5 +1,5 @@
 import PyFoam
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
+from inputFiles import ReadWriteFile
 from PyFoam.Basics.DataStructures import Dimension, Vector, DictProxy
 from os.path import join
 
@@ -16,26 +16,28 @@ feature = '''
 )
 '''
 
-class SnappyHexMeshDict(WriteParameterFile):
+class SnappyHexMeshDict(ReadWriteFile):
     """
        SnappyHexMeshDict dictionary
     """
-    def __init__(self , case, castellatedMesh=True, snap=True, addLayers=False, patchName="ship",
+    
+    @classmethod
+    def Build(cls , case, castellatedMesh=True, snap=True, addLayers=False, patchName="ship",
                         stlname="body", stlPatches=None, locationInMesh=[1e-2,5.0,0.5],
                         nCellsBetweenLevels=4, edgeLvl=1, hullLvl=[1,1], resolveFeatureAngle=45,
                         refinementLength=None, allowFreeStandingZoneFaces=True, snapTol=4.,
                         nSolveIter=30, relativeSizes=False, nSurfaceLayers=3, expansionRatio=1.3,
                         finalLayerThickness=0.1, minThickness=0.02, featureAngle=89, maxNonOrtho=55,
                         minTwist=0.05, nSmoothScale=5, errorReduction=0.85, noLayers=None, ofp=False):
-        WriteParameterFile.__init__(self,  name = join(case, "system" , "snappyHexMeshDict" )  )
+        res = cls(  name = join(case, "system" , "snappyHexMeshDict" ) , read = False )
         
         stlname = stlname.split('.stl')[0] #remove .stl extension
         
-        self["#inputMode"] = "overwrite"
+        res["#inputMode"] = "overwrite"
       
-        self["castellatedMesh"] = castellatedMesh
-        self["snap"] = snap
-        self["addLayers"] = addLayers
+        res["castellatedMesh"] = castellatedMesh
+        res["snap"] = snap
+        res["addLayers"] = addLayers
 
         geometry = DictProxy()
         body = DictProxy() 
@@ -43,7 +45,7 @@ class SnappyHexMeshDict(WriteParameterFile):
         body["name"]  = patchName
         body["patchInfo"]  = { "type" : "wall" }
         geometry['"'+stlname+'.stl"'] = body
-        self["geometry"] = geometry
+        res["geometry"] = geometry
         
         castel = DictProxy()
         castel["maxLocalCells"] = 1000000
@@ -67,7 +69,7 @@ class SnappyHexMeshDict(WriteParameterFile):
             castel["refinementRegions"] = {}
 
         castel["allowFreeStandingZoneFaces"] = allowFreeStandingZoneFaces
-        self["castellatedMeshControls"] = castel
+        res["castellatedMeshControls"] = castel
         
         snapControl = DictProxy()
         snapControl["nSmoothPatch"] = 3
@@ -78,7 +80,7 @@ class SnappyHexMeshDict(WriteParameterFile):
         snapControl["implicitFeatureSnap"] = False
         snapControl["explicitFeatureSnap"] = True
         snapControl["multiRegionFeatureSnap"] = False 
-        self["snapControls"] = snapControl
+        res["snapControls"] = snapControl
             
         
 
@@ -121,7 +123,7 @@ class SnappyHexMeshDict(WriteParameterFile):
             dlc = DictProxy()
             dlc["diffusivity"] = "quadratic inverseDistance 1("+patchName+")"
             addLayersControl["displacementLaplacianCoeffs"] = dlc
-        self["addLayersControls"] = addLayersControl
+        res["addLayersControls"] = addLayersControl
             
         mesh = DictProxy()
         mesh["maxNonOrtho"] = maxNonOrtho
@@ -140,13 +142,14 @@ class SnappyHexMeshDict(WriteParameterFile):
         mesh["errorReduction"] = errorReduction
         mesh["minVolCollapseRatio"] = 0.1
         mesh["relaxed"] = { "maxNonOrtho" : 75 }
-        self["meshQualityControls"] = mesh
+        res["meshQualityControls"] = mesh
 
-        self["mergeTolerance"] = 1e-6
-        self["debug"] = 0
+        res["mergeTolerance"] = 1e-6
+        res["debug"] = 0
+        return res
 
 if __name__ == "__main__" : 
-   print(SnappyHexMeshDict("test"))
+   print(SnappyHexMeshDict.Build("test"))
 
 
 

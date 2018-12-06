@@ -1,5 +1,5 @@
 import PyFoam
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
+from inputFiles import ReadWriteFile
 from PyFoam.Basics.DataStructures import Dimension, Vector, DictProxy
 from os.path import join
 
@@ -8,27 +8,31 @@ from os.path import join
 """
 
 
-class RefineMeshDict(WriteParameterFile) :
+class RefineMeshDict(ReadWriteFile) :
     """
        RefineMeshDict dictionary
     """
-    def __init__(self , case, orient=None, set="freesurface", refineUptoCellLevel=None, coordinateSystem="global", directions="normal", name=None, patch=None, useHexTopology=False, geometricCut=True, writeMesh=False):
+    
+    @classmethod
+    def Build(cls , case, orient=None, set="freesurface", refineUptoCellLevel=None, coordinateSystem="global", directions="normal", name=None, patch=None, useHexTopology=False, geometricCut=True, writeMesh=False):
+        """Create RefineMeshDict from a few parameter
+        """
         suffix = ''
         if orient is not None: suffix += '.'+orient
         if name is not None: suffix += '.'+name
         
-        WriteParameterFile.__init__(self,  name = join(case, "system" , "refineMeshDict"+suffix )  )
+        res = cls(join(case, "system" , "refineMeshDict"+suffix ), read = False  )
       
-        self["set"] = set
+        res["set"] = set
         if refineUptoCellLevel is not None:
-            self["refineUptoCellLevel"] = refineUptoCellLevel
+            res["refineUptoCellLevel"] = refineUptoCellLevel
         
-        self["coordinateSystem"] = coordinateSystem
+        res["coordinateSystem"] = coordinateSystem
         
         globalCoef = DictProxy()
         globalCoef["tan1"]  = "(1 0 0)"
         globalCoef["tan2"]  = "(0 1 0)"
-        self["globalCoeffs"] = globalCoef
+        res["globalCoeffs"] = globalCoef
         
         if orient is None:
             patchCoef = DictProxy()
@@ -39,17 +43,17 @@ class RefineMeshDict(WriteParameterFile) :
                 patchCoef["patch"] = "patchName"
                 patchCoef["tan1"]  = "(0 1 0)"
                 patchCoef["tan2"]  = "(0 0 1)"
-            self["patchLocalCoeffs"] = patchCoef
+            res["patchLocalCoeffs"] = patchCoef
         
-        self["directions"]  = '( {} )'.format(directions)
+        res["directions"]  = '( {} )'.format(directions)
         
-        self["useHexTopology"]  = useHexTopology
-        self["geometricCut"]  = geometricCut
-        self["writeMesh"]  = writeMesh
-         
+        res["useHexTopology"]  = useHexTopology
+        res["geometricCut"]  = geometricCut
+        res["writeMesh"]  = writeMesh
+        return res
 
 if __name__ == "__main__" : 
-   print(RefineMeshDict("test"))
+   print(RefineMeshDict.Build("test"))
 
 
 

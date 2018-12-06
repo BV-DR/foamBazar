@@ -1,5 +1,4 @@
-import PyFoam
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
+from inputFiles import ReadWriteFile
 from PyFoam.Basics.DataStructures import Dimension, Vector, DictProxy
 from os.path import join
 
@@ -8,12 +7,14 @@ from os.path import join
 """
 
 
-class SurfaceFeatureExtractDict(WriteParameterFile) :
+class SurfaceFeatureExtractDict(ReadWriteFile) :
     """
        SurfaceFeatureExtractDict dictionary
     """
-    def __init__(self , case, stlname="body"):
-        WriteParameterFile.__init__(self,  name = join(case, "system" , "surfaceFeatureExtractDict"))
+    
+    @classmethod
+    def Build(cls , case, stlname="body"):
+        res = cls( name = join(case, "system" , "surfaceFeatureExtractDict"), read = False)
         
         stlname = stlname.split('.stl')[0] #remove .stl extension
         
@@ -23,10 +24,11 @@ class SurfaceFeatureExtractDict(WriteParameterFile) :
         body["subsetFeatures"]  = { "nonManifoldEdges" : "yes",
                                     "openEdges" : "yes" }
         body["writeObj"]  = "yes"
-        self[stlname+".stl"] = body
+        res[stlname+".stl"] = body
+        return res
         
 if __name__ == "__main__" : 
-   print(SurfaceFeatureExtractDict("test"))
+   print(SurfaceFeatureExtractDict.Build("test"))
 
 
 

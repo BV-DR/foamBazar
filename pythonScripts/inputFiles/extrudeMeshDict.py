@@ -1,5 +1,5 @@
 import PyFoam
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
+from inputFiles import ReadWriteFile
 from PyFoam.Basics.DataStructures import Dimension, Vector, DictProxy
 from os.path import join
 from inputFiles.compatOF import namePatch
@@ -9,37 +9,39 @@ from inputFiles.compatOF import namePatch
 """
 
 
-class ExtrudeMeshDict(WriteParameterFile) :
+class ExtrudeMeshDict(ReadWriteFile) :
    """
       ExtrudeMeshDict dictionnary
    """
-   def __init__(self , case, sourceCase='"./"', exposedPatchName="inlet", nLayers=1, expansionRatio=1, thickness=0.1, mergeFaces=False, mergeTol=0, version='foamStar'):
-        WriteParameterFile.__init__(self,  name = join(case, "system" , "extrudeMeshDict" )  )
+   @classmethod
+   def Build(cls , case, sourceCase='"./"', exposedPatchName="inlet", nLayers=1, expansionRatio=1, thickness=0.1, mergeFaces=False, mergeTol=0, version='foamStar'):
+        res = cls ( name = join(case, "system" , "extrudeMeshDict" ), read = False )
       
         patch = namePatch[version]
         
-        self["constructFrom"] = "patch"
-        self["sourceCase"] = sourceCase
-        self["sourcePatches"] = [patch["outlet"]]
+        res["constructFrom"] = "patch"
+        res["sourceCase"] = sourceCase
+        res["sourcePatches"] = [patch["outlet"]]
         
-        self["exposedPatchName"] = patch[exposedPatchName]
+        res["exposedPatchName"] = patch[exposedPatchName]
         
-        self["flipNormals"] = True
+        res["flipNormals"] = True
         
-        self["extrudeModel"] = "linearNormal"
-        self["nLayers"] = nLayers
-        self["expansionRatio"] = expansionRatio
+        res["extrudeModel"] = "linearNormal"
+        res["nLayers"] = nLayers
+        res["expansionRatio"] = expansionRatio
       
         linCoef = DictProxy()
         linCoef["thickness"]  = thickness
-        self["linearNormalCoeffs"] = linCoef
+        res["linearNormalCoeffs"] = linCoef
         
-        self["mergeFaces"] = mergeFaces
-        self["mergeTol"] = mergeTol
+        res["mergeFaces"] = mergeFaces
+        res["mergeTol"] = mergeTol
+        return res
          
 
 if __name__ == "__main__" : 
-   print(ExtrudeMeshDict("test"))
+   print(ExtrudeMeshDict.Build("test"))
 
 
 

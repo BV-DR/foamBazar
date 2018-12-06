@@ -24,7 +24,7 @@ from subprocess import call, Popen
 from scipy import interpolate as interp
 from fsTools import findBoundingBox, findSTLPatches
 
-from ofCase import OfCase
+from ofMesher import OfMesher
 
 from inputFiles.fvSchemes import FvSchemes
 from inputFiles.fvSolution import FvSolution
@@ -36,7 +36,7 @@ from inputFiles.snappyHexMeshDict import SnappyHexMeshDict
 from inputFiles.surfaceFeatureExtractDict import SurfaceFeatureExtractDict
 from inputFiles.blockMeshDict import BlockMeshDict
 
-class DropTestMesher( OfCase ):
+class DropTestMesher( OfMesher ):
 
     @classmethod
     def BuildFromAllParameters(cls,      case,
@@ -66,7 +66,7 @@ class DropTestMesher( OfCase ):
                                          solver           = "snappyHexMesh",
                                          OFversion        = 3,
                                          onLiger          = False,
-                                         overwrite        = False
+                                         clean        = False
                                          ):
         
         if hullPatch is None:
@@ -85,37 +85,37 @@ class DropTestMesher( OfCase ):
         
         print('Create system folder input files')
         #controlDict
-        controlDict = ControlDict(case                = case,
-                                  version             = "snappyHexMesh",
-                                  endTime             = 100,
-                                  deltaT              = 1,
-                                  writeControl        = "runTime",
-                                  writeInterval       = 1,
-                                  writeCompression    = "off",
-                                  runTimeModifiable   = "true")
+        controlDict = ControlDict.Build(case                = case,
+                                        version             = "snappyHexMesh",
+                                        endTime             = 100,
+                                        deltaT              = 1,
+                                        writeControl        = "runTime",
+                                        writeInterval       = 1,
+                                        writeCompression    = "off",
+                                        runTimeModifiable   = "true")
                                   
     
         #fvSchemes
-        fvSchemes = FvSchemes(case     = case,
+        fvSchemes = FvSchemes.Build(case     = case,
                               simType  = "Euler" )
 
         #fvSolution
-        fvSolution = FvSolution(case = case )
+        fvSolution = FvSolution.Build(case = case )
         
         #decomposeParDict
-        decomposeParDict = DecomposeParDict(case   = case,
+        decomposeParDict = DecomposeParDict.Build(case   = case,
                                             nProcs = nProcs,
                                             method = "scotch")
         
         #extrudeMeshDict
-        extrudeMeshDict = ExtrudeMeshDict(case = case)
+        extrudeMeshDict = ExtrudeMeshDict.Build(case = case)
         
         #refineMeshDict
-        refineMeshDict = RefineMeshDict(case                = case,
+        refineMeshDict = RefineMeshDict.Build(case                = case,
                                         refineUptoCellLevel = 5)
                                         
         
-        refineMeshDict1 = RefineMeshDict(case           = case,
+        refineMeshDict1 = RefineMeshDict.Build(case           = case,
                                          orient         = 'z',
                                          set            = "c0",
                                          useHexTopology = True,
@@ -127,7 +127,7 @@ class DropTestMesher( OfCase ):
             orient = 'xyz'
             directions = "tan1 tan2 normal"
          
-        refineMeshDict2 = RefineMeshDict(case         = case,
+        refineMeshDict2 = RefineMeshDict.Build(case         = case,
                                          orient         = orient,
                                          set            = "c0",
                                          directions     = directions,
@@ -140,7 +140,7 @@ class DropTestMesher( OfCase ):
         #snappyHexMeshDict
         stlName = os.path.splitext(os.path.basename(stlFile))[0]
         referenceLength = min(Beam*0.5,Depth)
-        snappyHexMeshDict = SnappyHexMeshDict(case                = case,
+        snappyHexMeshDict = SnappyHexMeshDict.Build(case                = case,
                                               addLayers           = True,
                                               stlname             = stlName+'.stl',
                                               patchName           = hullPatch,
@@ -153,13 +153,13 @@ class DropTestMesher( OfCase ):
                                               ofp                 = OFversion=='P')
                                               
         #surfaceFeatureExtractDict
-        surfaceFeatureExtractDict = SurfaceFeatureExtractDict(case = case,
+        surfaceFeatureExtractDict = SurfaceFeatureExtractDict.Build(case = case,
                                                               stlname = stlName+'.stl')
 
         print('Create constant folder input files')
         #blockMeshDict
         if ndim==2:
-            blockMeshDict = BlockMeshDict( case      = case,
+            blockMeshDict = BlockMeshDict.Build( case      = case,
                                            ndim      = ndim,
                                            xmin      = xBounds[0],
                                            xmax      = xBounds[1],
@@ -174,7 +174,7 @@ class DropTestMesher( OfCase ):
                                            gridlvl   = gridLevel,
                                            ofp       = OFversion=='P')
         elif ndim==3:
-            blockMeshDict = BlockMeshDict( case      = case,
+            blockMeshDict = BlockMeshDict.Build( case      = case,
                                            ndim      = ndim,
                                            xmin      = xBounds[0]*Length,
                                            xmax      = xBounds[1]*Length,
@@ -195,13 +195,13 @@ class DropTestMesher( OfCase ):
                           fvSolution=fvSolution,
                           decomposeParDict=decomposeParDict,
                           extrudeMeshDict=extrudeMeshDict,
-                          refineMeshDicts=[refineMeshDict,refineMeshDict1,refineMeshDict2]
+                          refineMeshDicts=[refineMeshDict,refineMeshDict1,refineMeshDict2],
                           snappyHexMeshDict=snappyHexMeshDict,
                           surfaceFeatureExtractDict=surfaceFeatureExtractDict,
                           blockMeshDict=blockMeshDict,
                           solver = solver,
                           isMesher = True,
-                          overwrite = overwrite
+                          clean = clean
                           )
 
         res.section = section
@@ -233,7 +233,7 @@ class DropTestMesher( OfCase ):
         return res
         
     def writeFiles(self) :
-        OfCase.writeFiles(self)
+        OfMesher.writeFiles(self)
 
 
     def readSections(inputFile,sections=[]):

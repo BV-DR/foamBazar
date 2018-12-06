@@ -1,18 +1,17 @@
 from inputFiles import readWriteFile
 ReadWriteFile = readWriteFile.ReadWriteFile
 
-from inputFiles import fvSchemes, fvSolution, gravity, refineMeshDict, transportProperties, controlDict
+from inputFiles import gravity, refineMeshDict, transportProperties, controlDict
 from inputFiles import decomposeParDict, dynamicMeshDict, turbulenceProperties
 
-
-FvSchemes = fvSchemes.FvSchemes
-FvSolution = fvSolution.FvSolution
-ControlDict = controlDict.ControlDict
-DecomposeParDict = decomposeParDict.DecomposeParDict
-DynamicMeshDict = dynamicMeshDict.DynamicMeshDict
-TransportProperties = transportProperties.TransportProperties
-TurbulenceProperties = turbulenceProperties.TurbulenceProperties
-RASProperties = turbulenceProperties.RASProperties
+from inputFiles.fvSchemes import FvSchemes
+from inputFiles.fvSolution import FvSolution
+from inputFiles.controlDict import ControlDict
+from inputFiles.decomposeParDict import DecomposeParDict
+from inputFiles.dynamicMeshDict import DynamicMeshDict
+from inputFiles.transportProperties import TransportProperties
+from inputFiles.turbulenceProperties import TurbulenceProperties, RASProperties
+from inputFiles.blockMeshDict import BlockMeshDict
 
 from inputFiles import boundaryCondition
 
@@ -23,9 +22,7 @@ BoundaryAlpha = boundaryCondition.BoundaryAlpha
 BoundaryK = boundaryCondition.BoundaryK
 BoundaryOmega = boundaryCondition.BoundaryOmega
 
-from inputFiles import waveProperties
+from inputFiles.waveProperties import RelaxZone, WaveCondition, WaveProperties, noWaves
 
-RelaxZone = waveProperties.RelaxZone
-WaveCondition = waveProperties.WaveCondition
-WaveProperties = waveProperties.WaveProperties
-noWaves = waveProperties.noWaves
+
+from inputFiles.fileSystem import getFileClass, getFilePath

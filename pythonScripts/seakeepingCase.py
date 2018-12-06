@@ -6,23 +6,20 @@ from inputFiles import RelaxZone, noWaves, WaveProperties, DynamicMeshDict
 import shutil
 from meshTools import getBounds
 
+from inputFiles import getFileClass, getFilePath
 
 class SeakeepingCase(OfCase):
 
-    handledFiles = OfCase.handledFiles
-    additionalFiles = {}
-    additionalFiles["boundaryPressure"] = ("0/org/p_rgh", BoundaryPressure)
-    additionalFiles["boundaryVelocity"] = ("0/org/U", BoundaryVelocity)
-    additionalFiles["boundaryPointDisplacement"] = ("0/org/pointDisplacement", BoundaryPointDisplacement)
-    additionalFiles["boundaryAlpha"] = ("0/org/alpha.water", BoundaryAlpha)
-    handledFiles = {**handledFiles, **additionalFiles}
+    
+    additionalFiles = ["boundaryPressure" , "boundaryVelocity" ,"boundaryPointDisplacement" , "boundaryAlpha"]
+    handledFiles = OfCase.handledFiles + additionalFiles
 
     def __init__(self, *args, **kwargs):
         """
         Same arguments as OfCase + some boundary input files
         """
 
-        for fattr in self.additionalFiles.keys():
+        for fattr in self.additionalFiles:
             if fattr in kwargs.keys():
                 setattr(self, fattr,  kwargs.pop(fattr))
 

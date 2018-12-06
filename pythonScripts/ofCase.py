@@ -2,32 +2,36 @@
 import os
 import shutil
 import subprocess
-from inputFiles.turbulenceProperties import TurbulenceProperties, RASProperties
+
 from inputFiles.gravity import Gravity
 from inputFiles import ControlDict, FvSchemes, FvSolution, DecomposeParDict, DynamicMeshDict,  TransportProperties, WaveProperties
+from inputFiles.turbulenceProperties import TurbulenceProperties, RASProperties
 from fsTools import getFoamTimeFolders
 
+
+#Always written
+                    
 
 class OfCase(object):
     """ Base class for openFoam case
     Can be sub-classed to deal with more specific situation (example : DropTestCase, SeakeepingCase)
     """
     
-    handledFiles =   {  
-                    "controlDict"          : ("system/controlDict", ControlDict),
-                    "fvSchemes"            : ("system/fvSchemes", FvSchemes ),
-                    "fvSolution"           : ("system/fvSolution", FvSolution),
-                    "decomposeParDict"     : ("system/decomposeParDict", DecomposeParDict),
-                    "dynamicMeshDict"      : ("constant/dynamicMeshDict", DynamicMeshDict),
-                    "transportProperties"  : ("constant/transportProperties", TransportProperties),
-                    "waveProperties"       : ("constant/waveProperties", WaveProperties),
-
+    handledFiles =   [
+                    "controlDict"         
+                    "fvSchemes"           
+                    "fvSolution"      
+                    "decomposeParDict"
+                    "dynamicMeshDict" 
+                    "transportProperties"
+                    "waveProperties"     
+                      ]  
                     #Always written
                     #"rasProperties"        : ("constant/RASProperties", RASProperties),
                     #"turbulenceProperties" : ("constant/turbulenceProperties", TurbulenceProperties),
                     #"gravity" : ("constant/gravity", Gravity),
                     
-                 }
+                 
 
     def __init__(self, case, nProcs=1, controlDict=None,
                                        fvSchemes=None,
@@ -122,10 +126,10 @@ class OfCase(object):
         source = os.path.abspath(source)
         case = os.path.abspath(case)
         fileDict = {}
-        for f, (path, class_) in cls.handledFiles.items():
+        for f in cls.handledFiles:
             fname =  os.path.join(source, path )
             if os.path.exists(fname) :
-                tmpobj = class_( os.path.join(source, path ) , read = True)
+                tmpobj = getFileClass()( os.path.join(source, getFilePath(f) ) , read = True)
                 tmpobj.case = case
                 tmpobj.name = tmpobj.name.replace(source, case)
                 fileDict[ f ] = tmpobj

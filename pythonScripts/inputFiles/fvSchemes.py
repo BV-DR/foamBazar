@@ -29,12 +29,12 @@ class FvSchemes(ReadWriteFile) :
         else:
             ddt["default"] = "CrankNicolson {}".format(blendCN)
             ddt["ddt(rho,U)"]  = "backward"
-            ddt["ddt(U)"]  = "backward"
+            ddt["ddt(U)"]  = "Euler"
         res["ddtSchemes"] = ddt
 
         #-------- gradSchemes
         grad = DictProxy()
-        if limitedGrad:
+        if limitedGrad: #For bad mesh
             grad["default"] = "cellLimited leastSquares 1"
             grad["limitedGrad"] = "cellLimited Gauss linear 1"
         else:
