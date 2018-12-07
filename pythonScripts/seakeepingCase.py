@@ -42,6 +42,7 @@ class SeakeepingCase(OfCase):
                         adjustTimeStep=None,  # None for constant time step, [maxCo, maxAlphaCo, maxDeltaT] otherwise
                         nProcs=1,
                         OFversion=5,
+                        application = "foamStar",
                         *args, **kwargs):
         """Construct seakeeping case
         """
@@ -68,6 +69,9 @@ class SeakeepingCase(OfCase):
         #----------- Set waves
         res.inletRelax = RelaxZone(name="inlet", relax=True, waveCondition=res.wave, origin=[res.bounds[0][1], 0, 0], orientation=[-1, 0, 0], length=inletRelax)
         res.sideRelax = RelaxZone(name="side", relax=True, waveCondition=res.wave, origin=[0, res.bounds[1][1], 0], orientation=[0, -1, 0], length=sideRelax)
+        
+        res.application = application
+        
 
         if outletRelaxTarget == "still":
             res.outletRelax = RelaxZone(name="outlet", relax=True, waveCondition=noWaves, origin=[res.bounds[0][0], 0, 0], orientation=[1, 0, 0], length=outletRelax)
@@ -133,9 +137,9 @@ class SeakeepingCase(OfCase):
         """To be implemented in subclass"""
         with open(os.path.join(self.case, "Allrun"), "w") as f:
             if self.nProcs > 1:
-                f.write("mpirun -n {} foamStar -parallel 2>&1 | tee foamStar.log".format(self.nProcs))
+                f.write("mpirun -n {} {} -parallel 2>&1 | tee foamStar.log".format(self.nProcs, self.application))
             else:
-                f.write("foamStar 2>&1 | tee foamStar.log")
+                f.write("{} 2>&1 | tee foamStar.log".format(self.application))
 
     def runInit(self):
         import subprocess

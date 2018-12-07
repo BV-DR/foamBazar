@@ -172,7 +172,7 @@ class DropTestMesher( OfMesher ):
                                            sym       = symmetry,
                                            cellRatio = cellRatio,
                                            gridlvl   = gridLevel,
-                                           ofp       = OFversion=='P')
+                                           OFversion = OFversion)
         elif ndim==3:
             blockMeshDict = BlockMeshDict.Build( case      = case,
                                            ndim      = ndim,
@@ -187,7 +187,7 @@ class DropTestMesher( OfMesher ):
                                            sym       = symmetry,
                                            cellRatio = cellRatio,
                                            gridlvl   = gridLevel,
-                                           ofp       = OFversion=='P')
+                                           OFversion = OFversion)
 
         res =  cls( case, nProcs=nProcs,
                           controlDict=controlDict,
@@ -234,6 +234,9 @@ class DropTestMesher( OfMesher ):
         
     def writeFiles(self) :
         OfMesher.writeFiles(self)
+        
+        #Write additional files
+        
 
 
     def readSections(inputFile,sections=[]):

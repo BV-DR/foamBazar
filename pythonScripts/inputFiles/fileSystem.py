@@ -1,37 +1,34 @@
-
-
-from inputFiles import ControlDict, FvSchemes, FvSolution, DecomposeParDict, DynamicMeshDict,  TransportProperties, WaveProperties
-from inputFiles.turbulenceProperties import TurbulenceProperties, RASProperties
-from inputFiles import BoundaryPressure, BoundaryVelocity, BoundaryPointDisplacement, BoundaryAlpha,BlockMeshDict
+from copy import deepcopy
 
 default = {
-        "controlDict"          : ("system/controlDict", ControlDict),
-        "fvSchemes"            : ("system/fvSchemes", FvSchemes ),
-        "fvSolution"           : ("system/fvSolution", FvSolution),
-        "decomposeParDict"     : ("system/decomposeParDict", DecomposeParDict),
-        "dynamicMeshDict"      : ("constant/dynamicMeshDict", DynamicMeshDict),
-        "transportProperties"  : ("constant/transportProperties", TransportProperties),
-        "waveProperties"       : ("constant/waveProperties", WaveProperties),
-        "rasProperties"        : ("constant/RASProperties", RASProperties),
-        "turbulenceProperties" : ("constant/turbulenceProperties", TurbulenceProperties),
-        "boundaryPressure" : ("0/org/p_rgh", BoundaryPressure),
-        "boundaryVelocity" : ("0/org/U", BoundaryVelocity),
-        "boundaryPointDisplacement" : ("0/org/pointDisplacement", BoundaryPointDisplacement),
-        "boundaryAlpha" : ("0/org/alpha.water", BoundaryAlpha),
-        "blockMeshDict" : ("constant/polyMesh/blockMeshDict", BlockMeshDict),
-        "snappyHexMeshDict" : ("constant/polyMesh/blockMeshDict", BlockMeshDict),
-        "extrudeMeshDict" : ("constant/polyMesh/blockMeshDict", BlockMeshDict),
-        "surfaceFeatureExtractDict" : ("constant/polyMesh/blockMeshDict", BlockMeshDict)        
+        "controlDict"          : "system/controlDict",
+        "fvSchemes"            : "system/fvSchemes",
+        "fvSolution"           : "system/fvSolution",
+        "decomposeParDict"     : "system/decomposeParDict",
+        "dynamicMeshDict"      : "constant/dynamicMeshDict",
+        "transportProperties"  : "constant/transportProperties",
+        "waveProperties"       : "constant/waveProperties",
+        "rasProperties"        : "constant/RASProperties",
+        "turbulenceProperties" : "constant/turbulenceProperties", 
+        "boundaryPressure" : "0/org/p_rgh", 
+        "boundaryVelocity" : "0/org/U", 
+        "boundaryPointDisplacement" : "0/org/pointDisplacement", 
+        "boundaryAlpha" : "0/org/alpha.water", 
+        "blockMeshDict" : "constant/polyMesh/blockMeshDict",
+        "snappyHexMeshDict" : "constant/polyMesh/snappyHexMeshDict",
+        "extrudeMeshDict" : "constant/polyMesh/extrudeMeshDict",
+        "surfaceFeatureExtractDict" : "constant/polyMesh/surfaceFeatureExtractDict"
               }
 
-from copy import deepcopy
-plusDefault = deepcopy(default)
-plusDefault["blockMeshDict"] = ("system/blockMeshDict", BlockMeshDict)
+
+#Modification of file path in plus version
+plusVersion = deepcopy(default)
+plusVersion["blockMeshDict"] = "system/blockMeshDict"
+plusVersion["snappyHexMeshDict"] = "system/snappyHexMeshDict"
+
 
 def getFilePath( fileName , OFversion = 5) :
-    
-    return default[fileName][0]
-
-
-def getFileClass( fileName) :
-    return default[fileName][1]
+    if "p" in OFversion.lower() :
+        return plusVersion[fileName][0]
+    else : 
+        return default[fileName][0]

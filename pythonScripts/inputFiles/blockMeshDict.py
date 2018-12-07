@@ -1,5 +1,6 @@
 import numpy as np
 from inputFiles import ReadWriteFile
+from inputFiles.fileSystem import getFilePath
 from PyFoam.Basics.DataStructures import Dimension, Vector, DictProxy
 from os.path import join
 
@@ -68,11 +69,11 @@ class BlockMeshDict(ReadWriteFile) :
    @classmethod
    def Build(cls , case, ndim = 3, waveMesh=False, xmin=-0.05, xmax=0.05, ymin=None, ymax=None, zmin=None, zmax=None,
                        fsmin=None, fsmax=None, Xcells=None, Ycells=12, Zcells=None, cellRatio=1, Zgrading=None, sym=False,
-                       createPatch= True, patches=None, gridlvl=1, ofp=False):
+                       createPatch= True, patches=None, gridlvl=1, OFversion=5):
        
        
-        if ofp: res = cls(  name = join(case, "system" , "blockMeshDict" ), read = False )
-        else:   res = cls(  name = join(case, "constant" , "polyMesh", "blockMeshDict" ), read = False )
+        res = cls(  name = join(case, getFilePath("blockMeshDict", OFversion) ), read = False )
+
         res["fastMerge"]  = "yes"
         res["convertToMeters"]  = 1
         
