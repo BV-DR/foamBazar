@@ -208,7 +208,7 @@ class BoundaryPressure(ReadWriteFile) :
 
 class BoundaryPointDisplacement(ReadWriteFile) :
     @classmethod
-    def Build(cls , case,  symmetry=1, namePatch=namePatch, case2D=False, version="foamStar") :
+    def Build(cls , case,  symmetry=1, namePatch=namePatch, case2D=False, cpMorphing = False, version="foamStar") :
         
         patch = namePatch[version]
         res = cls(name = join(case, "0" ,"org",  pointDisp[version]) , read = False )
@@ -230,7 +230,12 @@ class BoundaryPointDisplacement(ReadWriteFile) :
                 bf[patch["side2"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
             bf[patch["bottom"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
             bf[patch["top"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
-            bf[patch["structure"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
+            
+            if cpMorphing :
+                bf[patch["structure"]] = { "type" : "calculated" }
+            else :
+                bf[patch["structure"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
+            
             bf["InternalFaces"] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
             res["boundaryField"] = bf
         return res

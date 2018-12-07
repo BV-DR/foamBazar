@@ -56,6 +56,9 @@ class SeakeepingCase(OfCase):
         res = cls(case=case, **kwargs)
         res.nProcs = nProcs
         res.wave = wave
+        
+        res.meshMotion = meshMotion
+        
         res.speed = speed
         res.controlDict = ControlDict.Build(case, deltaT=deltaT, adjustTimeStep=adjustTimeStep, endTime=endTime)
         res.decomposeParDict = DecomposeParDict.Build(case, nProcs=res.nProcs, version=OFversion)
@@ -100,7 +103,7 @@ class SeakeepingCase(OfCase):
         """
         self.boundaryPressure = BoundaryPressure.Build(self.case, self.symmetry)
         self.boundaryVelocity = BoundaryVelocity.Build(self.case, speed=self.speed, symmetry=self.symmetry, relaxZone=True)
-        self.boundaryPointDisplacement = BoundaryPointDisplacement.Build(self.case, self.symmetry)
+        self.boundaryPointDisplacement = BoundaryPointDisplacement.Build(self.case, self.symmetry, cpMorphing = (self.meshMotion.lower() == "cpmorphing") )
         self.boundaryAlpha = BoundaryAlpha.Build(self.case, self.symmetry)
 
     def writeAllinit(self, batchName="Allinit"):
