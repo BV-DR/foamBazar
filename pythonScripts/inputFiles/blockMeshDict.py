@@ -1,11 +1,8 @@
+from os.path import join
 import numpy as np
 from inputFiles import ReadWriteFile
-from PyFoam.Basics.DataStructures import Dimension, Vector, DictProxy
-from os.path import join
+from PyFoam.Basics.DataStructures import DictProxy
 
-"""
-  Convenience class to simply write blockMeshDict
-"""
 
 vertices = '''
 (
@@ -69,6 +66,63 @@ class BlockMeshDict(ReadWriteFile) :
    def Build(cls , case, ndim = 3, waveMesh=False, xmin=-0.05, xmax=0.05, ymin=None, ymax=None, zmin=None, zmax=None,
                        fsmin=None, fsmax=None, Xcells=None, Ycells=12, Zcells=None, cellRatio=1, Zgrading=None, sym=False,
                        createPatch= True, patches=None, gridlvl=1, ofp=False):
+        """Build blockMeshDict file from a few parameters.
+        
+        Parameters
+        ----------
+        case : str
+            Name of case
+            
+        ndim : int, default 3
+            Number of dimentions of mesh (2 for 2D mesh or 3 for 3D mesh)
+        sym : bool, default False
+            Logical defining if symmetric mesh should be created
+        
+        waveMesh : bool, default False
+            Logical defining if mesh should be defined according to wave Mesh good practices
+        
+        xmin : float, default -0.05
+            Minimum position of X domain boundary
+        xmax : float, default 0.05
+            Maximum position of X domain boundary
+        ymin : float
+            Minimum position of Y domain boundary
+        ymax : float
+            Maximum position of Y domain boundary
+        zmin : float
+            Minimum position of Z domain boundary
+        zmax : float
+            Maximum position of Z domain boundary
+        fsmin : float
+            Minimum position of free surface zone
+        fsmax : float
+            Maximum position of free surface zone
+            
+        Xcells : int
+            Number of cells in X direction
+        Ycells : int, default 12
+            Number of cells in Y direction
+        Zcells : int
+            Number of cells in Z direction
+        Zgrading : 
+            TODO
+        cellRatio : int, default 1
+            If not waveMesh, Y/Z cell ratio 
+            
+        createPatch : bool, default True
+            Logical defining is patches should be created by blockMesh
+        patches : list
+            If createPatch is True, user can define a custom patch definition (refer to blockMesh help
+            
+        gridlvl : int, default 1
+            TODO
+        ofp: bool, default False
+            Set to True if snappyHewMesh is used with openFOAM "Plus" version
+        
+        """
+            
+       
+       
        
        
         if ofp: res = cls(  name = join(case, "system" , "blockMeshDict" ), read = False )
@@ -116,7 +170,7 @@ class BlockMeshDict(ReadWriteFile) :
         res["edges"]   = '()'
        
         if createPatch:
-            if patches is not None: self["patches"] = patches
+            if patches is not None: res["patches"] = patches
             else: res["patches"] = default_patches
         else:
            faces = DictProxy()

@@ -5,13 +5,72 @@ from inputFiles.waveProbes import setWaveProbes
 from inputFiles.compatOF import application, surfaceElevation
 
 class ControlDict( ReadWriteFile ) :
-
+   """
+      controlDict dictionary
+   """
+   
     @classmethod
     def Build(cls, case, deltaT, endTime, startFrom="latestTime", startTime=0., autoDeltaTCo=None, writeControl="timeStep", 
               writeInterval=1, purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no",
               writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputInterval=1,
               outputMotions=False, vbmPatch=None, forcesPatch=None, pressuresPatch=None, outputLocalMotions=False, rhoWater = 1000,
               OFversion=5, version="foamStar"):
+        """Build controlDict file from a few parameters.
+        
+        Parameters
+        ----------
+        case : str
+            Name of case
+        deltaT : float
+            Simulation time step
+        endTime : flaot
+            Simulation end time
+        startFrom : str, default 'latestTime'
+            startFrom option
+        startTime : flaot, default 0.
+            Simulaiton start time
+        
+        autoDeltaTCo :
+            TODO
+        writeControl : str, default 'timeStep'
+            writeControl option
+        writeInterval : int, default 1
+            writeInterval option
+        purgeWrite : int, default 0
+            purgeWrite option
+        writePrecision : int, default 7
+            writePrecision option
+        writeCompression : str, defaut 'compressed'
+            writeCompression option
+        runTimeModifiable : str, default 'no'
+            runTimeModifiable option
+        writeProbesInterval :
+            TODO
+        waveProbesList :
+            TODO
+        adjustTimeStep : 
+            TODO
+        outputInterval : int, default 1
+            Output interval
+        outputMotions : bool, default False
+            Logical defining if global motions should be output
+        vbmPatch : list of str
+            List of patches names to compute VBM
+        forcesPatch : list of str
+            List of patches names to compute forces
+        pressuresPatch :  list of str
+            List of patches names to compute pressure
+        outputLocalMotions : bool, default False
+            Logical defining if local motions shoudl be output
+            
+        rhoWater : flaot, default 1000.
+            Fuild density
+        OFversion : int, default 5
+            OpenFOAM version used
+        version : str, default 'foamStar'
+            OpenFOAM distribution used
+        
+        """
 
         res = cls(join(case , "system" , "controlDict" ), read = False)
         res["application"]       = application[version]

@@ -12,62 +12,87 @@
 #                  with ship and 3D wave propagation.                   #
 #########################################################################
 
-import re
-import os, sys, argparse
+import os
 import shutil
-import time, datetime
 import math as mt
 import numpy as np
-from io import StringIO
-from fsTools import findBoundingBox, findSTLPatches, foamFileExist, translateStl, rotateStl, simpleGrading, simpleGradingN
+from fsTools import findBoundingBox, findSTLPatches, translateStl, rotateStl, simpleGrading, simpleGradingN
 
-from ofCase import OfCase
 from ofMesher import OfMesher
 
 from inputFiles.fvSchemes import FvSchemes
 from inputFiles.fvSolution import FvSolution
 from inputFiles.controlDict import ControlDict
 from inputFiles.decomposeParDict import DecomposeParDict
-from inputFiles.extrudeMeshDict import ExtrudeMeshDict
 from inputFiles.refineMeshDict import RefineMeshDict
 from inputFiles.snappyHexMeshDict import SnappyHexMeshDict
 from inputFiles.surfaceFeatureExtractDict import SurfaceFeatureExtractDict
 from inputFiles.blockMeshDict import BlockMeshDict
 from inputFiles.setSelection import SetSelection
-from inputFiles.compatOF import namePatch
 
 class SeakeepingMesher( OfMesher ):
+    """Class used to generate a CFD mesh for seakeeping cases.
+    It should be called by a python script as presented in the following example
+    
+    Example
+    -------
+    >>> import os
+    >>> #
+    >>> # Import meshing routine from foamBazar
+    >>> # WARNING : foamBazar/pythonScripts must be added to PYTHONPATH !
+    >>> from seakeepingMesher import SeakeepingMesher
+    >>> #
+    >>> # Case name and additional optional parameters
+    >>> case = "mesh"
+    >>> myParams = {'nProcs'        : 12,
+    >>>             'stlFiles'      : ['hull.stl','deck.stl','stern.stl'],
+    >>>             'draft'         : 11.75,
+    >>>             'domain'        : [-2.78,3.,0,2.,-0.855,0.45],
+    >>>             'fsZone'        : [8,7],
+    >>>             'fsCellHeight'  : 1,
+    >>>             'refFS'         : False,
+    >>>             'onLiger'       : True
+    >>>             }
+    >>> #
+    >>> # Call routines for meshing here
+    >>> mesh = SeakeepingMesher.BuildFromAllParameters( case, **myParams )
+    >>> mesh.writeFiles()
+    >>> fname = os.path.join(case,'log.input')
+    >>> with open(fname,'w') as f: f.write(str(myParams))
+    >>> mesh.runInit()
+    
+    """
     @classmethod
-    def BuildFromAllParameters(cls,      case,
-                                         nProcs           = 4,                              
-                                         stlFiles         = None,                           
-                                         stlName          = 'ship',                         
-                                         cellBuffer       = 4,                              
-                                         domain           = [-3.0,2.5, -2.0,2.0, -1.5,0.5], 
-                                         side             = 'port',                         
-                                         LOA              = None,                           
-                                         draft            = None,                           
-                                         refSurfExtra     = None,                           
-                                         heading          = 180,                            
-                                         fs               = None,                           
-                                         fsdZ             = None,                           
-                                         refBow           = False,                          
-                                         refBowLength     = None,                           
-                                         refStern         = False,                          
-                                         refSternLength   = None,                           
-                                         refFS            = True,                           
-                                         noLayers         = [],                             
-                                         fsCellRatio      = 4,                              
-                                         refBoxData       = [3],                            
-                                         refBoxType       = 'wave',                         
-                                         refBoxGrad       = 3,                              
-                                         shipBL           = [3, 1.3, 0.7, 0.7],             
-                                         solver           = "snappyHexMesh",                
-                                         OFversion        = 3,                              
-                                         onLiger          = False,                          
-                                         clean            = False                           
-                                         ):
-        """Build mesh for CFD seakeeping case.
+    def BuildFromAllParameters(cls,    case,
+                                       nProcs           = 4,
+                                       stlFiles         = None,
+                                       stlName          = 'ship',
+                                       refCellBuffer       = 4,
+                                       domain           = [-3.0,2.5, -2.0,2.0, -1.5,0.5], 
+                                       side             = 'port',
+                                       LOA              = None,
+                                       draft            = None,
+                                       heading          = 180,
+                                       fsZone           = None,
+                                       fsCellHeight     = None,
+                                       fsCellRatio      = 4,
+                                       refBow           = False,
+                                       refBowLength     = None,
+                                       refStern         = False,
+                                       refSternLength   = None,
+                                       refFS            = True,
+                                       refBoxType       = 'wave',
+                                       refBoxData       = [3],
+                                       refBoxRatio       = 3,
+                                       refSurfExtra     = None,
+                                       shipBL           = [3, 1.3, 0.7, 0.7],
+                                       noLayers         = [],
+                                       solver           = "snappyHexMesh",
+                                       OFversion        = 3,
+                                       onLiger          = False,
+                                       clean            = False
+                                       ):
+        """Build mesh for CFD seakeeping mesh form a few parameters.
         
         Parameters
         ----------
@@ -79,46 +104,59 @@ class SeakeepingMesher( OfMesher ):
             List of STl files names to be used for snapping
         stlName : str, default 'ship'
             Name used for final merged STL patch
-        cellBuffer : int, default 4
-            Number of cells between each level
         domain : list of floats, default [-3.0,2.5,-2.0,2.0,-1.5,0.5]
-            Coeficients defining domain size (relative to LOA) [Xmin, Xmax, Ymin, Ymax, Zmin, Zmax]
+            Coeficients defining overall domain size (relative to LOA) [Xmin, Xmax, Ymin, Ymax, Zmin, Zmax]
         side : str, default 'port'
-            Side to mesh ('port' or 'starboard')
-        LOA : float, default value taken from STL
-            LOA (taken from STL file by default)
+            Side to mesh ('port', 'starboard' or 'both')
+        LOA : float, default value computed from STL
+            Characteristic length (computed from STL file by default)
         draft : float
-            Draft
-        refSurfExtra :
-            TODO
+            Draft (measured from keel)
+                if defined, ship.stl will be moved into position
+                if "None", no operation will be performed to ship.stl
         heading : float, default 180.
-            Heading of ship
-        fs :
-            TODO
-        fsdZ :
-            TODO
+            Heading of ship (180 is head sea)
+            
+        fsZone : list of floats, default [0.02*LOA, 0.01*LOA]
+            Free surface zone [fsZmin, fsZmax]
+        fsCellHeight : float, default fsZmax/3
+            Cell height within the free surface zone
+        fsCellRatio : int, default 4
+            Cell ratio length/height within the free surface zone
+            
         refBow : boolean, default False
             Logical defining if bow area should be refined
         refBowLength : flaot
-            Lengh of selection for bow refinement
+            Coefficient defining lengh of selection for bow refinement (relatively to LOA)
         refStern : boolean, default False
             Logical defining if stern area should be refined
         refSternLength : boolean, default False
-            Lengh of selection for stern refinement
+            Coefficient defining lengh of selection for stern refinement (relatively to LOA)
         refFS: boolean, default True
-            TODO
-        noLayers: list
-            TODO
-        fsCellRatio : int, default 4
-            Ratio of free surface cells
-        refBoxData : list of int, default [3]
-            TODO
+            Additional vertical refinement in the free surface zone near the ship
+            
         refBoxType : str, default 'wave'
-            Type of refinement box
-        refBoxGrad, int, default 3
-            TODO
+            Type of refinement box(es) in the domain ('wave', 'kelvin' or 'both')
+        refBoxData : list of int, default [3]
+            Data for defining refinement boxes
+            The first number is the number of boxes.
+            Dimension of each box is given as 4 floating numbers.
+            If only the number of boxes is given, each box will be automatically dimensioned according to "refBoxRatio"
+            format: [number of boxes]
+                    [number of boxes, Xmin, Xmax, Ymin, Ymax, Xmin,Xmax,Ymin,Ymax, ...]
+        refBoxRatio, int, default 3
+            Ratio smallest/largest refinement boxes
+        refCellBuffer : int, default 4
+            Number of cells between each refinement level
+        refSurfExtra : str
+            STL file of regions where extra refinement in bow/stern areas with strong curvatures will be applied.
+            
         shipBL : list of float, default [3, 1.3, 0.7, 0.7]
-            TODO
+             Dimension for boundary layers (relative to cell size)
+             format: [nLayers, layerGrowth, finalLayerThickness, minThicknessRatio]
+        noLayers: list of str
+            Disable layers creation on selected patches (e.g. deck)
+            
         solver : str, default 'snappyHexMesh'
             Solver to run
         OFversion : int, default 3
@@ -171,8 +209,8 @@ class SeakeepingMesher( OfMesher ):
             shipBBRot = shipBB
 
         LOA = shipBB[3]-shipBB[0] if LOA==None else LOA
-        fs = [0.02*LOA, 0.01*LOA] if fs==None else fs
-        fsdZ = fs[1]/3 if fsdZ==None else fsdZ
+        fsZone = [0.02*LOA, 0.01*LOA] if fsZone==None else fsZone
+        fsCellHeight = fsZone[1]/3 if fsCellHeight==None else fsCellHeight
         
         #set default refinement values
         if (refBow and refBowLength==None): refBowLength=0.20*LOA
@@ -213,9 +251,9 @@ class SeakeepingMesher( OfMesher ):
         ###FORMER ROUTINE : createBlockMeshDict
         nRefBox = int(refBoxData[0])    # how many refinement box? minimum is 1
     
-        # The inner cell size is defined by fsdZ
+        # The inner cell size is defined by fsCellHeight
         dZ = [ 0 for i in range(nRefBox+2)]
-        dZ[nRefBox+1] = round(fsdZ, 5)
+        dZ[nRefBox+1] = round(fsCellHeight, 5)
         for i in range(nRefBox, -1, -1):
             dZ[i] = dZ[i+1]*2  
 
@@ -245,38 +283,38 @@ class SeakeepingMesher( OfMesher ):
     
         # compute vertical thickness of each box
         # All boxes must be larger than the ship's bounding box
-        fsCellTop = int(mt.ceil(round(mt.fabs(fs[1])/(fsdZ),1)))
-        fsCellBottom = int(mt.ceil(round(mt.fabs(fs[0])/(fsdZ),1)))
-        fsZmax = fsCellTop*fsdZ
-        fsZmin = -fsCellBottom*fsdZ
-        fs[1] = fsZmax
-        fs[0] = fsZmin
+        fsCellTop = int(mt.ceil(round(mt.fabs(fsZone[1])/(fsCellHeight),1)))
+        fsCellBottom = int(mt.ceil(round(mt.fabs(fsZone[0])/(fsCellHeight),1)))
+        fsZmax = fsCellTop*fsCellHeight
+        fsZmin = -fsCellBottom*fsCellHeight
+        fsZone[1] = fsZmax
+        fsZone[0] = fsZmin
 
         # z-cuts in lower block
-        lowerCutNCells = cellBuffer
-        lowerCut = fs[0] - dZ[1]*lowerCutNCells;
-        while (lowerCut>(shipBBRot[2]-cellBuffer*dZ[1])) | (lowerCutNCells < cellBuffer):
+        lowerCutNCells = refCellBuffer
+        lowerCut = fsZone[0] - dZ[1]*lowerCutNCells;
+        while (lowerCut>(shipBBRot[2]-refCellBuffer*dZ[1])) | (lowerCutNCells < refCellBuffer):
             lowerCut -= dZ[1]
             lowerCutNCells += 1
         lowerCutNCells = [lowerCutNCells]
         lowerCut = [lowerCut]   
 
         #for i in range(1, nRefBox):
-        #    lowerCutNCells.append(cellBuffer)
-        #    lowerCut.append(lowerCut[i-1] - cellBuffer*dZ[i+1])
+        #    lowerCutNCells.append(refCellBuffer)
+        #    lowerCut.append(lowerCut[i-1] - refCellBuffer*dZ[i+1])
     
         # z-cuts in upper block
-        upperCutNCells = cellBuffer
-        upperCut = fs[1] + dZ[1]*upperCutNCells;
-        while (upperCut<(shipBBRot[5]+cellBuffer*dZ[1])) | (upperCutNCells < cellBuffer):
+        upperCutNCells = refCellBuffer
+        upperCut = fsZone[1] + dZ[1]*upperCutNCells;
+        while (upperCut<(shipBBRot[5]+refCellBuffer*dZ[1])) | (upperCutNCells < refCellBuffer):
             upperCut += dZ[1]
             upperCutNCells += 1
         upperCutNCells = [upperCutNCells]
         upperCut = [upperCut]
 
         #for i in range(1, nRefBox):
-        #    upperCutNCells.append(cellBuffer)
-        #    upperCut.append(upperCut[i-1] + cellBuffer*dZ[i+1])
+        #    upperCutNCells.append(refCellBuffer)
+        #    upperCut.append(upperCut[i-1] + refCellBuffer*dZ[i+1])
 
         # compute grading at the top/bottom block(s)
         ZratioTop = cellWidth/dZ[-nRefBox-1]
@@ -288,7 +326,7 @@ class SeakeepingMesher( OfMesher ):
         ZratioBottom = 1.0/ZratioBottom
 
         # collect all z-cut
-        zAllCut = lowerCut[::-1] + [fs[0], 0, fs[1]] + upperCut + [domain[5]]
+        zAllCut = lowerCut[::-1] + [fsZone[0], 0, fsZone[1]] + upperCut + [domain[5]]
         zAllCutNCells = [ZcellsBottom] + lowerCutNCells[::-1] + [fsCellBottom, fsCellTop] + upperCutNCells + [ZcellsTop]
         zAllCutRatio = [ZratioBottom] + list(1 for i in range(len(lowerCut)*2+2)) + [ZratioTop]
 
@@ -306,13 +344,13 @@ class SeakeepingMesher( OfMesher ):
         refBoxZdata = [zGrid[0]]*nRefBox + [zGrid[-1]]*nRefBox
         for i in range(nRefBox):
             for j in range(len(zGridDelta)):
-                if zGrid[j] >= fs[0]:
+                if zGrid[j] >= fsZone[0]:
                     break
                 if zGridDelta[j] < dx*1.25:
                     refBoxZdata[i] = zGrid[j]
                     break
             for j in range(len(zGridDelta)):
-                if zGrid[-j-1] <= fs[1]:
+                if zGrid[-j-1] <= fsZone[1]:
                     break
                 if zGridDelta[-j-1] < dx*1.25:
                     refBoxZdata[-i-1] = zGrid[-j-1]
@@ -363,7 +401,7 @@ class SeakeepingMesher( OfMesher ):
 
         # compute x,y data for refBox
         if (len(refBoxData) == 1):
-            grad = simpleGrading(nRefBox+1, refBoxGrad)
+            grad = simpleGrading(nRefBox+1, refBoxRatio)
             xGradMin = [mt.fabs(val-1.0) for val in grad[::-1]]
             xGradMax = grad
             yGradMin = [mt.fabs(val-1.0) for val in grad[::-1]]
@@ -428,31 +466,31 @@ class SeakeepingMesher( OfMesher ):
         nxy = int(mt.log(mt.fabs(float(fsCellRatio)), float(2))) - 1
 
         # refine free surface (using proximity method)
-        distance = fsdZ*cellBuffer*2.0*(nxy-1.0 + nRefBox-1.0 + float(refBow | refStern | refFS))
+        distance = fsCellHeight*refCellBuffer*2.0*(nxy-1.0 + nRefBox-1.0 + float(refBow | refStern | refFS))
     
         lastInnerBox = refBoxBB[-1]
-        if lastInnerBox[0] > (shipBBRot[0] - distance - cellWidth*cellBuffer/mt.pow(2.0, float(nRefBox))):
-            diff = lastInnerBox[0] - (shipBBRot[0] - distance - cellWidth*cellBuffer/mt.pow(2.0, float(nRefBox)))
+        if lastInnerBox[0] > (shipBBRot[0] - distance - cellWidth*refCellBuffer/mt.pow(2.0, float(nRefBox))):
+            diff = lastInnerBox[0] - (shipBBRot[0] - distance - cellWidth*refCellBuffer/mt.pow(2.0, float(nRefBox)))
             for i in range(len(refBoxBB)):
                 refBoxBB[i][0] -= diff
-        if lastInnerBox[1] > (shipBBRot[1] - distance - cellWidth*cellBuffer/mt.pow(2.0, float(nRefBox))):
-            diff = lastInnerBox[1] - (shipBBRot[1] - distance - cellWidth*cellBuffer/mt.pow(2.0, float(nRefBox)))
+        if lastInnerBox[1] > (shipBBRot[1] - distance - cellWidth*refCellBuffer/mt.pow(2.0, float(nRefBox))):
+            diff = lastInnerBox[1] - (shipBBRot[1] - distance - cellWidth*refCellBuffer/mt.pow(2.0, float(nRefBox)))
             for i in range(len(refBoxBB)):
                 refBoxBB[i][1] -= diff
-        if lastInnerBox[2] > (shipBBRot[2] - distance - zCellSize[1]*cellBuffer):
-            diff = lastInnerBox[2] - (shipBBRot[2] - distance - zCellSize[1]*cellBuffer)
+        if lastInnerBox[2] > (shipBBRot[2] - distance - zCellSize[1]*refCellBuffer):
+            diff = lastInnerBox[2] - (shipBBRot[2] - distance - zCellSize[1]*refCellBuffer)
             for i in range(len(refBoxBB)):
                 refBoxBB[i][2] -= diff
-        if lastInnerBox[3] < (shipBBRot[3] + distance + cellWidth*cellBuffer/mt.pow(2.0, float(nRefBox))):
-            diff = -lastInnerBox[3] + shipBBRot[3] + distance + cellWidth*cellBuffer/mt.pow(2.0, float(nRefBox))
+        if lastInnerBox[3] < (shipBBRot[3] + distance + cellWidth*refCellBuffer/mt.pow(2.0, float(nRefBox))):
+            diff = -lastInnerBox[3] + shipBBRot[3] + distance + cellWidth*refCellBuffer/mt.pow(2.0, float(nRefBox))
             for i in range(len(refBoxBB)):
                 refBoxBB[i][3] += diff
-        if lastInnerBox[4] < (shipBBRot[4] + distance + cellWidth*cellBuffer/mt.pow(2.0, float(nRefBox))):
-            diff = -lastInnerBox[4] + shipBBRot[4] + distance + cellWidth*cellBuffer/mt.pow(2.0, float(nRefBox))
+        if lastInnerBox[4] < (shipBBRot[4] + distance + cellWidth*refCellBuffer/mt.pow(2.0, float(nRefBox))):
+            diff = -lastInnerBox[4] + shipBBRot[4] + distance + cellWidth*refCellBuffer/mt.pow(2.0, float(nRefBox))
             for i in range(len(refBoxBB)):
                 refBoxBB[i][4] += diff
-        if lastInnerBox[5] < (shipBBRot[5] + distance + zCellSize[1]*cellBuffer):
-            diff = -lastInnerBox[5] + shipBBRot[5] + distance + zCellSize[1]*cellBuffer
+        if lastInnerBox[5] < (shipBBRot[5] + distance + zCellSize[1]*refCellBuffer):
+            diff = -lastInnerBox[5] + shipBBRot[5] + distance + zCellSize[1]*refCellBuffer
             for i in range(len(refBoxBB)):
                 refBoxBB[i][5] += diff
         
@@ -558,10 +596,10 @@ class SeakeepingMesher( OfMesher ):
         # align cutting locations
         if not refBow: refBowLength = 0.2*(shipBBRot[3]-shipBBRot[0])
         refBowLength = shipBBRot[3]-refBowLength 
-        refBowLength = domain[1]-mt.ceil((domain[1]-refBowLength)/fsdZ)*fsdZ
+        refBowLength = domain[1]-mt.ceil((domain[1]-refBowLength)/fsCellHeight)*fsCellHeight
         if refBow:
             distance *= 0.5
-            BB = [refBowLength,-1e6,-1e6,1e6,1e6,shipBBRot[5]-fsdZ*cellBuffer]
+            BB = [refBowLength,-1e6,-1e6,1e6,1e6,shipBBRot[5]-fsCellHeight*refCellBuffer]
             setSelections.append(SetSelection(case          = case,
                                               selType       = 'proximity',
                                               BB            = BB,
@@ -579,7 +617,7 @@ class SeakeepingMesher( OfMesher ):
     
         if refSurfExtra is not None:
             nameOnly = os.path.basename(refSurfExtra)
-            BB = [refBow+0.5*fsdZ*cellBuffer,-1e6,-1e6,1e6,1e6,shipBBRot[5]-1.5*fsdZ*cellBuffer]
+            BB = [refBow+0.5*fsCellHeight*refCellBuffer,-1e6,-1e6,1e6,1e6,shipBBRot[5]-1.5*fsCellHeight*refCellBuffer]
             setSelections.append(SetSelection(case          = case,
                                               selType       = 'proximity',
                                               BB            = BB,
@@ -598,10 +636,10 @@ class SeakeepingMesher( OfMesher ):
         # align cutting locations
         if not refStern: refSternLength = 0.2*(shipBBRot[3]-shipBBRot[0])
         refSternLength = shipBBRot[0]+refSternLength
-        refSternLength = domain[1]-mt.floor((domain[1]-refSternLength)/fsdZ)*fsdZ
+        refSternLength = domain[1]-mt.floor((domain[1]-refSternLength)/fsCellHeight)*fsCellHeight
         if refStern:
             if not refBow: distance *= 0.5
-            BB = [-1e6,-1e6,-1e6,refSternLength,1e6,shipBBRot[5]-fsdZ*cellBuffer]
+            BB = [-1e6,-1e6,-1e6,refSternLength,1e6,shipBBRot[5]-fsCellHeight*refCellBuffer]
             setSelections.append(SetSelection(case          = case,
                                               selType       = 'proximity',
                                               BB            = BB,
@@ -619,7 +657,7 @@ class SeakeepingMesher( OfMesher ):
 
         if refSurfExtra is not None:
             nameOnly = os.path.basename(refSurfExtra)
-            BB = [-1e6,-1e6,-1e6,refSternLength-0.5*fsdZ*cellBuffer,1e6,shipBBRot[5]-1.5*fsdZ*cellBuffer]
+            BB = [-1e6,-1e6,-1e6,refSternLength-0.5*fsCellHeight*refCellBuffer,1e6,shipBBRot[5]-1.5*fsCellHeight*refCellBuffer]
             setSelections.append(SetSelection(case          = case,
                                               selType       = 'proximity',
                                               BB            = BB,
@@ -715,7 +753,8 @@ class SeakeepingMesher( OfMesher ):
         return res
         
     def writeAllinit(self):
-        #Allinit
+        """Write bash script 'Allinit' to create mesh
+        """
         print('Create run scripts')
         ainit = os.path.join(self.case,'Allinit')
         with open(ainit,'w') as f:
@@ -791,7 +830,8 @@ class SeakeepingMesher( OfMesher ):
         os.chmod(ainit, 0o755)
 
     def writeAllclean(self):
-        #Allclean
+        """Write bash script 'Allclean' to clean mesh folder(s)
+        """
         aclean = os.path.join(self.case,'Allclean')
         with open(aclean,'w') as f:
             f.write('#! /bin/bash\n')
@@ -823,7 +863,8 @@ class SeakeepingMesher( OfMesher ):
         os.chmod(aclean, 0o755)
         
     def writeSbatch(self):
-        #run.sh
+        """Write bash script used to launch case on Liger cluster
+        """
         run = os.path.join(self.case,'run.sh')
         with open(run,'w') as f:
             f.write('#!/bin/bash -l\n')
