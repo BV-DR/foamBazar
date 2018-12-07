@@ -1,20 +1,7 @@
-import PyFoam
-from inputFiles import ReadWriteFile
-from PyFoam.Basics.DataStructures import Dimension, Vector, DictProxy
 from os.path import join
+from inputFiles import ReadWriteFile
+from PyFoam.Basics.DataStructures import DictProxy
 
-"""
-  Convenience class to simply write DecomposeParDict
-"""
-
-feature = '''
-(
-     {
-         file "body.eMesh";
-         level 1;
-     }
-)
-'''
 
 class SnappyHexMeshDict(ReadWriteFile):
     """
@@ -22,13 +9,84 @@ class SnappyHexMeshDict(ReadWriteFile):
     """
     
     @classmethod
-    def Build(cls , case, castellatedMesh=True, snap=True, addLayers=False, patchName="ship",
-                        stlname="body", stlPatches=None, locationInMesh=[1e-2,5.0,0.5],
+    def Build(cls , case, castellatedMesh=True, snap=True, addLayers=False, stlname="body",
+                        patchName='ship', stlPatches=None, locationInMesh=[1e-2,5.0,0.5],
                         nCellsBetweenLevels=4, edgeLvl=1, hullLvl=[1,1], resolveFeatureAngle=45,
                         refinementLength=None, allowFreeStandingZoneFaces=True, snapTol=4.,
                         nSolveIter=30, relativeSizes=False, nSurfaceLayers=3, expansionRatio=1.3,
                         finalLayerThickness=0.1, minThickness=0.02, featureAngle=89, maxNonOrtho=55,
                         minTwist=0.05, nSmoothScale=5, errorReduction=0.85, noLayers=None, ofp=False):
+        """Build SnappyHexMesh file from a few parameters.
+        
+        Parameters
+        ----------
+        case : str
+            Name of case
+            
+        castellatedMesh : bool, default True
+            Logical defining if castellated mesh should be created
+        snap : bool, default True
+            Logical defining if snapping should be performed
+        addLayers : bool, default True
+            Logical defining if boundary layers should be added
+          
+        stlname : str, default 'body'
+            Name of STL file used for snapping
+        patchName : str, default 'ship'
+            Name of patch created by snapping
+        stlPatches : list of str
+            TODO
+        locationInMesh, list of floats, dimension(3), default [1e-2,5.0,0.5]
+            Position of snapping in global mesh
+            
+        nCellsBetweenLevels : int, default 4
+            TODO (option nCellsBetweenLevels)
+        edgeLvl : int, default 1
+            TODO (option features { file : "stl.eMesh", level : edgeLvl})
+        hullLvl : list of int, dimension(2), default [1,1]
+            TODO (option refinementSurfaces {patchName : {"level" : hulllvl}})
+        resolveFeatureAngle : float, default 45.
+            TODO (option resolveFeatureAngle)            
+        refinementLength : list of float
+            List defining proximity refinements around the body. The length of the list defines the number of proximity refinements.
+        allowFreeStandingZoneFaces : 
+            TODO (option allowFreeStandingZoneFaces)
+            
+        snapTol : float, defeult 4.
+            Tolerence used for snapping.
+        nSolveIter : int, default 30
+            TODO (option nSolveIter)
+            
+        relativeSizes :
+            TODO (option relativeSizes)
+        nSurfaceLayers : int, default 3
+            Number of cells in boundary layer
+        expansionRatio : float, default 1.3
+            Expansion ratio for boundary layer cells
+        finalLayerThickness : flaot, default 0.1
+            Thickness of boundary layer
+        minThickness : float, default 0.02
+            Minimal thickness of boundary layer
+        featureAngle : float, default 89.
+            TODO (option featureAngle for layers)
+        noLayers: list of str
+            Disable layers creation on selected patches (e.g. deck)
+            
+        maxNonOrtho : int, default 55
+            TODO (option maxNonOrtho)
+        minTwist : float, default 0.05
+            TODO (option minTwist)
+        nSmoothScale : int, default 5
+            TODO (option nSmoothScale)
+        errorReduction : float, default 0.85
+            TODO (option errorReduction)
+        ofp: bool, default False
+            Set to True if snappyHewMesh is used with openFOAM "Plus" version
+        
+        """
+        
+        
+        
         res = cls(  name = join(case, "system" , "snappyHexMeshDict" ) , read = False )
         
         stlname = stlname.split('.stl')[0] #remove .stl extension

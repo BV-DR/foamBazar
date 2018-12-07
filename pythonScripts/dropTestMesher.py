@@ -13,14 +13,12 @@
 #########################################################################
 
 import re
-import os, sys, argparse
-import shutil
-import time, datetime
+import os
 import math as mt
 import numpy as np
 import pandas as pd
 from io import StringIO
-from subprocess import call, Popen
+from subprocess import call
 from scipy import interpolate as interp
 from fsTools import findBoundingBox, findSTLPatches
 
@@ -37,12 +35,96 @@ from inputFiles.surfaceFeatureExtractDict import SurfaceFeatureExtractDict
 from inputFiles.blockMeshDict import BlockMeshDict
 
 class DropTestMesher( OfMesher ):
+    """Class used to generate a CFD mesh for drop test cases (i.e. without wave propagation)
+     This class functions should be used by a python script as presented in the following examples.
 
+    Examples
+    --------
+    For 2D mesh generation (slamming sections)
+    
+    >>> import os
+    >>> #
+    >>> # Import meshing routine from foamBazar
+    >>> # WARNING : foamBazar/pythonScripts must be added to PYTHONPATH !
+    >>> from dropTestMesher import DropTestMesher
+    >>> from fsTools import readSections, createSectionStl
+    >>> #
+    >>> # Input parameters
+    >>> sections = [1,2,3,4,5,6,7,8,9,10]
+    >>> sectionsFile = 'Slamming_sections.out'
+    >>> genSTL = True
+    >>> #
+    >>> # Read sections (from Homer) and create corresponding STL files
+    >>> if genSTL:
+    >>>     sdict = readSections(sectionsFile,sections=sections)
+    >>>     createSectionStl(sdict)
+    >>> #
+    >>> # Case name and additional optional parameters
+    >>> for isect in sections:
+    >>>     case = r'mesh/section_{}'.format(isect)
+    >>>     myParams = {'OFversion' : 'P',
+    >>>                 'nProcs' : 1,
+    >>>                 'sectionsFile' : 'Slamming_sections.out',
+    >>>                 'section' : isect,
+    >>>                 'symmetry' : False,
+    >>>                 'rot' : [0.0,0.0,0.0],
+    >>>                 'zBounds' : [-6.,4.],
+    >>>                 'nRefBoxes' : 3,
+    >>>                 'zRefineBox' : [-2.0,-1.7,-1.5,3.0,2.5,2.0],
+    >>>                 'zRefineBox' : [-2.0,-2.0,-2.0,3.5,3.5,3.5],
+    >>>                 'nfsRefBoxes' : 3,
+    >>>                 'fsRefineBox' : [-1.0,-0.7,-0.5,2.0,1.7,1.5],
+    >>>                 'refineLength' : [0.15,0.375,0.675],
+    >>>                 'cellRatio' : 2,
+    >>>                 'layerLength' : 0.004,
+    >>>                 'onLiger' : True
+    >>>                 }
+    >>> #
+    >>> # Call routines for meshing here
+    >>> drop = DropTestMesher.BuildFromAllParameters( case, **myParams )
+    >>> fname = os.path.join(case,'log.input')
+    >>> with open(fname,'w') as f: f.write(str(myParams))
+    >>> drop.runInit()
+    
+    For 3D mesh generation
+    
+    >>> import os
+    >>> #
+    >>> # Import meshing routine from foamBazar
+    >>> # WARNING : foamBazar/pythonScripts must be added to PYTHONPATH !
+    >>> from dropTestMesher import DropTestMesher
+    >>> #
+    >>> # Case name and additional optional parameters
+    >>> case = "mesh"
+    >>> myParams = {'OFversion'     : 'P',
+    >>>             'nProcs'        : 12,
+    >>>             'ndim'          : 3,
+    >>>             'stlFile'       : 'ship.stl',
+    >>>             'symmetry'      : True,
+    >>>             'domain'        : [-1.0,2.0,-9.0,9.0,-6.0,3.0],
+    >>>             'nRefBoxes'     : 3,
+    >>>             'xRefineBox'    : [-0.3,-0.2,-0.1,1.3,1.2,1.1],
+    >>>             'zRefineBox'    : [-2.0,-1.7,-1.5,3.0,2.5,2.0],
+    >>>             'nfsRefBoxes'   : 3,
+    >>>             'fsRefineBox'   : [-1.0,-0.7,-0.5,2.0,1.7,1.5],
+    >>>             'refineLength'  : [0.15,0.375,0.675],
+    >>>             'layerLength'   : 0.004,
+    >>>             'cellRatio'     : 2,
+    >>>             'onLiger'       : True
+    >>>            }
+    >>> #
+    >>> # Call routines for meshing here
+    >>> drop = DropTestMesher.BuildFromAllParameters( case, **myParams )
+    >>> drop.writeFiles()
+    >>> fname = os.path.join(case,'log.input')
+    >>> with open(fname,'w') as f: f.write(str(myParams))
+    >>> drop.runInit()   
+    
+    """
     @classmethod
     def BuildFromAllParameters(cls,      case,
                                          nProcs           = 4,
                                          ndim             = 2,
-                                         sectionsFile     = None,
                                          stlFile          = None,
                                          hullPatch        = None,
                                          section          = 1,
@@ -50,9 +132,8 @@ class DropTestMesher( OfMesher ):
                                          symmetry         = False,
                                          trans            = [0.0,0.0,0.0],
                                          rot              = [0.0,0.0,0.0],
-                                         xBounds          = [-0.5,0.5],
-                                         yBounds          = [-9.,9.],
-                                         zBounds          = [-2.,3.],
+                                         domain           = [-0.5,0.5,-9.,9.,-2.,3.],
+                                         cellRatio        = 1,
                                          fsBounds         = [-0.5,1.5],
                                          nRefBoxes        = 6,
                                          xRefineBox       = [-0.6,-0.5,-0.4,-0.3,-0.2,-0.1,1.6,1.5,1.4,1.3,1.2,1.1],
@@ -62,12 +143,78 @@ class DropTestMesher( OfMesher ):
                                          fsRefineBox      = [-1.5,-1.0,-0.5,-0.3,-0.2,2.5,2.0,1.5,1.3,1.2],
                                          refineLength     = [0.1],
                                          layerLength      = 0.005,
-                                         cellRatio        = 1,
                                          solver           = "snappyHexMesh",
                                          OFversion        = 3,
                                          onLiger          = False,
                                          clean        = False
                                          ):
+        """Build mesh for CFD drop test mesk from a few parameters.
+        
+        Parameters
+        ----------
+        case : str
+            Name of case to create
+        nProcs : int, default 4
+            Number of processors used to build the mesh
+        ndim : int, default 2
+            Number of dimentions of mesh (2 for 2D mesh or 3 for 3D mesh)
+        stlFile : str
+            STl files name to be used for snapping
+        hullPatch : str
+            Name of hull patch
+        section : int
+            Section number (for 2D slamming sections mesh)
+        gridLevel : int, default 1
+            TODO
+        symmetry : bool, default False
+            Logical defining if symmetric mesh (Y) should be created
+        
+        trans : list of float, dimension(3), default [0.0,0.0,0.0]
+            Vector defining STl file translation in mesh
+        rot : list of float, dimension(3), default [0.0,0.0,0.0]
+            Vector defining STl file rotation in mesh (angles provided in degrees)
+
+        domain : list of floats, dimension(6), default [-0.5,0.5,-9.,9.,-2.,3.]
+            Coefficients defining overall domain size (relative to STL size) [Xmin, Xmax, Ymin, Ymax, Zmin, Zmax]
+            Note: Xmin and Xmax are defined as absolute values for 2D meshes
+        cellRatio : int, default 1
+            Background mesh cell ratio
+        fsBounds : list of floats, dimension(2), default [-0.5,1.5]
+            Coefficients defining free surface area (relative to STL hight) [Zmin, Zmax]
+        
+        nRefBoxes : int, default 6
+            Number of refinement boxes to create
+        xRefineBox : list of floats, dimension(2*nRefBoxes), default [-0.6,-0.5,-0.4,-0.3,-0.2,-0.1,1.6,1.5,1.4,1.3,1.2,1.1]
+            List of coefficients defining size of refinement boxes in X direction (relative to STL x-size)
+            format: [Xmin_1,Xmin_2,Xmin_3,...,Xmax_1,Xmax_2,Xmax_3]
+        yRefineBox : list of floats, dimension(2*nRefBoxes), default [-6.5,-4.5,-3.0,-2.0,-1.5,-1.2,6.5,4.5,3.0,2.0,1.5,1.2]
+            List of coefficients defining size of refinement boxes in Y direction (relative to STL y-size)
+            format: [Ymin_1,Ymin_2,Ymin_3,...,Ymax_1,Ymax_2,Ymax_3]
+        zRefineBox : list of floats, dimension(2*nRefBoxes), default [-2.0,-2.0,-2.0,-1.5,-1.0,-0.5,3.0,2.5,2.0,1.8,1.6,1.4]
+            List of coefficients defining size of refinement boxes in Z direction (relative to STL height)
+            format: [Zmin_1,Zmin_2,Zmin_3,...,Zmax_1,Zmax_2,Zmax_3]
+        nfsRefBoxes, int, default 5
+            Number of free surface refinement boxes to create
+        fsRefineBox : list of floats, dimension(2*nfsRefBoxes), default [-1.5,-1.0,-0.5,-0.3,-0.2,2.5,2.0,1.5,1.3,1.2]
+            List of coefficients defining size of free surface refinement boxes (relative to STL height)
+            example: [Zmin_1,Zmin_2,Zmin_3,...,Zmax_1,Zmax_2,Zmax_3]
+        
+        refineLength : list of float, default [0.1]
+            Coeffiecients defining refinements around the body (relative to STL reference length defined as 'min(0.5*y-size,z-size)')
+            The length of the list defines the number of proximity refinements.
+        layerLength : float, default 0.005
+            Coefficient defining length of boundary layer (relative to STL reference length defined as 'min(0.5*y-size,z-size)')
+        
+        solver : str, default 'snappyHexMesh'
+            Solver to run
+        OFversion : int, default 3
+            OpenFOAM version
+        onLiger : boolean, default False
+            Logical defining if case is run on Liger cluster
+        clean : boolean, default False
+            Logical to force case overwrite
+     
+        """
         
         if hullPatch is None:
             if ndim==2: hullPatch='section_'+str(section)
@@ -94,7 +241,6 @@ class DropTestMesher( OfMesher ):
                                         writeCompression    = "off",
                                         runTimeModifiable   = "true")
                                   
-    
         #fvSchemes
         fvSchemes = FvSchemes.Build(case     = case,
                               simType  = "Euler" )
@@ -161,12 +307,12 @@ class DropTestMesher( OfMesher ):
         if ndim==2:
             blockMeshDict = BlockMeshDict.Build( case      = case,
                                            ndim      = ndim,
-                                           xmin      = xBounds[0],
-                                           xmax      = xBounds[1],
-                                           ymin      = yBounds[0]*Beam*0.5*(not symmetry),
-                                           ymax      = yBounds[1]*Beam*0.5,
-                                           zmin      = zBounds[0]*Depth,
-                                           zmax      = zBounds[1]*Depth,
+                                                xmin      = domain[0],
+                                                xmax      = domain[1],
+                                                ymin      = domain[2]*Beam*0.5*(not symmetry),
+                                                ymax      = domain[3]*Beam*0.5,
+                                                zmin      = domain[4]*Depth,
+                                                zmax      = domain[5]*Depth,
                                            fsmin     = fsBounds[0]*Depth,
                                            fsmax     = fsBounds[1]*Depth,
                                            sym       = symmetry,
@@ -176,12 +322,12 @@ class DropTestMesher( OfMesher ):
         elif ndim==3:
             blockMeshDict = BlockMeshDict.Build( case      = case,
                                            ndim      = ndim,
-                                           xmin      = xBounds[0]*Length,
-                                           xmax      = xBounds[1]*Length,
-                                           ymin      = yBounds[0]*Beam*0.5*(not symmetry),
-                                           ymax      = yBounds[1]*Beam*0.5,
-                                           zmin      = zBounds[0]*Depth,
-                                           zmax      = zBounds[1]*Depth,
+                                                xmin      = domain[0]*Length,
+                                                xmax      = domain[1]*Length,
+                                                ymin      = domain[2]*Beam*0.5*(not symmetry),
+                                                ymax      = domain[3]*Beam*0.5,
+                                                zmin      = domain[4]*Depth,
+                                                zmax      = domain[5]*Depth,
                                            fsmin     = fsBounds[0]*Depth,
                                            fsmax     = fsBounds[1]*Depth,
                                            sym       = symmetry,
@@ -214,11 +360,6 @@ class DropTestMesher( OfMesher ):
         res.Beam = Beam
         res.Depth = Depth
         res.hullPatch = hullPatch
-        # if ndim==2:
-            # res.section_name = 'section_'+str(section)
-            # res.sdict = res.readSections(sectionsFile,sections=[section])
-        # elif ndim==3:
-            # res.section_name = 'ship'
         res.symmetry = symmetry
         res.nRefBoxes = nRefBoxes
         res.xRefineBox = xRefineBox

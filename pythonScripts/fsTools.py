@@ -10,12 +10,11 @@
 #########################################################################
 
 import os, subprocess, re
-import sys, argparse, configparser
 from io import StringIO
 import numpy as np
 import pandas as pd
 import math as mt
-import pprint
+import scipy.interpolate as interp
 
 # abenhamou: 2017-july-27
 
@@ -167,7 +166,7 @@ def readSections(inputFile,sections=[],sym=False):
         sdict[isect] = sdict[isect].reindex(sorted(sdict[isect]),axis=1)
         
         if sym:
-            rsect = rsec = ((sdict[isect]*[1,-1,1]).iloc[1:,:]).iloc[::-1]
+            rsect = ((sdict[isect]*[1,-1,1]).iloc[1:,:]).iloc[::-1]
             sdict[isect] = rsect.append(sdict[isect],ignore_index=True)
             
     return sdict
