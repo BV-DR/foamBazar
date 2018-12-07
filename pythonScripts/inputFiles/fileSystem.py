@@ -28,7 +28,7 @@ plusVersion["snappyHexMeshDict"] = "system/snappyHexMeshDict"
 
 
 def getFilePath( fileName , OFversion = 5) :
-    if "p" in OFversion.lower() :
+    if "p" in str(OFversion).lower() :
         return plusVersion[fileName][0]
     else : 
         return default[fileName][0]

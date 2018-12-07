@@ -65,7 +65,7 @@ class BlockMeshDict(ReadWriteFile) :
     @classmethod
     def Build(cls , case, ndim = 3, waveMesh=False, xmin=-0.05, xmax=0.05, ymin=None, ymax=None, zmin=None, zmax=None,
                        fsmin=None, fsmax=None, Xcells=None, Ycells=12, Zcells=None, cellRatio=1, Zgrading=None, sym=False,
-                       createPatch= True, patches=None, gridlvl=1, ofp=False):
+                       createPatch= True, patches=None, gridlvl=1, OFversion=5):
         """Build blockMeshDict file from a few parameters.
 
         Parameters
