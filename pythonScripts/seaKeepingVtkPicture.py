@@ -3,6 +3,8 @@ from __future__ import print_function
 import vtk
 import os
 
+from tqdm import tqdm
+
 try:
     from Pluto.System import Chrono
 except:
@@ -25,62 +27,7 @@ def getAvailableTimeData(caseDir, parallel):
     return sorted([float(f) for f in os.listdir(d) if is_number(f) and os.path.isdir(os.path.join(d, f))])
 
 
-def getMeshPicture(meshFile,  camPosition, targetPosition, pictureFile, timeList=[0],
-                   startInteractive=False, mag=4, parallel="auto", zoom=1.0, scale=(1, 1, 1), hullPatch="ship"):
-    """
-    Function to generate picture out of openFoam results
-
-    meshFile : mesh file or case directory
-    """
-
-    c = Chrono(start=True)
-
-    baseFile, ext = os.path.splitext(pictureFile)[0:2]
-    pathPic = os.path.abspath(os.path.dirname(pictureFile))
-    if not os.path.exists(pathPic):
-        os.makedirs(pathPic)
-
-    # Add a file name to the path. "p.foam" does not need to be created
-    if os.path.isdir(meshFile):
-        caseDir = meshFile
-        meshFile = os.path.join(caseDir, "p.foam")
-    else:
-        caseDir = os.path.dirname(meshFile)
-
-    # Automatically choose "SetCaseType" ( parallel vs (serial/notRun))
-    if parallel == "auto":
-        if os.path.exists(os.path.join(caseDir, "processor0")):
-            parallel = True
-        else:
-            parallel = False
-
-    if timeList == "all":
-        timeList = getAvailableTimeData(caseDir, parallel)
-    elif timeList == "latest":
-        timeList = [getAvailableTimeData(caseDir, parallel)[-1]]
-    elif timeList == "latest-1":
-        timeList = [getAvailableTimeData(caseDir, parallel)[-2]]
-
-    print(timeList)
-
-    #--- Read the openFoam file
-    vtk_r = vtk.vtkPOpenFOAMReader()
-    vtk_r.SetFileName(meshFile)
-
-    if parallel:
-        vtk_r.SetCaseType(0)
-    else:
-        vtk_r.SetCaseType(1)  # 0 = decomposed case, 1 = reconstructed case
-    # vtk_r.ReadZonesOn()   # ?
-    cdp = vtk.vtkCompositeDataPipeline()
-    vtk_r.SetDefaultExecutivePrototype(cdp)
-    vtk_r.SetDecomposePolyhedra(0)
-    vtk_r.CreateCellToPointOn()
-    vtk_r.DisableAllPatchArrays()
-    vtk_r.SetPatchArrayStatus("internalMesh", 1)
-    vtk_r.SetPatchArrayStatus(hullPatch, 1)
-
-    #--------------------------------- Free-surface
+def getFreeSurfaceActor(vtk_r, scale, fsRange = None):
     aa = vtk.vtkAssignAttribute()
     aa.SetInputConnection(vtk_r.GetOutputPort())
     aa.Assign('alpha.water', "SCALARS", "POINT_DATA")
@@ -130,7 +77,8 @@ def getMeshPicture(meshFile,  camPosition, targetPosition, pictureFile, timeList
     # isoContourMapper.SetScalarModeToUsePointData()
     isoContourMapper.SetScalarModeToUsePointFieldData()
     isoContourMapper.SetLookupTable(lutBlueRed)
-    isoContourMapper.SetScalarRange(-1.2, 1.2)
+    if fsRange is not None :
+        isoContourMapper.SetScalarRange(*fsRange)
     isoContourMapper.SetUseLookupTableScalarRange(0)
 
     #---Add actor
@@ -138,7 +86,20 @@ def getMeshPicture(meshFile,  camPosition, targetPosition, pictureFile, timeList
     fsActor.GetProperty().SetEdgeVisibility(0)
     fsActor.SetMapper(isoContourMapper)
     fsActor.GetProperty().SetOpacity(0.7)
+    return fsActor, scalarBar
 
+
+
+def getSymmetryPlaneView(vtk_r, scalarField = "alpha.water"):
+    """return symmetry plane colored by field
+    """
+
+
+    return
+
+def getStuctureActor(vtk_r):
+    """Return an actor with the ship structure
+    """
     #--------------------------------- Structure
     structureOnly = vtk.vtkExtractBlock()
     structureOnly.SetInputConnection(vtk_r.GetOutputPort())
@@ -146,6 +107,7 @@ def getMeshPicture(meshFile,  camPosition, targetPosition, pictureFile, timeList
 
     structureDataFilter = vtk.vtkCompositeDataGeometryFilter()
     structureDataFilter.SetInputConnection(structureOnly.GetOutputPort())
+
     structureMapper = vtk.vtkDataSetMapper()
     structureMapper.SetInputConnection(structureDataFilter.GetOutputPort())
     structureMapper.SelectColorArray("p_rgh")
@@ -157,6 +119,76 @@ def getMeshPicture(meshFile,  camPosition, targetPosition, pictureFile, timeList
     structureActor = vtk.vtkActor()
     structureActor.GetProperty().SetEdgeVisibility(0)
     structureActor.SetMapper(structureMapper)
+
+    return structureActor
+
+def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeList=[0],
+                    startInteractive=False, mag=4, parallel="auto", zoom=1.0, viewAngle = 30,
+                    scale=(1, 1, 1), viewUp = [1,1,1], hullPatch="ship",
+                    fsRange = None
+                    ):
+    """
+    Function to generate picture out of openFoam results
+
+    meshFile : mesh file or case directory
+    """
+
+    c = Chrono(start=True)
+
+    baseFile, ext = os.path.splitext(pictureFile)[0:2]
+    pathPic = os.path.abspath(os.path.dirname(pictureFile))
+    if not os.path.exists(pathPic):
+        os.makedirs(pathPic)
+
+    # Add a file name to the path. "p.foam" does not need to be created
+    if os.path.isdir(meshFile):
+        caseDir = meshFile
+        meshFile = os.path.join(caseDir, "p.foam")
+    else:
+        caseDir = os.path.dirname(meshFile)
+
+    # Automatically choose "SetCaseType" ( parallel vs (serial/notRun))
+    if parallel == "auto":
+        if os.path.exists(os.path.join(caseDir, "processor0")):
+            parallel = True
+        else:
+            parallel = False
+
+    if type(timeList) == str :
+        if timeList == "all":
+            timeList = getAvailableTimeData(caseDir, parallel)
+        elif timeList == "latest":
+            timeList = [getAvailableTimeData(caseDir, parallel)[-1]]
+        elif timeList == "latest-1":
+            timeList = [getAvailableTimeData(caseDir, parallel)[-2]]
+        else :
+            raise(Exception("time should be 'latest', 'all', or a float iterable"))
+
+    print("Generating picture for : ", timeList)
+
+    #--- Read the openFoam file
+    vtk_r = vtk.vtkPOpenFOAMReader()
+    vtk_r.SetFileName(meshFile)
+
+    if parallel:
+        vtk_r.SetCaseType(0)
+    else:
+        vtk_r.SetCaseType(1)  # 0 = decomposed case, 1 = reconstructed case
+    # vtk_r.ReadZonesOn()   # ?
+    cdp = vtk.vtkCompositeDataPipeline()
+    vtk_r.SetDefaultExecutivePrototype(cdp)
+    vtk_r.SetDecomposePolyhedra(0)
+    vtk_r.CreateCellToPointOn()
+    vtk_r.DisableAllPatchArrays()
+    vtk_r.SetPatchArrayStatus("internalMesh", 1)
+    vtk_r.SetPatchArrayStatus(hullPatch, 1)
+
+    #--------------------------------- Free-surface (ISO alpha = 0.5)
+    fsActor, scalarBar = getFreeSurfaceActor(vtk_r, scale, fsRange = fsRange)
+
+    #--------------------------------- Ship surface
+    structureActor = getStuctureActor(vtk_r)
+
 
     #--- Renderer
     renderer = vtk.vtkRenderer()
@@ -180,29 +212,22 @@ def getMeshPicture(meshFile,  camPosition, targetPosition, pictureFile, timeList
     camera = renderer.GetActiveCamera()
     camera.SetPosition(camPosition)
     camera.SetFocalPoint(targetPosition)
-    camera.SetViewUp(1., 1., 1.)
+    camera.SetViewUp(*viewUp)
+    camera.SetViewAngle(viewAngle)
     renderer.ResetCamera()
     camera.Zoom(zoom)
 
-    c.printLap('init')
-    vtk_r.Update()
-    c.printLap('Update 1')
-
-    vtk_r.SetTimeValue(timeList[0])
-
-    vtk_r.Update()  # not mandatory, but just postpone the waiting time
-    vtk_r.Modified()
-    c.printLap('Update {}'.format(timeList[0]))
-
     # To get interactive windows
     if startInteractive:
+        vtk_r.SetTimeValue(timeList[0])
+        vtk_r.Update()  # not mandatory, but just postpone the waiting time
+        vtk_r.Modified()
         iren = vtk.vtkRenderWindowInteractor()
         iren.SetRenderWindow(renWin)
         iren.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
         iren.Start()
 
     else:
-
         if ext == ".png":
             writer = vtk.vtkPNGWriter()
         elif ext == ".jpg":
@@ -216,14 +241,13 @@ def getMeshPicture(meshFile,  camPosition, targetPosition, pictureFile, timeList
         else:
             print("Picture extension not recognized")
 
-        for itime, time in enumerate(timeList):
-            print("time", time)
-            if itime != 0:
-                #exe.SetUpdateTimeStep( 0, time )
-                #vtk_r.SetTimeValue( time )
-                # vtk_r.Update()
-                vtk_r.UpdateTimeStep(time)
-                vtk_r.Modified()  # Require to update the time step data
+        for itime, time in tqdm(enumerate(timeList)):
+
+            #exe.SetUpdateTimeStep( 0, time )
+            #vtk_r.SetTimeValue( time )
+            # vtk_r.Update()
+            vtk_r.UpdateTimeStep(time)
+            vtk_r.Modified()  # Require to update the time step data
 
             renWin.Render()
             w2if = vtk.vtkRenderLargeImage()
