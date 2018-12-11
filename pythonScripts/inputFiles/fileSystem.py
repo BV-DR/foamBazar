@@ -32,6 +32,6 @@ plusVersion["blockMeshDict"] = "system/blockMeshDict"
 
 def getFilePath( fileName , OFversion = 5) :
     if "p" in str(OFversion).lower() :
-        return plusVersion[fileName][0]
+        return plusVersion[fileName]
     else : 
-        return default[fileName][0]
+        return default[fileName]
