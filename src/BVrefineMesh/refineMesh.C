@@ -51,6 +51,7 @@ Description
 #include "wedgePolyPatch.H"
 #include "plane.H"
 #include "SubField.H"
+#include "IOdictionary.H"
 
 using namespace Foam;
 
@@ -201,7 +202,7 @@ int main(int argc, char *argv[])
             IOobject::MUST_READ
         );
 
-        if (!dictIO.headerOk())
+        if (!dictIO.typeHeaderOk<IOdictionary>())
         {
             FatalErrorIn(args.executable())
                 << "Cannot open specified refinement dictionary "
@@ -223,7 +224,7 @@ int main(int argc, char *argv[])
             IOobject::MUST_READ
         );
 
-        if (dictIO.headerOk())
+        if (dictIO.typeHeaderOk<IOdictionary>())
         {
             Info<< "Refining according to " << dictName << nl << endl;
 
