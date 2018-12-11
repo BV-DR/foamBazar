@@ -1,5 +1,5 @@
 import PyFoam
-from inputFiles import ReadWriteFile
+from inputFiles import ReadWriteFile, getFilePath
 from PyFoam.Basics.DataStructures import Vector, DictProxy
 import numpy as np
 import os
@@ -144,7 +144,9 @@ class WaveProperties( ReadWriteFile ) :
     
     @classmethod
     def Build(cls, case, initWaveCondition, relaxZones=[], seaLevel=0., version="foamStar") :
-        res = cls (os.path.join( case, "constant", "waveProperties" ), read = False)
+    
+        res = cls( name = join(case, getFilePath("waveProperties") ), read = False )
+        
         res.case = case
         res.relaxZones = relaxZones
         res ["#inputMode"]=  "overwrite";

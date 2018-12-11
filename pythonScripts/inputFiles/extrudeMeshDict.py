@@ -1,21 +1,21 @@
 import PyFoam
-from inputFiles import ReadWriteFile
+from inputFiles import ReadWriteFile, getFilePath
 from PyFoam.Basics.DataStructures import Dimension, Vector, DictProxy
 from os.path import join
 from inputFiles.compatOF import namePatch
 
-"""
-  Convenience class to simply write DecomposeParDict
-"""
+"""Convenient class to simply write ExtrudeMeshDict
 
+"""
 
 class ExtrudeMeshDict(ReadWriteFile) :
-   """
-      ExtrudeMeshDict dictionnary
-   """
-   @classmethod
-   def Build(cls , case, sourceCase='"./"', exposedPatchName="inlet", nLayers=1, expansionRatio=1, thickness=0.1, mergeFaces=False, mergeTol=0, version='foamStar'):
-        res = cls ( name = join(case, "system" , "extrudeMeshDict" ), read = False )
+    """ExtrudeMeshDict dictionnary
+    
+    """
+    @classmethod
+    def Build(cls , case, sourceCase='"./"', exposedPatchName="inlet", nLayers=1, expansionRatio=1, thickness=0.1, mergeFaces=False, mergeTol=0, version='foamStar'):
+            
+        res = cls(  name = join(case, getFilePath("extrudeMeshDict") ), read = False )
       
         patch = namePatch[version]
         
@@ -39,7 +39,6 @@ class ExtrudeMeshDict(ReadWriteFile) :
         res["mergeTol"] = mergeTol
         return res
          
-
 if __name__ == "__main__" : 
    print(ExtrudeMeshDict.Build("test"))
 

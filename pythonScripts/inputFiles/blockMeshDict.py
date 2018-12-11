@@ -116,14 +116,12 @@ class BlockMeshDict(ReadWriteFile) :
 
         gridlvl : int, default 1
             TODO
-        ofp: bool, default False
-            Set to True if snappyHewMesh is used with openFOAM "Plus" version
+        OFversion: int or str, default 5
+            OpenFOAM version used
 
         """
 
-
-
-        res = cls(  name = join(case, getFilePath("blockMeshDict", OFversion) ), read = False )
+        res = cls( name = join(case, getFilePath("blockMeshDict", OFversion) ), read = False )
         res["fastMerge"]  = "yes"
         res["convertToMeters"]  = 1
 

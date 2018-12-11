@@ -1,7 +1,7 @@
 from PyFoam.Basics.DataStructures import Vector, Field, Dimension, DictProxy
 from os.path import join
 from inputFiles.compatOF import alpha, p_rgh , waveAlpha, waveVelocity, pointDisp, namePatch
-from inputFiles import ReadWriteFile
+from inputFiles import ReadWriteFile, getFilePath
 
 """
   Convenience class to simply write boudary condition for sea-keeping case
@@ -11,9 +11,9 @@ class BoundaryOmega(ReadWriteFile):
 
     @classmethod
     def Build(cls,  case, symmetry=1, wallFunction=False, version="foamStar", namePatch=namePatch , omega = 2., case2D=False ) :
-        res = cls( name = join(case, "0" , "org", "omega") , read = False )
-        patch = namePatch[version]
         
+        patch = namePatch[version]
+        res = cls( name = join(case, getFilePath("boundaryOmega") ), read = False )
         res.header["class"] = "volScalarField"
         res["dimensions"] = Dimension(*[0,0,-1,0,0,0,0])
         res["internalField"] = "uniform {}".format(omega)
@@ -42,9 +42,9 @@ class BoundaryK(ReadWriteFile):
     
     @classmethod
     def Build(cls,  case, symmetry=1, wallFunction = False, version="foamStar", namePatch = namePatch , k = 0.00015, case2D=False ) :
-    
+        
         patch = namePatch[version]
-        res = cls( name = join(case, "0" , "org", "k") , read = False )
+        res = cls( name = join(case, getFilePath("boundaryK") ), read = False )
         res.header["class"] = "volScalarField"
         res["dimensions"] = Dimension(*[0,2, -2,0,0,0,0])
         res["internalField"] = "uniform {}".format(k)
@@ -71,13 +71,13 @@ class BoundaryAlpha(ReadWriteFile) :
     def Build(cls , case, symmetry=1, namePatch=namePatch, case2D=False, wave=True, relaxZone=False, struct='', version="foamStar"):
         
         patch = namePatch[version]
-        res = cls( name = join(case, "0" , "org", alpha[version]) , read = False )
-
+        if version=="foamStar": res = cls( name = join(case, getFilePath("boundaryAlpha") ), read = False )
+        else: res = cls( name = join(case, "0" , "org", alpha[version]) , read = False )
         res.header["class"] = "volScalarField"
         res["dimensions"] = Dimension(*[0,0,0,0,0,0,0])
         res["internalField"] = "uniform 0"
-        bf = DictProxy()
         
+        bf = DictProxy()
         if wave: wavePatch = { "type" : waveAlpha[version], "value" : "uniform 0" }
         else: wavePatch = { "type" : "zeroGradient" }
         
@@ -114,7 +114,7 @@ class BoundaryVelocity(ReadWriteFile) :
     def Build(cls , case, speed, symmetry=1, namePatch=namePatch, case2D=False, wave = True, relaxZone=False, struct='', version = "foamStar") :
         
         patch = namePatch[version]
-        res = cls( name = join(case, "0" ,"org", "U") , read = False )
+        res = cls( name = join(case, getFilePath("boundaryVelocity") ), read = False )
         res.header["class"] =  "volVectorField"
         res["dimensions"] = Dimension(*[ 0, 1, -1, 0, 0, 0, 0])
         res["internalField"] = "uniform ({} 0. 0.)".format(-speed)
@@ -158,7 +158,10 @@ class BoundaryPressure(ReadWriteFile) :
     def Build(cls , case,  symmetry=1, namePatch=namePatch, case2D=False, struct='', version="foamStar") :
         
         patch = namePatch[version]
-        res = cls(name = join(case, "0" ,"org",  p_rgh[version]) , read = False )
+        if version=="foamStar":
+            res = cls( name = join(case, getFilePath("boundaryPressure") ), read = False )
+        else:
+            res = cls(name = join(case, "0" ,"org",  p_rgh[version]) , read = False )
         res.header["class"] = "volScalarField"
         res["dimensions"] = Dimension(*[1, -1, -2, 0, 0, 0, 0])
         res["internalField"] = "uniform 0"
@@ -211,7 +214,10 @@ class BoundaryPointDisplacement(ReadWriteFile) :
     def Build(cls , case,  symmetry=1, namePatch=namePatch, case2D=False, cpMorphing = False, version="foamStar") :
         
         patch = namePatch[version]
-        res = cls(name = join(case, "0" ,"org",  pointDisp[version]) , read = False )
+        if version=="foamStar":
+            res = cls( name = join(case, getFilePath("boundaryPointDisplacement") ), read = False )
+        else:
+            res = cls(name = join(case, "0" ,"org",  pointDisp[version]) , read = False )
         res.header["class"] = "pointVectorField"
         res["dimensions"] = Dimension(*[0, 1, 0, 0, 0, 0, 0])
         res["internalField"] = "uniform (0 0 0)"
@@ -248,7 +254,7 @@ class BoundaryLevelSetDiff(ReadWriteFile) :
     def Build(cls ,case, symmetry=1, namePatch = namePatch, case2D=False, version = "swenseFoam") :
         
         patch = namePatch[version]
-        res = cls(name = join(case, "0" ,"org", "levelSetDiff") , read = False )
+        res = cls( name = join(case, getFilePath("BoundaryLevelSetDiff") ), read = False )
         res.header["class"] =  "volScalarField"
         res["dimensions"] = Dimension(*[ 0, 0, 0, 0, 0, 0, 0])
         res["internalField"] = "uniform 0"
@@ -273,7 +279,7 @@ class BoundaryUdiff(ReadWriteFile) :
     @classmethod
     def Build(cls ,case, speed, symmetry=1, namePatch = namePatch, case2D=False, version = "foamStar") :
         patch = namePatch[version]
-        res = cls( name = join(case, "0" ,"org","UDiff") , read = False )
+        res = cls( name = join(case, getFilePath("BoundaryUdiff") ), read = False )
         res.header["class"] =  "volVectorField"
         res["dimensions"] = Dimension(*[ 0, 1, -1, 0, 0, 0, 0])
         res["internalField"] = "uniform (0 0 0)"

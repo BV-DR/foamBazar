@@ -53,8 +53,7 @@ class OfCase(object):
 
         self.case = os.path.abspath(case)  # path to case
         
-        if clean : 
-            self.clean(clean)
+        self.clean(clean)
         
         self.nProcs = nProcs
 
@@ -105,9 +104,10 @@ class OfCase(object):
         self.createParaviewFile()
 
 
-    def clean(self,overwrite = False) :
+    def clean(self,clean = False) :
         if os.path.exists(self.case):
-            if overwrite:
+            if clean:
+                print('Overwriting case {}'.format(self.case))
                 shutil.rmtree(self.case)
             else:
                 valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}

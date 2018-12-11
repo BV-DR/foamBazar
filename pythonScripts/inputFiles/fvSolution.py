@@ -1,5 +1,5 @@
 import PyFoam
-from inputFiles import ReadWriteFile
+from inputFiles import ReadWriteFile, getFilePath
 from PyFoam.Basics.DataStructures import DictProxy
 from os.path import join
 from copy import deepcopy
@@ -67,7 +67,8 @@ class FvSolution(ReadWriteFile) :
     
     @classmethod
     def Build(cls , case, fsiTol = 1e-8, useEuler=False, nOuterCorrectors=5, nInnerCorrectors = 4, version = "foamStar") :
-        res = cls ( name = join(case, "system" , "fvSolution" ), read = False )
+        
+        res = cls( name = join(case, getFilePath("fvSolution") ), read = False )
 
         #-------- ddtSchemes
         solvers = DictProxy()

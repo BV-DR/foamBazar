@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #########################################################################
-# Filename: waveCaseMesher.py                                           #
+# Filename: seakeepingMesher.py                                         #
 # Date:     2018-Dec-06                                                 #
 # Version:  1.                                                          #
 # Author:   Alexis Benhamou                                             #
@@ -88,7 +88,7 @@ class SeakeepingMesher( OfMesher ):
                                        shipBL           = [3, 1.3, 0.7, 0.7],
                                        noLayers         = [],
                                        solver           = "snappyHexMesh",
-                                       OFversion        = 3,
+                                       OFversion        = 5,
                                        onLiger          = False,
                                        clean            = False
                                        ):
@@ -159,7 +159,7 @@ class SeakeepingMesher( OfMesher ):
             
         solver : str, default 'snappyHexMesh'
             Solver to run
-        OFversion : int, default 3
+        OFversion : int or str, default 5
             OpenFOAM version
         onLiger : boolean, default False
             Logical defining if case is run on Liger cluster
@@ -397,7 +397,7 @@ class SeakeepingMesher( OfMesher ):
                                        Zgrading    = zAllCutRatio,
                                        createPatch = True,
                                        patches     = patches,
-                                       ofp         = OFversion=='P')
+                                       OFversion   = OFversion)
 
         # compute x,y data for refBox
         if (len(refBoxData) == 1):
@@ -722,7 +722,7 @@ class SeakeepingMesher( OfMesher ):
                                               minTwist                   = 0.02,
                                               nSmoothScale               = 5,
                                               errorReduction             = 0.75,
-                                              ofp                        = OFversion=='P')
+                                              OFversion                  = OFversion)
         
         res =  cls( case, nProcs=nProcs,
                           controlDict=controlDict,
@@ -879,6 +879,6 @@ class SeakeepingMesher( OfMesher ):
             if   self.OFversion == 2 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-2.4.x/etc/bashrc;\n')
             elif self.OFversion == 3 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-3.0.x/etc/bashrc;\n')
             elif self.OFversion == 5 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-5.x/etc/bashrc;\n')
-            elif self.OFversion == 'P' : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-v1712/etc/bashrc;\n')
+            elif 'p' in str(self.OFversion).lower(): f.write('source /data/I1608251/OpenFOAM/OpenFOAM-v1712/etc/bashrc;\n')
             f.write('export LC_ALL=C\n\n')
             f.write('mpirun {} -parallel\n'.format(self.solver))

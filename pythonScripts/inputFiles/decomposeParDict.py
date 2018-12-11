@@ -1,6 +1,6 @@
 
 
-from inputFiles import ReadWriteFile
+from inputFiles import ReadWriteFile, getFilePath
 from PyFoam.Basics.DataStructures import Dimension, Vector
 from os.path import join
 
@@ -15,7 +15,8 @@ class DecomposeParDict(ReadWriteFile) :
     
     @classmethod
     def Build(cls, case, nProcs = 1, method = "scotch", version = "foamStar") :
-        res = cls(  name = join(case, "system" , "decomposeParDict" ) , read=False )
+        
+        res = cls( name = join(case, getFilePath("decomposeParDict") ), read = False )
         
         res["numberOfSubdomains"] = nProcs
         res["method"] = method

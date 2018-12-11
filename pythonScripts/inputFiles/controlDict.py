@@ -1,14 +1,14 @@
 from os.path import join
-from inputFiles import ReadWriteFile
+from inputFiles import ReadWriteFile, getFilePath
 from PyFoam.Basics.DataStructures import DictProxy
 from inputFiles.waveProbes import setWaveProbes
 from inputFiles.compatOF import application, surfaceElevation
 
 class ControlDict( ReadWriteFile ) :
+    """controlDict dictionary
+    
     """
-      controlDict dictionary
-    """
-
+   
     @classmethod
     def Build(cls, case, deltaT, endTime, startFrom="latestTime", startTime=0., autoDeltaTCo=None, writeControl="timeStep",
               writeInterval=1, purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no",
@@ -62,8 +62,8 @@ class ControlDict( ReadWriteFile ) :
             List of patches names to compute pressure
         outputLocalMotions : bool, default False
             Logical defining if local motions shoudl be output
-
-        rhoWater : flaot, default 1000.
+            
+        rhoWater : float, default 1000.
             Fuild density
         OFversion : int, default 5
             OpenFOAM version used
@@ -72,7 +72,8 @@ class ControlDict( ReadWriteFile ) :
 
         """
 
-        res = cls(join(case , "system" , "controlDict" ), read = False)
+        res = cls( name = join(case, getFilePath("controlDict") ), read = False )
+        
         res["application"]       = application[version]
         res["startFrom"]         = startFrom
         res["startTime"]         = startTime

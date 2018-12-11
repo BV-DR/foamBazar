@@ -2,7 +2,7 @@ from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile, ParsedP
 from PyFoam.Basics.DataStructures import DictProxy
 from os.path import join
 from inputFiles.compatOF import alpha, p_rgh
-from inputFiles import ReadWriteFile
+from inputFiles import ReadWriteFile, getFilePath
 
 """
   Convenience class to simply write "fvSheme"
@@ -15,7 +15,8 @@ class FvSchemes(ReadWriteFile) :
     
     @classmethod
     def Build( cls , case, version = "foamStar", prsJump = False,  orthogonalCorrection = False, blendCN = 0.9, simType = "steady", limitedGrad=False):
-        res = cls( name = join(case, "system" , "fvSchemes" ) , read = False )
+        
+        res = cls( name = join(case, getFilePath("fvSchemes") ), read = False )
 
         #-------- ddtSchemes
         ddt = DictProxy()

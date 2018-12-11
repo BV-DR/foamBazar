@@ -1,5 +1,5 @@
 from os.path import join
-from inputFiles import ReadWriteFile
+from inputFiles import ReadWriteFile, getFilePath
 from PyFoam.Basics.DataStructures import DictProxy
 
 
@@ -15,7 +15,7 @@ class SnappyHexMeshDict(ReadWriteFile):
                         refinementLength=None, allowFreeStandingZoneFaces=True, snapTol=4.,
                         nSolveIter=30, relativeSizes=False, nSurfaceLayers=3, expansionRatio=1.3,
                         finalLayerThickness=0.1, minThickness=0.02, featureAngle=89, maxNonOrtho=55,
-                        minTwist=0.05, nSmoothScale=5, errorReduction=0.85, noLayers=None, ofp=False):
+                        minTwist=0.05, nSmoothScale=5, errorReduction=0.85, noLayers=None, OFversion=5):
         """Build SnappyHexMesh file from a few parameters.
         
         Parameters
@@ -80,14 +80,12 @@ class SnappyHexMeshDict(ReadWriteFile):
             TODO (option nSmoothScale)
         errorReduction : float, default 0.85
             TODO (option errorReduction)
-        ofp: bool, default False
-            Set to True if snappyHewMesh is used with openFOAM "Plus" version
+        OFversion: int or str, default 5
+            OpenFOAM version used
         
         """
         
-        
-        
-        res = cls(  name = join(case, "system" , "snappyHexMeshDict" ) , read = False )
+        res = cls(  name = join(case, getFilePath("snappyHexMeshDict") ), read = False )
         
         stlname = stlname.split('.stl')[0] #remove .stl extension
         
@@ -175,7 +173,7 @@ class SnappyHexMeshDict(ReadWriteFile):
         addLayersControl["nBufferCellsNoExtrude"] = 0
         addLayersControl["nLayerIter"] = 50
         addLayersControl["nRelaxedIter"] = 20
-        if ofp:
+        if 'p' in str(OFversion).lower():
             addLayersControl["meshShrinker"] = "displacementMotionSolver"
             addLayersControl["solver"] = "displacementLaplacian"
             dlc = DictProxy()

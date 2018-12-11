@@ -1,4 +1,4 @@
-from inputFiles import ReadWriteFile
+from inputFiles import ReadWriteFile, getFilePath
 from PyFoam.Basics.DataStructures import Dimension, Vector, DictProxy
 from os.path import join
 
@@ -14,7 +14,8 @@ class SurfaceFeatureExtractDict(ReadWriteFile) :
     
     @classmethod
     def Build(cls , case, stlname="body"):
-        res = cls( name = join(case, "system" , "surfaceFeatureExtractDict"), read = False)
+        
+        res = cls( name = join(case, getFilePath("surfaceFeatureExtractDict") ), read = False )
         
         stlname = stlname.split('.stl')[0] #remove .stl extension
         

@@ -2,7 +2,7 @@ import os
 import numpy as np
 from PyFoam.Basics.DataStructures import DictProxy, Vector, Field, TupleProxy
 from os.path import join
-from inputFiles import ReadWriteFile
+from inputFiles import ReadWriteFile, getFilePath
 
 """
   Convenience class to simply write "DynamicMeshDict"
@@ -34,31 +34,31 @@ multiBodyFvMeshCoeffs
 
     ship
     {
-	type rigidBody;
+    type rigidBody;
     
     innerDistance       TOFILL;  // For cpMorphing only
     outerDistance       TOFILL;  // For cpMorphing only
     
     motionPatches TOFILL;
     
-	mass                TOFILL;
-	momentOfInertia     (-1 -1 -1 -1 -1 -1);
-	CoRInitial          (-1 -1 -1); 
+    mass                TOFILL;
+    momentOfInertia     (-1 -1 -1 -1 -1 -1);
+    CoRInitial          (-1 -1 -1); 
 
-    	loads
-    	{
-        	gravity { type gravity; value (0 0 -9.81); }
-        	fluid { type fluidForce; patches TOFILL; dynRelax no; relaxCoeff 0.5; }
-    	}
-    	constraints
-    	{
-        	heave_pitch_only
-        	{
-		    	type        sixDOF;
-		    	default     fixAll;         // fixAll | freeAll
-		    	except      (heave pitch);  // overwrite default
-        	}
-    	}
+        loads
+        {
+            gravity { type gravity; value (0 0 -9.81); }
+            fluid { type fluidForce; patches TOFILL; dynRelax no; relaxCoeff 0.5; }
+        }
+        constraints
+        {
+            heave_pitch_only
+            {
+                type        sixDOF;
+                default     fixAll;         // fixAll | freeAll
+                except      (heave pitch);  // overwrite default
+            }
+        }
     }
 
 }
@@ -71,14 +71,14 @@ class DynamicMeshDict( ReadWriteFile ):
    
     @classmethod
     def Build_static( cls, case ):
-        res = cls( join(case, "constant", "dynamicMeshDict" ), read = False )
+        res = cls( name = join(case, getFilePath("dynamicMeshDict") ), read = False )
         res.header["class"] = "dictionary"
         res["dynamicFvMesh"] = "staticFvMesh"
         return res
      
     @classmethod
     def Build_free( cls, case, mass, cog, inertia, rampTime, releaseTime, hullPatch="(ship)", meshMotion = "cpMorphing", innerDistance=None, outerDistance=None, OFversion=5, version="foamStar"):
-        res = cls( join(case, "constant", "dynamicMeshDict" ), read = False )
+        res = cls( name = join(case, getFilePath("dynamicMeshDict") ), read = False )
         res.header["class"] = "dictionary"
         
         import tempfile
@@ -122,7 +122,7 @@ class DynamicMeshDict( ReadWriteFile ):
         
     @classmethod
     def Build_imposed(cls, case,  dispFile='', COG=[0.,0.,0.], OFversion=5, version="foamStar") :
-        res = cls( join(case, "constant", "dynamicMeshDict" ), read = False )
+        res = cls( name = join(case, getFilePath("dynamicMeshDict") ), read = False )
         if OFversion==5:
             res["dynamicFvMesh"] = "dynamicMotionSolverFvMesh"
             res["motionSolver"] = "solidBody"

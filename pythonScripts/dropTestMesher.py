@@ -144,9 +144,9 @@ class DropTestMesher( OfMesher ):
                                          refineLength     = [0.1],
                                          layerLength      = 0.005,
                                          solver           = "snappyHexMesh",
-                                         OFversion        = 3,
+                                         OFversion        = 5,
                                          onLiger          = False,
-                                         clean        = False
+                                         clean            = False
                                          ):
         """Build mesh for CFD drop test mesk from a few parameters.
         
@@ -207,7 +207,7 @@ class DropTestMesher( OfMesher ):
         
         solver : str, default 'snappyHexMesh'
             Solver to run
-        OFversion : int, default 3
+        OFversion : int or str, default 5
             OpenFOAM version
         onLiger : boolean, default False
             Logical defining if case is run on Liger cluster
@@ -296,7 +296,7 @@ class DropTestMesher( OfMesher ):
                                               expansionRatio      = 1.3,
                                               finalLayerThickness = referenceLength*layerLength,
                                               minThickness        = referenceLength*layerLength*0.1,
-                                              ofp                 = OFversion=='P')
+                                              OFversion           = OFversion)
                                               
         #surfaceFeatureExtractDict
         surfaceFeatureExtractDict = SurfaceFeatureExtractDict.Build(case = case,
@@ -616,6 +616,6 @@ class DropTestMesher( OfMesher ):
             if   self.OFversion == 2 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-2.4.x/etc/bashrc;\n')
             elif self.OFversion == 3 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-3.0.x/etc/bashrc;\n')
             elif self.OFversion == 5 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-5.x/etc/bashrc;\n')
-            elif self.OFversion == 'P' : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-v1712/etc/bashrc;\n')
+            elif 'p' in str(self.OFversion).lower(): f.write('source /data/I1608251/OpenFOAM/OpenFOAM-v1712/etc/bashrc;\n')
             f.write('export LC_ALL=C\n\n')
             f.write('mpirun {} -parallel\n'.format(self.solver))
