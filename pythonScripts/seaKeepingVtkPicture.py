@@ -152,7 +152,7 @@ def writerFromExt(ext) :
         writer = vtk.vtkTIFFWriter
     else:
         print("Picture extension not recognized")
-    return ext
+    return writer
 
 def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeList=[0],
                     startInteractive=False, mag=4, parallel="auto", zoom=1.0, viewAngle = 30,
@@ -169,7 +169,7 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
 
     c = Chrono(start=True)
     baseFile, ext = os.path.splitext(pictureFile)[0:2]
-    Writter = writerFromExt(ext)
+    Writer = writerFromExt(ext)
     pathPic = os.path.abspath(os.path.dirname(pictureFile))
     if not os.path.exists(pathPic):
         os.makedirs(pathPic)
@@ -245,8 +245,8 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
         renderer.AddActor(structureActor)  # Add the mesh to the view
 
     if y0Args is not None :
-       symActor = getSymPlaneVtkActor(vtk_r, blockIndex = blockDict["domainY0"], **y0Args )
-       renderer.AddActor(symActor)  # Add the mesh to the view
+        symActor = getSymPlaneVtkActor(vtk_r, blockIndex = blockDict["domainY0"], **y0Args )
+        renderer.AddActor(symActor)  # Add the mesh to the view
 
 
     renderer.SetBackground(1, 1, 1)  # White background
@@ -254,7 +254,7 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
 
     #--- Rendering windows
     renWin = vtk.vtkRenderWindow()
-    
+
     # Avoid displaying interactive window
     if not startInteractive :
         renWin.SetOffScreenRendering(1)
@@ -295,7 +295,7 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
             w2if.Update()
             pictureFile = "{:}_{:03}{:}".format(baseFile, itime, ext)
 
-            writter = Writter()
+            writer = Writer()
             writer.SetFileName(pictureFile)
             writer.SetInputConnection(w2if.GetOutputPort())
             writer.Write()
