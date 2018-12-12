@@ -27,7 +27,7 @@ def getAvailableTimeData(caseDir, parallel):
     return sorted([float(f) for f in os.listdir(d) if is_number(f) and os.path.isdir(os.path.join(d, f))])
 
 
-def getFreeSurfaceActor(vtk_r, scale, fsRange = None):
+def getFreeSurfaceActor(vtk_r, scale = [1,1,1], fsRange = None):
     aa = vtk.vtkAssignAttribute()
     aa.SetInputConnection(vtk_r.GetOutputPort())
     aa.Assign('alpha.water', "SCALARS", "POINT_DATA")
@@ -90,42 +90,76 @@ def getFreeSurfaceActor(vtk_r, scale, fsRange = None):
 
 
 
-def getSymmetryPlaneView(vtk_r, scalarField = "alpha.water"):
+def getSymPlaneVtkActor(vtk_r, blockIndex, scalarField = "alpha.water"):
     """return symmetry plane colored by field
     """
+    #SymmetryPlane
+    symPlane = vtk.vtkExtractBlock()
+    symPlane.SetInputConnection(vtk_r.GetOutputPort())
+    symPlane.AddIndex(blockIndex)
+    symPlaneDataFilter = vtk.vtkCompositeDataGeometryFilter()
+    symPlaneDataFilter.SetInputConnection(symPlane.GetOutputPort())
+    symPlaneMapper = vtk.vtkDataSetMapper()
+    symPlaneMapper.SetInputConnection(symPlaneDataFilter.GetOutputPort())
+    symPlaneMapper.SelectColorArray(scalarField)
+    #symPlaneMapper.SetScalarModeToUsePointData()
+    symPlaneMapper.SetScalarModeToUseCellFieldData()
+    symPlaneMapper.SetUseLookupTableScalarRange(0)
+    symPlaneMapper.SetScalarRange(-10000, 10000)
 
+    symPlaneActor = vtk.vtkActor()
+    symPlaneActor.GetProperty().SetEdgeVisibility(1)
+    symPlaneActor.SetMapper(symPlaneMapper)
+    return symPlaneActor
 
-    return
-
-def getStuctureActor(vtk_r):
+def getStuctureActor(vtk_r, blockIndex, scalarField = "p_rgh"):
     """Return an actor with the ship structure
     """
     #--------------------------------- Structure
     structureOnly = vtk.vtkExtractBlock()
     structureOnly.SetInputConnection(vtk_r.GetOutputPort())
-    structureOnly.AddIndex(2)
+    structureOnly.AddIndex(blockIndex)
 
     structureDataFilter = vtk.vtkCompositeDataGeometryFilter()
     structureDataFilter.SetInputConnection(structureOnly.GetOutputPort())
 
     structureMapper = vtk.vtkDataSetMapper()
     structureMapper.SetInputConnection(structureDataFilter.GetOutputPort())
-    structureMapper.SelectColorArray("p_rgh")
-    structureMapper.SetScalarModeToUsePointData()
-    # structureMapper.SetScalarModeToUsePointFieldData()
+    structureMapper.SelectColorArray(scalarField)
+    #structureMapper.SetScalarModeToUsePointData()
+    structureMapper.SetScalarModeToUsePointFieldData()
     structureMapper.SetUseLookupTableScalarRange(0)
     structureMapper.SetScalarRange(-10000, 10000)
 
     structureActor = vtk.vtkActor()
     structureActor.GetProperty().SetEdgeVisibility(0)
     structureActor.SetMapper(structureMapper)
-
     return structureActor
+
+
+def writerFromExt(ext) :
+    """Pick correct writter class based on extension
+    """
+    if ext == ".png":
+        writer = vtk.vtkPNGWriter
+    elif ext == ".jpg":
+        writer = vtk.vtkJPEGWriter
+    elif ext == ".bmp":
+        writer = vtk.vtkBMPWriter
+    elif ext == ".eps":
+        writer = vtk.vtkPostScriptWriter
+    elif ext == ".tiff":
+        writer = vtk.vtkTIFFWriter
+    else:
+        print("Picture extension not recognized")
+    return ext
 
 def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeList=[0],
                     startInteractive=False, mag=4, parallel="auto", zoom=1.0, viewAngle = 30,
-                    scale=(1, 1, 1), viewUp = [1,1,1], hullPatch="ship",
-                    fsRange = None
+                    fsArgs = {"scale" : (1, 1, 1), "fsRange" : None },
+                    y0Args = {"scalarField" : "alpha.water", },
+                    structArgs = {"scalarField" : "p_rgh", },
+                    viewUp = [1,1,1], hullPatch="ship",
                     ):
     """
     Function to generate picture out of openFoam results
@@ -134,8 +168,8 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
     """
 
     c = Chrono(start=True)
-
     baseFile, ext = os.path.splitext(pictureFile)[0:2]
+    Writter = writerFromExt(ext)
     pathPic = os.path.abspath(os.path.dirname(pictureFile))
     if not os.path.exists(pathPic):
         os.makedirs(pathPic)
@@ -174,38 +208,58 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
         vtk_r.SetCaseType(0)
     else:
         vtk_r.SetCaseType(1)  # 0 = decomposed case, 1 = reconstructed case
-    # vtk_r.ReadZonesOn()   # ?
+    #vtk_r.ReadZonesOn()
     cdp = vtk.vtkCompositeDataPipeline()
     vtk_r.SetDefaultExecutivePrototype(cdp)
     vtk_r.SetDecomposePolyhedra(0)
     vtk_r.CreateCellToPointOn()
     vtk_r.DisableAllPatchArrays()
+
     vtk_r.SetPatchArrayStatus("internalMesh", 1)
     vtk_r.SetPatchArrayStatus(hullPatch, 1)
+    vtk_r.SetPatchArrayStatus("domainY0", 1)
 
-    #--------------------------------- Free-surface (ISO alpha = 0.5)
-    fsActor, scalarBar = getFreeSurfaceActor(vtk_r, scale, fsRange = fsRange)
+    vtk_r.SetTimeValue(timeList[0])
+    vtk_r.Update()  # not mandatory, but just postpone the waiting time
 
-    #--------------------------------- Ship surface
-    structureActor = getStuctureActor(vtk_r)
+    iter = vtk_r.GetOutput().NewIterator()
+    blockDict = {}
+    while not iter.IsDoneWithTraversal():
+        blockDict[ iter.GetCurrentMetaData().Get(vtk.vtkCompositeDataSet.NAME()) ] = iter.GetCurrentFlatIndex()
+        iter.GoToNextItem()
 
+    print (blockDict)
 
     #--- Renderer
     renderer = vtk.vtkRenderer()
-    renderer.AddActor(fsActor)  # Add the mesh to the view
-    renderer.AddActor(structureActor)  # Add the mesh to the view
-    renderer.AddActor(scalarBar)
+
+    #--------------------------------- Free-surface (ISO alpha = 0.5)
+    if fsArgs is not None :
+        fsActor, scalarBar = getFreeSurfaceActor(vtk_r, **fsArgs)
+        renderer.AddActor(fsActor)  # Add the mesh to the view
+        renderer.AddActor(scalarBar)
+
+    #--------------------------------- Ship surface
+    if structArgs is not None :
+        structureActor = getStuctureActor(vtk_r, blockIndex = blockDict[hullPatch], **structArgs )
+        renderer.AddActor(structureActor)  # Add the mesh to the view
+
+    if y0Args is not None :
+       symActor = getSymPlaneVtkActor(vtk_r, blockIndex = blockDict["domainY0"], **y0Args )
+       renderer.AddActor(symActor)  # Add the mesh to the view
+
+
     renderer.SetBackground(1, 1, 1)  # White background
     renderer.GetActiveCamera().SetParallelProjection(0)
 
     #--- Rendering windows
     renWin = vtk.vtkRenderWindow()
-    renWin.AddRenderer(renderer)
-
+    
     # Avoid displaying interactive window
-    if not startInteractive and False:
+    if not startInteractive :
         renWin.SetOffScreenRendering(1)
 
+    renWin.AddRenderer(renderer)
     renWin.SetSize(1200, 1000)
 
     # Set view point
@@ -219,8 +273,6 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
 
     # To get interactive windows
     if startInteractive:
-        vtk_r.SetTimeValue(timeList[0])
-        vtk_r.Update()  # not mandatory, but just postpone the waiting time
         vtk_r.Modified()
         iren = vtk.vtkRenderWindowInteractor()
         iren.SetRenderWindow(renWin)
@@ -228,21 +280,7 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
         iren.Start()
 
     else:
-        if ext == ".png":
-            writer = vtk.vtkPNGWriter()
-        elif ext == ".jpg":
-            writer = vtk.vtkJPEGWriter()
-        elif ext == ".bmp":
-            writer = vtk.vtkBMPWriter()
-        elif ext == ".eps":
-            writer = vtk.vtkPostScriptWriter()
-        elif ext == ".tiff":
-            writer = vtk.vtkTIFFWriter()
-        else:
-            print("Picture extension not recognized")
-
         for itime, time in tqdm(enumerate(timeList)):
-
             #exe.SetUpdateTimeStep( 0, time )
             #vtk_r.SetTimeValue( time )
             # vtk_r.Update()
@@ -257,6 +295,7 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
             w2if.Update()
             pictureFile = "{:}_{:03}{:}".format(baseFile, itime, ext)
 
+            writter = Writter()
             writer.SetFileName(pictureFile)
             writer.SetInputConnection(w2if.GetOutputPort())
             writer.Write()
