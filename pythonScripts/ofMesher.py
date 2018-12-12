@@ -19,11 +19,10 @@ class OfMesher( OfCase ):
 
         OfCase.__init__(self, *args, **kwargs)
         
-        self.blockMeshDict = extrudeMeshDict
+        self.blockMeshDict = blockMeshDict
         self.snappyHexMeshDict = snappyHexMeshDict
         self.surfaceFeatureExtractDict = surfaceFeatureExtractDict
         self.extrudeMeshDict = extrudeMeshDict
-        
         
         self.refineMeshDicts = refineMeshDicts
         self.setSelections = setSelections

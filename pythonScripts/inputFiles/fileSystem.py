@@ -13,7 +13,7 @@ default = {
         "waveProperties"            : "constant/waveProperties",
         "RASProperties"             : "constant/RASProperties",
         "turbulenceProperties"      : "constant/turbulenceProperties", 
-        "blockMeshDict"             : "constant/polyMesh/blockMeshDict",
+        "blockMeshDict"             : "system/blockMeshDict",
         "boundaryPressure"          : "0/org/p_rgh", 
         "boundaryVelocity"          : "0/org/U", 
         "boundaryPointDisplacement" : "0/org/pointDisplacement", 
@@ -24,11 +24,9 @@ default = {
         "BoundaryUdiff"             : "0/org/UDiff"
               }
 
-
 #Modification of file path in plus version
 plusVersion = deepcopy(default)
-plusVersion["blockMeshDict"] = "system/blockMeshDict"
-
+# plusVersion["blockMeshDict"] = "system/blockMeshDict"
 
 def getFilePath( fileName , OFversion = 5) :
     if "p" in str(OFversion).lower() :
