@@ -40,6 +40,8 @@ class SeakeepingCase(OfCase):
                         innerDistance=None,
                         outerDistance=None,
                         adjustTimeStep=None,  # None for constant time step, [maxCo, maxAlphaCo, maxDeltaT] otherwise
+                        writeFormat = "ascii",
+                        writeInterval = 1,
                         nProcs=1,
                         OFversion=5,
                         application = "foamStar",
@@ -61,7 +63,7 @@ class SeakeepingCase(OfCase):
         res.meshMotion = meshMotion
         
         res.speed = speed
-        res.controlDict = ControlDict.Build(case, deltaT=deltaT, adjustTimeStep=adjustTimeStep, endTime=endTime)
+        res.controlDict = ControlDict.Build(case, deltaT=deltaT, adjustTimeStep=adjustTimeStep, endTime=endTime, writeInterval = writeInterval, writeFormat = writeFormat)
         res.decomposeParDict = DecomposeParDict.Build(case, nProcs=res.nProcs, version=OFversion)
         res.setBoundaries()
         res.setDefaultSchemeAndSolution()

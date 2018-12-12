@@ -145,7 +145,7 @@ class WaveProperties( ReadWriteFile ) :
     @classmethod
     def Build(cls, case, initWaveCondition, relaxZones=[], seaLevel=0., version="foamStar") :
     
-        res = cls( name = join(case, getFilePath("waveProperties") ), read = False )
+        res = cls( name = os.path.join(case, getFilePath("waveProperties") ), read = False )
         
         res.case = case
         res.relaxZones = relaxZones

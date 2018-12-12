@@ -12,7 +12,7 @@ class ControlDict( ReadWriteFile ) :
     @classmethod
     def Build(cls, case, deltaT, endTime, startFrom="latestTime", startTime=0., autoDeltaTCo=None, writeControl="timeStep",
               writeInterval=1, purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no",
-              writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputInterval=1,
+              writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputInterval=1, writeFormat = "ascii",
               outputMotions=False, vbmPatch=None, forcesPatch=None, pressuresPatch=None, outputLocalMotions=False, rhoWater = 1000,
               OFversion=5, version="foamStar"):
         """Build controlDict file from a few parameters.
@@ -83,8 +83,9 @@ class ControlDict( ReadWriteFile ) :
         res["writeControl"]      = writeControl
         res["writeInterval"]     = writeInterval
         res["purgeWrite"]        = purgeWrite
-        res["writeFormat"]       = "ascii"
-        res["writePrecision"]    = writePrecision
+        res["writeFormat"]       = writeFormat
+        if writeFormat == "ascii" :
+            res["writePrecision"]    = writePrecision
         res["writeCompression"]  = writeCompression
         res["timeFormat"]        = "general"
         res["timePrecision"]     = 6
