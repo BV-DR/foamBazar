@@ -102,11 +102,11 @@ class SeakeepingCase(OfCase):
         """
 
         # ControlDict
-        pm = {}
-        pm["mass"] = mass
-        pm["cog"] = cog
-        pm["inertia"] = inertia
-        pm["speed"] = speed
+        # pm = {}
+        # pm["mass"] = mass
+        # pm["cog"] = COG
+        # pm["inertia"] = inertia
+        # pm["speed"] = speed
 
         res = cls(case=case, **kwargs)
         res.nProcs = nProcs
