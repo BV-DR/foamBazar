@@ -55,42 +55,42 @@ class SeakeepingMesher( OfMesher ):
     >>>             }
     >>> #
     >>> # Call routines for meshing here
-    >>> mesh = SeakeepingMesher.BuildFromAllParameters( case, **myParams )
+    >>> mesh = SeakeepingMesher.BuildFromParams( case, **myParams )
     >>> fname = os.path.join(case,'log.input')
     >>> with open(fname,'w') as f: f.write(str(myParams))
     >>> mesh.runInit()
     
     """
     @classmethod
-    def BuildFromAllParameters(cls,    case,
-                                       nProcs           = 4,
-                                       stlFiles         = None,
-                                       stlName          = 'ship',
-                                       refCellBuffer       = 4,
-                                       domain           = [-3.0,2.5, -2.0,2.0, -1.5,0.5], 
-                                       side             = 'port',
-                                       LOA              = None,
-                                       draft            = None,
-                                       heading          = 180,
-                                       fsZone           = None,
-                                       fsCellHeight     = None,
-                                       fsCellRatio      = 4,
-                                       refBow           = False,
-                                       refBowLength     = None,
-                                       refStern         = False,
-                                       refSternLength   = None,
-                                       refFS            = True,
-                                       refBoxType       = 'wave',
-                                       refBoxData       = [3],
-                                       refBoxRatio       = 3,
-                                       refSurfExtra     = None,
-                                       shipBL           = [3, 1.3, 0.7, 0.7],
-                                       noLayers         = [],
-                                       solver           = "snappyHexMesh",
-                                       OFversion        = 5,
-                                       onLiger          = False,
-                                       clean            = False
-                                       ):
+    def BuildFromParams(cls,    case,
+                                nProcs           = 4,
+                                stlFiles         = None,
+                                stlName          = 'ship',
+                                refCellBuffer       = 4,
+                                domain           = [-3.0,2.5, -2.0,2.0, -1.5,0.5], 
+                                side             = 'port',
+                                LOA              = None,
+                                draft            = None,
+                                heading          = 180,
+                                fsZone           = None,
+                                fsCellHeight     = None,
+                                fsCellRatio      = 4,
+                                refBow           = False,
+                                refBowLength     = None,
+                                refStern         = False,
+                                refSternLength   = None,
+                                refFS            = True,
+                                refBoxType       = 'wave',
+                                refBoxData       = [3],
+                                refBoxRatio       = 3,
+                                refSurfExtra     = None,
+                                shipBL           = [3, 1.3, 0.7, 0.7],
+                                noLayers         = [],
+                                solver           = "snappyHexMesh",
+                                OFversion        = 5,
+                                onLiger          = False,
+                                clean            = False
+                                ):
         """Build mesh for CFD seakeeping mesh form a few parameters.
         
         Parameters

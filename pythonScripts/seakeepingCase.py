@@ -27,32 +27,123 @@ class SeakeepingCase(OfCase):
         self.bounds = getBounds(os.path.join(self.meshFolder, "polyMesh/points.gz"))
 
     @classmethod
-    def BuildFromParams(cls, case, mass, inertia, cog,
-                        deltaT,
-                        endTime,
-                        speed,
-                        wave,
-                        inletRelax,
-                        outletRelax,
-                        sideRelax,
-                        outletRelaxTarget,
-                        meshMotion="cpMorphing",
-                        innerDistance=None,
-                        outerDistance=None,
-                        adjustTimeStep=None,  # None for constant time step, [maxCo, maxAlphaCo, maxDeltaT] otherwise
-                        nProcs=1,
-                        OFversion=5,
-                        application = "foamStar",
-                        *args, **kwargs):
+    def BuildFromParams(cls, case,
+                             meshDir            = 'mesh',
+                             meshTime           = 'constant',
+                             stlFile            = 'ship.stl',
+                             startTime          = 'latestTime',
+                             endTime            = 1000,
+                             timeStep           = 0.01,
+                             writeInterval      = 1,
+                             purgeWrite         = 0,
+                             scheme             = 'Euler',
+                             outputVBM          = False,
+                             outputWave         = False,
+                             outputMotions      = True,
+                             localMotionPts     = [],
+                             outputForces       = False,
+                             forcesPatch        = None,
+                             outputPressures    = False,
+                             pressuresPatch     = None,
+                             waveProbes         = [],
+                             outputInterval     = 1,
+                             hullPatch          = 'ship',
+                             donFile            = 'ship.don',
+                             mdFile             = None,
+                             modesToUse         = '',
+                             datFile            = None,
+                             dmigFile           = None,
+                             hmrUserOutput      = None,
+                             hmrScaling         = 0,
+                             shipDamping        = None,
+                             
+                             EulerCellsDist     = 8,
+                             
+                             inletRelaxZone     = None,
+                             outletRelaxZone    = None,
+                             sideRelaxZone      = None,
+                             
+                             mass               = None,
+                             inertia            = None,
+                             COG                = None,
+                             
+                             wave               = None,
+                             waveH              = 1.0,
+                             waveT              = 10.0,
+                             speed              = 0.,
+                             depth              = 500,
+                             draft              = 0,
+                             waveSeaLvl         = 0,
+                             waveStartTime      = 0,
+                             waveRampTime       = 0,
+                             addDamping         = False,
+                             vtkOut             = True,
+                             
+                             scheme             = 'Euler',
+                             fsiTol             = 1e-6,
+                             nProcs     = 1,
+                             OFversion  = 5,
+                             
+                             outletRelaxTarget,
+                             meshMotion="cpMorphing",
+                             innerDistance=None,
+                             outerDistance=None,
+                             adjustTimeStep=None,  # None for constant time step, [maxCo, maxAlphaCo, maxDeltaT] otherwise
+
+                             solver     = "foamStar",
+                             *args, **kwargs):
         """Construct seakeeping case
         """
+        
+        #Read data from Homer or from inputs
+        if hmrUserOutput is not None:
+            print('Reading mass properties from Homer file : "{}"'.format(hmrUserOutput))
+            modes2use = [int(i) for i in modesToUse.split()]
+            modes2use.sort()
+            
+            freq = []
+            scaling = []
+            inertia = [0.]*6
+    
+            with open(hmrUserOutput,'r') as f:
+                itf = iter(f)
+                for line in itf:
+                    if 'Location of center of gravity in global reference' in line:
+                        next(itf)
+                        pline = next(itf)
+                        COG = [float(i) for i in pline.split()]
+                    elif 'Mass =' in line:
+                        mass = float(line.split()[2])
+                    elif 'Roll Inertia =' in line:
+                        inertia[0] = float(line.split()[3])
+                    elif 'Pitch Inertia =' in line:
+                        inertia[1] = float(line.split()[3])
+                    elif 'Yaw Inertia =' in line:
+                        inertia[2] = float(line.split()[3])
+                        break
+                    elif len(modes2use)>0:
+                        for mode in modes2use:
+                            mstr = 'Mode '+str(mode)
+                            if mstr in line:
+                                sline = line.split()
+                                scaling.append(float(sline[3]))
+                                freq.append(float(sline[6])**2)
+
+            if len(modes2use)>0:
+                hmrScaling  = ('{:20.14e}').format(scaling[0])
+                shipFreq    = ('{:20.14e} '*len(freq)).format(*freq)
+        elif all((mass,inertia,COG):
+            print('Reading mass properties  from user inputs')
+        else:
+            raise(SystemError('No or incomplete mass properties provided. Please provide hmrUserOutput (for Homer) or all the following parameters (mass,inertia,COG).')
+        
 
         # ControlDict
-        pm = {}
-        pm["mass"] = mass
-        pm["cog"] = cog
-        pm["inertia"] = inertia
-        pm["speed"] = speed
+        # pm = {}
+        # pm["mass"] = mass
+        # pm["cog"] = COG
+        # pm["inertia"] = inertia
+        # pm["speed"] = speed
 
         res = cls(case=case, **kwargs)
         res.nProcs = nProcs
@@ -83,7 +174,7 @@ class SeakeepingCase(OfCase):
         res.waveProperties = WaveProperties.Build(res.case, res.wave, relaxZones=(res.inletRelax, res.outletRelax, res.sideRelax))
 
         #----------- Set mechanics
-        res.dynamicMeshDict = DynamicMeshDict.Build_free(res.case, mass=mass, cog=cog, inertia=inertia,
+        res.dynamicMeshDict = DynamicMeshDict.Build_free(res.case,mass=mass, cog=cog, inertia=inertia,
                                                          rampTime=0.1, releaseTime=0.0,
                                                          hullPatch="(ship)", meshMotion=meshMotion, innerDistance=innerDistance, outerDistance=outerDistance)
 

@@ -44,91 +44,91 @@ class DropTestCase( OfCase ) :
 
 
     @classmethod
-    def BuildFromAllParameters(cls,      case,
-                                         meshDir          = "mesh",
-                                         meshTime         = "constant",
-                                         ndim             = 2,
-                                         symmetry         = 0,          # 0 = None ; 1 = symmetry ; 2 = symmetryPlane
-                                         outputForces     = False,
-                                         forcesPatch      = None,
-                                         outputPressures  = False,
-                                         pressuresPatch   = None,
-                                         outputInterval   = 1,
-                                         hullPatch        = "ship",
-                                         startTime        = "latestTime",
-                                         endTime          = 10,
-                                         timeStep         = 0.01,
-                                         writeInterval    = 1,
-                                         purgeWrite       = 0,
-                                         scheme           = "Euler",
-                                         nProcs           = 4,
-                                         nOuterCorrectors = 5,
-                                         wave             = "noWaves",
-                                         waveH            = 0.0,
-                                         waveT            = 0.0,
-                                         velocity         = 0.0,
-                                         depth            = 100.,
-                                         frontRelaxZone    = None,
-                                         backRelaxZone    = None,
-                                         sideRelaxZone    = None,
-                                         dispSignal       = None,
-                                         solver           = "foamStar",
-                                         OFversion        = 3,
-                                         translate        = [0.0,0.0,0.0],
-                                         rotate           = [0.0,0.0,0.0],
-                                         COG              = [0.0,0.0,0.0],
-                                         gravity          = 0.0,
-                                         turbulenceModel  = "laminar",
-                                         ):
+    def BuildFromParams(cls,      case,
+                                   meshDir          = "mesh",
+                                   meshTime         = "constant",
+                                   ndim             = 2,
+                                   symmetry         = 0,          # 0 = None ; 1 = symmetry ; 2 = symmetryPlane
+                                   outputForces     = False,
+                                   forcesPatch      = None,
+                                   outputPressures  = False,
+                                   pressuresPatch   = None,
+                                   outputInterval   = 1,
+                                   hullPatch        = "ship",
+                                   startTime        = "latestTime",
+                                   endTime          = 10,
+                                   timeStep         = 0.01,
+                                   writeInterval    = 1,
+                                   purgeWrite       = 0,
+                                   scheme           = "Euler",
+                                   nProcs           = 4,
+                                   nOuterCorrectors = 5,
+                                   wave             = "noWaves",
+                                   waveH            = 0.0,
+                                   waveT            = 0.0,
+                                   velocity         = 0.0,
+                                   depth            = 100.,
+                                   frontRelaxZone    = None,
+                                   backRelaxZone    = None,
+                                   sideRelaxZone    = None,
+                                   dispSignal       = None,
+                                   solver           = "foamStar",
+                                   OFversion        = 3,
+                                   translate        = [0.0,0.0,0.0],
+                                   rotate           = [0.0,0.0,0.0],
+                                   COG              = [0.0,0.0,0.0],
+                                   gravity          = 0.0,
+                                   turbulenceModel  = "laminar",
+                                   ):
 
         #controlDict
         if outputForces and (forcesPatch is None): forcesPatch = [hullPatch]
         if outputPressures and (pressuresPatch is None): pressuresPatch = [hullPatch]
 
-        controlDict = ControlDict( case                = case,
-                                   startFrom           = startTime,
-                                   endTime             = endTime,
-                                   deltaT              = timeStep,
-                                   writeInterval       = writeInterval,
-                                   purgeWrite          = purgeWrite,
-                                   writePrecision      = 15,
-                                   forcesPatch         = forcesPatch,
-                                   pressuresPatch      = pressuresPatch,
-                                   outputInterval      = outputInterval,
-                                   rhoWater            = 1025,
-                                   OFversion           = OFversion,
-                                   version             = solver )
+        controlDict = ControlDict.Build(case                = case,
+                                        startFrom           = startTime,
+                                        endTime             = endTime,
+                                        deltaT              = timeStep,
+                                        writeInterval       = writeInterval,
+                                        purgeWrite          = purgeWrite,
+                                        writePrecision      = 15,
+                                        forcesPatch         = forcesPatch,
+                                        pressuresPatch      = pressuresPatch,
+                                        outputInterval      = outputInterval,
+                                        rhoWater            = 1025,
+                                        OFversion           = OFversion,
+                                        version             = solver )
 
         #fvSchemes
-        fvSchemes = FvSchemes( case     = case,
-                               simType  = scheme,
-                               orthogonalCorrection = "implicit",
-                               version  = solver )
+        fvSchemes = FvSchemes.Build(case     = case,
+                                    simType  = scheme,
+                                    orthogonalCorrection="implicit",
+                                    version  = solver )
 
         #fvSolution
-        fvSolution = FvSolution( case    = case,
-                                 useEuler = scheme == 'Euler',
-                                 version  = solver )
+        fvSolution = FvSolution.Build(case    = case,
+                                      useEuler = scheme=='Euler',
+                                      version  = solver )
 
         #decomposeParDict
-        decomposeParDict = DecomposeParDict( case   = case,
-                                             nProcs = nProcs )
+        decomposeParDict = DecomposeParDict.Build(case   = case,
+                                                  nProcs = nProcs )
 
 
         #dynamicMeshDict
-        dynamicMeshDict = DynamicMeshDict( case      = case,
-                                           type      = 'solid',
-                                           dispFile  = "dispSignal.dat",
-                                           COG       = COG,
-                                           OFversion = OFversion,
-                                           version   = solver )
+        dynamicMeshDict = DynamicMeshDict.Build(case      = case,
+                                                type      = 'solid',
+                                                dispFile  = "dispSignal.dat",
+                                                COG       = COG,
+                                                OFversion = OFversion,
+                                                version   = solver )
 
 
 
         #transportProperties
-        transportProperties = TransportProperties( case = case,
-                                                   rhoWater = 1025,
-                                                   version = solver )
+        transportProperties = TransportProperties.Build(case = case,
+                                                        rhoWater = 1025,
+                                                        version = solver )
 
 
 
@@ -137,7 +137,6 @@ class DropTestCase( OfCase ) :
                           controlDict=controlDict,
                           fvSchemes=fvSchemes,
                           fvSolution=fvSolution,
-                          #waveProperties=waveProperties,
                           dynamicMeshDict=dynamicMeshDict,
                           transportProperties=transportProperties,
                           decomposeParDict=decomposeParDict,
