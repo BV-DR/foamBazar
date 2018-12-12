@@ -27,25 +27,77 @@ class SeakeepingCase(OfCase):
         self.bounds = getBounds(os.path.join(self.meshFolder, "polyMesh/points.gz"))
 
     @classmethod
-    def BuildFromParams(cls, case, mass, inertia, cog,
-                        deltaT,
-                        endTime,
-                        speed,
-                        wave,
-                        inletRelax,
-                        outletRelax,
-                        sideRelax,
-                        outletRelaxTarget,
-                        meshMotion="cpMorphing",
-                        innerDistance=None,
-                        outerDistance=None,
-                        adjustTimeStep=None,  # None for constant time step, [maxCo, maxAlphaCo, maxDeltaT] otherwise
-                        writeFormat = "ascii",
-                        writeInterval = 1,
-                        nProcs=1,
-                        OFversion=5,
-                        application = "foamStar",
-                        *args, **kwargs):
+    def BuildFromParams(cls, case,
+                             meshDir            = 'mesh',
+                             meshTime           = 'constant',
+                             stlFile            = 'ship.stl',
+                             startTime          = 'latestTime',
+                             endTime            = 1000,
+                             timeStep           = 0.01,
+                             writeInterval      = 1,
+                             purgeWrite         = 0,
+                             writeFormat = "ascii",
+                             scheme             = 'Euler',
+                             outputVBM          = False,
+                             outputWave         = False,
+                             outputMotions      = True,
+                             localMotionPts     = [],
+                             outputForces       = False,
+                             forcesPatch        = None,
+                             outputPressures    = False,
+                             pressuresPatch     = None,
+                             waveProbes         = [],
+                             outputInterval     = 1,
+                             hullPatch          = 'ship',
+                             donFile            = 'ship.don',
+                             mdFile             = None,
+                             modesToUse         = '',
+                             datFile            = None,
+                             dmigFile           = None,
+                             hmrUserOutput      = None,
+                             hmrScaling         = 0,
+                             shipDamping        = None,
+                             
+                             EulerCellsDist     = 8,
+                             
+                             inletRelaxZone     = None,
+                             outletRelaxZone    = None,
+                             sideRelaxZone      = None,
+                             
+                             mass               = None,
+                             inertia            = None,
+                             COG                = None,
+                             
+                             wave               = None,
+                             waveH              = 1.0,
+                             waveT              = 10.0,
+                             speed              = 0.,
+                             depth              = 500,
+                             draft              = 0,
+                             waveSeaLvl         = 0,
+                             waveStartTime      = 0,
+                             waveRampTime       = 0,
+                             addDamping         = False,
+                             vtkOut             = True,
+                             
+		             meshMotion="cpMorphing",
+		             innerDistance=None,
+                             outerDistance=None,
+
+                             scheme             = 'Euler',
+                             fsiTol             = 1e-6,
+                             
+                             nProcs     = 1,
+                             OFversion  = 5,
+                             
+                             outletRelaxTarget,
+                             meshMotion="cpMorphing",
+                             innerDistance=None,
+                             outerDistance=None,
+                             adjustTimeStep=None,  # None for constant time step, [maxCo, maxAlphaCo, maxDeltaT] otherwise
+
+                             solver     = "foamStar",
+                             *args, **kwargs):
         """Construct seakeeping case
         """
 

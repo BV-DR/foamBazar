@@ -114,39 +114,39 @@ class DropTestMesher( OfMesher ):
     >>>            }
     >>> #
     >>> # Call routines for meshing here
-    >>> drop = DropTestMesher.BuildFromAllParameters( case, **myParams )
+    >>> drop = DropTestMesher.BuildFromParams( case, **myParams )
     >>> fname = os.path.join(case,'log.input')
     >>> with open(fname,'w') as f: f.write(str(myParams))
-    >>> drop.runInit()   
+    >>> drop.runInit()
     
     """
     @classmethod
-    def BuildFromAllParameters(cls,      case,
-                                         nProcs           = 4,
-                                         ndim             = 2,
-                                         stlFile          = None,
-                                         hullPatch        = None,
-                                         section          = 1,
-                                         gridLevel        = 1,
-                                         symmetry         = False,
-                                         trans            = [0.0,0.0,0.0],
-                                         rot              = [0.0,0.0,0.0],
-                                         domain           = [-0.5,0.5,-9.,9.,-2.,3.],
-                                         cellRatio        = 1,
-                                         fsBounds         = [-0.5,1.5],
-                                         nRefBoxes        = 6,
-                                         xRefineBox       = [-0.6,-0.5,-0.4,-0.3,-0.2,-0.1,1.6,1.5,1.4,1.3,1.2,1.1],
-                                         yRefineBox       = [-6.5,-4.5,-3.0,-2.0,-1.5,-1.2,6.5,4.5,3.0,2.0,1.5,1.2],
-                                         zRefineBox       = [-2.0,-2.0,-2.0,-1.5,-1.0,-0.5,3.0,2.5,2.0,1.8,1.6,1.4],
-                                         nfsRefBoxes      = 5,
-                                         fsRefineBox      = [-1.5,-1.0,-0.5,-0.3,-0.2,2.5,2.0,1.5,1.3,1.2],
-                                         refineLength     = [0.1],
-                                         layerLength      = 0.005,
-                                         solver           = "snappyHexMesh",
-                                         OFversion        = 5,
-                                         onLiger          = False,
-                                         clean            = False
-                                         ):
+    def BuildFromParams(cls, case,
+                             nProcs           = 4,
+                             ndim             = 2,
+                             stlFile          = None,
+                             hullPatch        = None,
+                             section          = 1,
+                             gridLevel        = 1,
+                             symmetry         = False,
+                             trans            = [0.0,0.0,0.0],
+                             rot              = [0.0,0.0,0.0],
+                             domain           = [-0.5,0.5,-9.,9.,-2.,3.],
+                             cellRatio        = 1,
+                             fsBounds         = [-0.5,1.5],
+                             nRefBoxes        = 6,
+                             xRefineBox       = [-0.6,-0.5,-0.4,-0.3,-0.2,-0.1,1.6,1.5,1.4,1.3,1.2,1.1],
+                             yRefineBox       = [-6.5,-4.5,-3.0,-2.0,-1.5,-1.2,6.5,4.5,3.0,2.0,1.5,1.2],
+                             zRefineBox       = [-2.0,-2.0,-2.0,-1.5,-1.0,-0.5,3.0,2.5,2.0,1.8,1.6,1.4],
+                             nfsRefBoxes      = 5,
+                             fsRefineBox      = [-1.5,-1.0,-0.5,-0.3,-0.2,2.5,2.0,1.5,1.3,1.2],
+                             refineLength     = [0.1],
+                             layerLength      = 0.005,
+                             solver           = "snappyHexMesh",
+                             OFversion        = 5,
+                             onLiger          = False,
+                             clean            = False
+                             ):
         """Build mesh for CFD drop test mesk from a few parameters.
         
         Parameters
