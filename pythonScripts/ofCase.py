@@ -18,14 +18,15 @@ class OfCase(object):
     """
     
     handledFiles =   [
-                    "controlDict"         
-                    "fvSchemes"           
-                    "fvSolution"      
-                    "decomposeParDict"
-                    "dynamicMeshDict" 
-                    "transportProperties"
-                    "waveProperties"     
-                      ]  
+                    "controlDict",
+                    "decomposeParDict",
+
+                    "fvSchemes",
+                    "fvSolution",
+                    "dynamicMeshDict",
+                    "transportProperties",
+                    "waveProperties",
+                      ]
                     #Always written
                     #"rasProperties"        : ("constant/RASProperties", RASProperties),
                     #"turbulenceProperties" : ("constant/turbulenceProperties", TurbulenceProperties),
