@@ -107,7 +107,7 @@ class OfCase(object):
     def clean(self,clean = False) :
         if os.path.exists(self.case):
             if clean:
-                print('Overwriting case {}'.format(self.case))
+                print('Overwriting case "{}"'.format(self.case))
                 shutil.rmtree(self.case)
             else:
                 valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
@@ -164,12 +164,13 @@ class OfCase(object):
         if self.transportProperties is not None:        self.transportProperties.writeFile()
         if self.dynamicMeshDict is not None:            self.dynamicMeshDict.writeFile()
         if self.waveProperties is not None:             self.waveProperties.writeFile()
-
-    def runInit(self) :
-        #run Allrun script
+        
+        #write Allinit and Allclean scripts
         if not os.path.exists( "Allclean" ): self.writeAllclean()
         if not os.path.exists( "Allinit" ): self.writeAllinit()
 
+    def runInit(self) :
+        #run Allclean and Allinit script
         p = subprocess.Popen(['./Allclean'], cwd=self.case)
         p.wait()
 

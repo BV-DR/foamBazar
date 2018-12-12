@@ -8,8 +8,7 @@ from os.path import join
 
 
 class SetSelection() :
-    """
-       RefineMeshDict dictionary
+    """SetSelection dictionary
     """
     def __init__(self , case, selType='box', BB=None, stlFile=None, opts=None, distance=None, outsidePoints=None, name=''):
         #set selection parameters

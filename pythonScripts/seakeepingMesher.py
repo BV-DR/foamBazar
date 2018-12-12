@@ -56,7 +56,6 @@ class SeakeepingMesher( OfMesher ):
     >>> #
     >>> # Call routines for meshing here
     >>> mesh = SeakeepingMesher.BuildFromAllParameters( case, **myParams )
-    >>> mesh.writeFiles()
     >>> fname = os.path.join(case,'log.input')
     >>> with open(fname,'w') as f: f.write(str(myParams))
     >>> mesh.runInit()
@@ -225,28 +224,27 @@ class SeakeepingMesher( OfMesher ):
         ###FORMER ROUTINE : foamCase_template
         print('Create system folder input files')
         #controlDict
-        controlDict = ControlDict(case              = case,
-                                  version           = "foamStar",
-                                  endTime           = 1000,
-                                  deltaT            = 0.01,
-                                  writeControl      = "timeStep",
-                                  writeInterval     = 50,
-                                  writePrecision    = 15,
-                                  writeCompression  = "compressed",
-                                  runTimeModifiable = "true")
+        controlDict = ControlDict.Build(case              = case,
+                                        version           = "snappyHexMesh",
+                                        endTime           = 100,
+                                        deltaT            = 1,
+                                        writeControl      = "timeStep",
+                                        writeInterval     = 1,
+                                        writeCompression  = "compressed",
+                                        runTimeModifiable = "true")
         
         #fvSchemes
-        fvSchemes = FvSchemes(case        = case,
-                              simType     = "CrankNicolson",
-                              limitedGrad = True,
-                              orthogonalCorrection = "implicit")
+        fvSchemes = FvSchemes.Build(case        = case,
+                                    simType     = "CrankNicolson",
+                                    limitedGrad = True,
+                                    orthogonalCorrection = "implicit")
         
         #fvSolution
-        fvSolution = FvSolution(case = case )
+        fvSolution = FvSolution.Build(case = case )
     
         #decomposeParDict
-        decomposeParDict = DecomposeParDict(case   = case,
-                                            nProcs = nProcs)
+        decomposeParDict = DecomposeParDict.Build(case   = case,
+                                                  nProcs = nProcs)
         
         ###FORMER ROUTINE : createBlockMeshDict
         nRefBox = int(refBoxData[0])    # how many refinement box? minimum is 1
@@ -382,22 +380,22 @@ class SeakeepingMesher( OfMesher ):
             patches.append(vert)
         
         #Write blockMeshDict file
-        blockMeshDict = BlockMeshDict( case        = case,
-                                       ndim        = 3,
-                                       waveMesh    = True,
-                                       xmin        = domain[0],
-                                       xmax        = domain[1],
-                                       ymin        = domain[2],
-                                       ymax        = domain[3],
-                                       zmin        = domain[4],
-                                       zmax        = zAllCut,
-                                       Xcells      = Xcells,
-                                       Ycells      = Ycells,
-                                       Zcells      = zAllCutNCells,
-                                       Zgrading    = zAllCutRatio,
-                                       createPatch = True,
-                                       patches     = patches,
-                                       OFversion   = OFversion)
+        blockMeshDict = BlockMeshDict.Build(case        = case,
+                                            ndim        = 3,
+                                            waveMesh    = True,
+                                            xmin        = domain[0],
+                                            xmax        = domain[1],
+                                            ymin        = domain[2],
+                                            ymax        = domain[3],
+                                            zmin        = domain[4],
+                                            zmax        = zAllCut,
+                                            Xcells      = Xcells,
+                                            Ycells      = Ycells,
+                                            Zcells      = zAllCutNCells,
+                                            Zgrading    = zAllCutRatio,
+                                            createPatch = True,
+                                            patches     = patches,
+                                            OFversion   = OFversion)
 
         # compute x,y data for refBox
         if (len(refBoxData) == 1):
@@ -504,12 +502,12 @@ class SeakeepingMesher( OfMesher ):
                                               selType = 'box',
                                               BB      = BB,
                                               name    = 'x_'+str(i)))
-            refineMeshDicts.append(RefineMeshDict(case           = case,
-                                                  set            = 'c0',
-                                                  name           = 'x_'+str(i),
-                                                  directions     = 'tan1',
-                                                  useHexTopology = True,
-                                                  geometricCut   = False))
+            refineMeshDicts.append(RefineMeshDict.Build(case           = case,
+                                                        set            = 'c0',
+                                                        name           = 'x_'+str(i),
+                                                        directions     = 'tan1',
+                                                        useHexTopology = True,
+                                                        geometricCut   = False))
             BB[4] = tmp
             pass
     
@@ -518,12 +516,12 @@ class SeakeepingMesher( OfMesher ):
                                               selType = 'box',
                                               BB      = BB,
                                               name    = 'y_'+str(i)))
-            refineMeshDicts.append(RefineMeshDict(case           = case,
-                                                  set            = 'c0',
-                                                  name           = 'y_'+str(i),
-                                                  directions     = 'tan2',
-                                                  useHexTopology = True,
-                                                  geometricCut   = False))
+            refineMeshDicts.append(RefineMeshDict.Build(case           = case,
+                                                        set            = 'c0',
+                                                        name           = 'y_'+str(i),
+                                                        directions     = 'tan2',
+                                                        useHexTopology = True,
+                                                        geometricCut   = False))
             pass
             
         # this is a point outside ship.stl
@@ -537,12 +535,12 @@ class SeakeepingMesher( OfMesher ):
                                               distance      = distance,
                                               outsidePoints = outsidePoints,
                                               name          = 'xy_'+str(i)))
-            refineMeshDicts.append(RefineMeshDict(case           = case,
-                                                  set            = 'c0',
-                                                  name           = 'xy_'+str(i),
-                                                  directions     = 'tan1 tan2',
-                                                  useHexTopology = True,
-                                                  geometricCut   = False))
+            refineMeshDicts.append(RefineMeshDict.Build(case           = case,
+                                                        set            = 'c0',
+                                                        name           = 'xy_'+str(i),
+                                                        directions     = 'tan1 tan2',
+                                                        useHexTopology = True,
+                                                        geometricCut   = False))
             distance *= 0.5
 
         BB = [-1e6,-1e6,fsZmin,1e6,1e6,fsZmax]
@@ -554,12 +552,12 @@ class SeakeepingMesher( OfMesher ):
                                           distance      = distance,
                                           outsidePoints = outsidePoints,
                                           name          = 'xy'))
-        refineMeshDicts.append(RefineMeshDict(case           = case,
-                                              set            = 'c0',
-                                              name           = 'xy',
-                                              directions     = 'tan1 tan2',
-                                              useHexTopology = True,
-                                              geometricCut   = False))
+        refineMeshDicts.append(RefineMeshDict.Build(case           = case,
+                                                    set            = 'c0',
+                                                    name           = 'xy',
+                                                    directions     = 'tan1 tan2',
+                                                    useHexTopology = True,
+                                                    geometricCut   = False))
         
         BB = [-1e6,-1e6,-1e6,1e6,1e6,fsZmin]
         setSelections.append(SetSelection(case          = case,
@@ -570,12 +568,12 @@ class SeakeepingMesher( OfMesher ):
                                           distance      = distance,
                                           outsidePoints = outsidePoints,
                                           name          = 'xyz1'))
-        refineMeshDicts.append(RefineMeshDict(case           = case,
-                                              set            = 'c0',
-                                              name           = 'xyz1',
-                                              directions     = 'tan1 tan2 normal',
-                                              useHexTopology = True,
-                                              geometricCut   = False))
+        refineMeshDicts.append(RefineMeshDict.Build(case           = case,
+                                                    set            = 'c0',
+                                                    name           = 'xyz1',
+                                                    directions     = 'tan1 tan2 normal',
+                                                    useHexTopology = True,
+                                                    geometricCut   = False))
                                               
         BB = [-1e6,-1e6,fsZmax,1e6,1e6,1e6]
         setSelections.append(SetSelection(case          = case,
@@ -586,12 +584,12 @@ class SeakeepingMesher( OfMesher ):
                                           distance      = distance,
                                           outsidePoints = outsidePoints,
                                           name          = 'xyz2'))
-        refineMeshDicts.append(RefineMeshDict(case           = case,
-                                              set            = 'c0',
-                                              name           = 'xyz2',
-                                              directions     = 'tan1 tan2 normal',
-                                              useHexTopology = True,
-                                              geometricCut   = False))
+        refineMeshDicts.append(RefineMeshDict.Build(case           = case,
+                                                    set            = 'c0',
+                                                    name           = 'xyz2',
+                                                    directions     = 'tan1 tan2 normal',
+                                                    useHexTopology = True,
+                                                    geometricCut   = False))
 
         # align cutting locations
         if not refBow: refBowLength = 0.2*(shipBBRot[3]-shipBBRot[0])
@@ -608,12 +606,12 @@ class SeakeepingMesher( OfMesher ):
                                               distance      = distance,
                                               outsidePoints = outsidePoints,
                                               name          = 'xyz3'))
-            refineMeshDicts.append(RefineMeshDict(case           = case,
-                                                  set            = 'c0',
-                                                  name           = 'xyz3',
-                                                  directions     = 'tan1 tan2 normal',
-                                                  useHexTopology = True,
-                                                  geometricCut   = False))
+            refineMeshDicts.append(RefineMeshDict.Build(case           = case,
+                                                        set            = 'c0',
+                                                        name           = 'xyz3',
+                                                        directions     = 'tan1 tan2 normal',
+                                                        useHexTopology = True,
+                                                        geometricCut   = False))
     
         if refSurfExtra is not None:
             nameOnly = os.path.basename(refSurfExtra)
@@ -626,12 +624,12 @@ class SeakeepingMesher( OfMesher ):
                                               distance      = 0.5*distance,
                                               outsidePoints = outsidePoints,
                                               name          = 'xyz4'))
-            refineMeshDicts.append(RefineMeshDict(case           = case,
-                                                  set            = 'c0',
-                                                  name           = 'xyz4',
-                                                  directions     = 'tan1 tan2 normal',
-                                                  useHexTopology = True,
-                                                  geometricCut   = False))
+            refineMeshDicts.append(RefineMeshDict.Build(case           = case,
+                                                        set            = 'c0',
+                                                        name           = 'xyz4',
+                                                        directions     = 'tan1 tan2 normal',
+                                                        useHexTopology = True,
+                                                        geometricCut   = False))
 
         # align cutting locations
         if not refStern: refSternLength = 0.2*(shipBBRot[3]-shipBBRot[0])
@@ -648,12 +646,12 @@ class SeakeepingMesher( OfMesher ):
                                               distance      = distance,
                                               outsidePoints = outsidePoints,
                                               name          = 'xyz5'))
-            refineMeshDicts.append(RefineMeshDict(case           = case,
-                                                  set            = 'c0',
-                                                  name           = 'xyz5',
-                                                  directions     = 'tan1 tan2 normal',
-                                                  useHexTopology = True,
-                                                  geometricCut   = False))
+            refineMeshDicts.append(RefineMeshDict.Build(case           = case,
+                                                        set            = 'c0',
+                                                        name           = 'xyz5',
+                                                        directions     = 'tan1 tan2 normal',
+                                                        useHexTopology = True,
+                                                        geometricCut   = False))
 
         if refSurfExtra is not None:
             nameOnly = os.path.basename(refSurfExtra)
@@ -666,12 +664,12 @@ class SeakeepingMesher( OfMesher ):
                                               distance      = 0.5*distance,
                                               outsidePoints = outsidePoints,
                                               name          = 'xyz6'))
-            refineMeshDicts.append(RefineMeshDict(case           = case,
-                                                  set            = 'c0',
-                                                  name           = 'xyz6',
-                                                  directions     = 'tan1 tan2 normal',
-                                                  useHexTopology = True,
-                                                  geometricCut   = False))
+            refineMeshDicts.append(RefineMeshDict.Build(case           = case,
+                                                        set            = 'c0',
+                                                        name           = 'xyz6',
+                                                        directions     = 'tan1 tan2 normal',
+                                                        useHexTopology = True,
+                                                        geometricCut   = False))
     
         if refFS & (refBow | refStern):
             BB = [refSternLength,-1e6,fsZmin,refBowLength,1e6,fsZmax]
@@ -683,46 +681,46 @@ class SeakeepingMesher( OfMesher ):
                                               distance      = distance,
                                               outsidePoints = outsidePoints,
                                               name          = 'z'))
-            refineMeshDicts.append(RefineMeshDict(case           = case,
-                                                  set            = 'c0',
-                                                  name           = 'z',
-                                                  directions     = 'normal',
-                                                  useHexTopology = True,
-                                                  geometricCut   = False))
+            refineMeshDicts.append(RefineMeshDict.Build(case           = case,
+                                                        set            = 'c0',
+                                                        name           = 'z',
+                                                        directions     = 'normal',
+                                                        useHexTopology = True,
+                                                        geometricCut   = False))
         
         ###FORMER ROUTINE : createSnappyMesh
         #surfaceFeatureExtract
-        surfaceFeatureExtractDict = SurfaceFeatureExtractDict(case = case,
-                                                              stlname = stlName)
+        surfaceFeatureExtractDict = SurfaceFeatureExtractDict.Build(case = case,
+                                                                    stlname = stlName)
 
         #snappyHexMesh
         minThickness = float(shipBL[3])*shipBL[2]/(pow(shipBL[1],float(shipBL[0]-1)))
-        snappyHexMeshDict = SnappyHexMeshDict(case                       = case,
-                                              stlname                    = stlName,
-                                              castellatedMesh            = True,
-                                              snap                       = True,
-                                              addLayers                  = True,
-                                              relativeSizes              = True,
-                                              locationInMesh             = locationInMesh,
-                                              nCellsBetweenLevels        = 1,
-                                              edgeLvl                    = 0,
-                                              hullLvl                    = [0,0],
-                                              resolveFeatureAngle        = 15,
-                                              allowFreeStandingZoneFaces = False,
-                                              snapTol                    = 0.75,
-                                              nSolveIter                 = 100,
-                                              nSurfaceLayers             = shipBL[0],
-                                              expansionRatio             = shipBL[1],
-                                              finalLayerThickness        = shipBL[2],
-                                              minThickness               = minThickness,
-                                              featureAngle               = 60,
-                                              stlPatches                 = shipPatches,
-                                              noLayers                   = noLayers,
-                                              maxNonOrtho                = 65,
-                                              minTwist                   = 0.02,
-                                              nSmoothScale               = 5,
-                                              errorReduction             = 0.75,
-                                              OFversion                  = OFversion)
+        snappyHexMeshDict = SnappyHexMeshDict.Build(case                       = case,
+                                                    stlname                    = stlName,
+                                                    castellatedMesh            = True,
+                                                    snap                       = True,
+                                                    addLayers                  = True,
+                                                    relativeSizes              = True,
+                                                    locationInMesh             = locationInMesh,
+                                                    nCellsBetweenLevels        = 1,
+                                                    edgeLvl                    = 0,
+                                                    hullLvl                    = [0,0],
+                                                    resolveFeatureAngle        = 15,
+                                                    allowFreeStandingZoneFaces = False,
+                                                    snapTol                    = 0.75,
+                                                    nSolveIter                 = 100,
+                                                    nSurfaceLayers             = shipBL[0],
+                                                    expansionRatio             = shipBL[1],
+                                                    finalLayerThickness        = shipBL[2],
+                                                    minThickness               = minThickness,
+                                                    featureAngle               = 60,
+                                                    stlPatches                 = shipPatches,
+                                                    noLayers                   = noLayers,
+                                                    maxNonOrtho                = 65,
+                                                    minTwist                   = 0.02,
+                                                    nSmoothScale               = 5,
+                                                    errorReduction             = 0.75,
+                                                    OFversion                  = OFversion)
         
         res =  cls( case, nProcs=nProcs,
                           controlDict=controlDict,
@@ -764,9 +762,8 @@ class SeakeepingMesher( OfMesher ):
             #moveSTL
             f.write('function moveSTL()\n')
             f.write('{\n')
-            lvl = self.case.count('/')+1
-            fstlin = lvl*r'../'+self.stlName+'_tmp.stl'
-            fstlout = os.path.join('constant','triSurface',self.stlName+'.stl')
+            fstlin = os.path.join(os.getcwd(),self.stlName+'_tmp.stl')
+            fstlout = os.path.join(self.case,'constant','triSurface',self.stlName+'.stl')
             f.write('    mv {:s} {:s}\n'.format(fstlin,fstlout))
             f.write('}\n\n')
 

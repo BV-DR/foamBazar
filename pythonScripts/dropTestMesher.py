@@ -115,7 +115,6 @@ class DropTestMesher( OfMesher ):
     >>> #
     >>> # Call routines for meshing here
     >>> drop = DropTestMesher.BuildFromAllParameters( case, **myParams )
-    >>> drop.writeFiles()
     >>> fname = os.path.join(case,'log.input')
     >>> with open(fname,'w') as f: f.write(str(myParams))
     >>> drop.runInit()   
@@ -257,15 +256,15 @@ class DropTestMesher( OfMesher ):
         extrudeMeshDict = ExtrudeMeshDict.Build(case = case)
         
         #refineMeshDict
-        refineMeshDict = RefineMeshDict.Build(case                = case,
-                                        refineUptoCellLevel = 5)
-                                        
+        refineMeshDicts = []
+        refineMeshDicts.append(RefineMeshDict.Build(case                = case,
+                                                    refineUptoCellLevel = 5)
         
-        refineMeshDict1 = RefineMeshDict.Build(case           = case,
-                                         orient         = 'z',
-                                         set            = "c0",
-                                         useHexTopology = True,
-                                         geometricCut   = False)
+        refineMeshDicts.append(RefineMeshDict.Build(case           = case,
+                                                    orient         = 'z',
+                                                    set            = "c0",
+                                                    useHexTopology = True,
+                                                    geometricCut   = False)
         if ndim==2:
             orient = 'yz'
             directions = "tan2 normal"
@@ -273,12 +272,12 @@ class DropTestMesher( OfMesher ):
             orient = 'xyz'
             directions = "tan1 tan2 normal"
          
-        refineMeshDict2 = RefineMeshDict.Build(case         = case,
-                                         orient         = orient,
-                                         set            = "c0",
-                                         directions     = directions,
-                                         useHexTopology = True,
-                                         geometricCut   = False)
+        refineMeshDicts.append(RefineMeshDict.Build(case         = case,
+                                                    orient         = orient,
+                                                    set            = "c0",
+                                                    directions     = directions,
+                                                    useHexTopology = True,
+                                                    geometricCut   = False)
                                          
         #read stl patches
         stlPatches = findSTLPatches(stlFile)
@@ -287,16 +286,16 @@ class DropTestMesher( OfMesher ):
         stlName = os.path.splitext(os.path.basename(stlFile))[0]
         referenceLength = min(Beam*0.5,Depth)
         snappyHexMeshDict = SnappyHexMeshDict.Build(case                = case,
-                                              addLayers           = True,
-                                              stlname             = stlName+'.stl',
-                                              patchName           = hullPatch,
-                                              stlPatches          = stlPatches,
-                                              refinementLength    = [referenceLength*rf for rf in refineLength],
-                                              nSurfaceLayers      = 3,
-                                              expansionRatio      = 1.3,
-                                              finalLayerThickness = referenceLength*layerLength,
-                                              minThickness        = referenceLength*layerLength*0.1,
-                                              OFversion           = OFversion)
+                                                    addLayers           = True,
+                                                    stlname             = stlName+'.stl',
+                                                    patchName           = hullPatch,
+                                                    stlPatches          = stlPatches,
+                                                    refinementLength    = [referenceLength*rf for rf in refineLength],
+                                                    nSurfaceLayers      = 3,
+                                                    expansionRatio      = 1.3,
+                                                    finalLayerThickness = referenceLength*layerLength,
+                                                    minThickness        = referenceLength*layerLength*0.1,
+                                                    OFversion           = OFversion)
                                               
         #surfaceFeatureExtractDict
         surfaceFeatureExtractDict = SurfaceFeatureExtractDict.Build(case = case,
@@ -305,35 +304,35 @@ class DropTestMesher( OfMesher ):
         print('Create constant folder input files')
         #blockMeshDict
         if ndim==2:
-            blockMeshDict = BlockMeshDict.Build( case      = case,
-                                           ndim      = ndim,
+            blockMeshDict = BlockMeshDict.Build(case      = case,
+                                                ndim      = ndim,
                                                 xmin      = domain[0],
                                                 xmax      = domain[1],
                                                 ymin      = domain[2]*Beam*0.5*(not symmetry),
                                                 ymax      = domain[3]*Beam*0.5,
                                                 zmin      = domain[4]*Depth,
                                                 zmax      = domain[5]*Depth,
-                                           fsmin     = fsBounds[0]*Depth,
-                                           fsmax     = fsBounds[1]*Depth,
-                                           sym       = symmetry,
-                                           cellRatio = cellRatio,
-                                           gridlvl   = gridLevel,
-                                           OFversion = OFversion)
+                                                fsmin     = fsBounds[0]*Depth,
+                                                fsmax     = fsBounds[1]*Depth,
+                                                sym       = symmetry,
+                                                cellRatio = cellRatio,
+                                                gridlvl   = gridLevel,
+                                                OFversion = OFversion)
         elif ndim==3:
-            blockMeshDict = BlockMeshDict.Build( case      = case,
-                                           ndim      = ndim,
+            blockMeshDict = BlockMeshDict.Build(case      = case,
+                                                ndim      = ndim,
                                                 xmin      = domain[0]*Length,
                                                 xmax      = domain[1]*Length,
                                                 ymin      = domain[2]*Beam*0.5*(not symmetry),
                                                 ymax      = domain[3]*Beam*0.5,
                                                 zmin      = domain[4]*Depth,
                                                 zmax      = domain[5]*Depth,
-                                           fsmin     = fsBounds[0]*Depth,
-                                           fsmax     = fsBounds[1]*Depth,
-                                           sym       = symmetry,
-                                           cellRatio = cellRatio,
-                                           gridlvl   = gridLevel,
-                                           OFversion = OFversion)
+                                                fsmin     = fsBounds[0]*Depth,
+                                                fsmax     = fsBounds[1]*Depth,
+                                                sym       = symmetry,
+                                                cellRatio = cellRatio,
+                                                gridlvl   = gridLevel,
+                                                OFversion = OFversion)
 
         res =  cls( case, nProcs=nProcs,
                           controlDict=controlDict,
@@ -341,7 +340,7 @@ class DropTestMesher( OfMesher ):
                           fvSolution=fvSolution,
                           decomposeParDict=decomposeParDict,
                           extrudeMeshDict=extrudeMeshDict,
-                          refineMeshDicts=[refineMeshDict,refineMeshDict1,refineMeshDict2],
+                          refineMeshDicts=refineMeshDicts,
                           snappyHexMeshDict=snappyHexMeshDict,
                           surfaceFeatureExtractDict=surfaceFeatureExtractDict,
                           blockMeshDict=blockMeshDict,
@@ -373,100 +372,12 @@ class DropTestMesher( OfMesher ):
         res.writeFiles()
         return res
         
-    def writeFiles(self) :
-        OfMesher.writeFiles(self)
+    # def writeFiles(self) :
+        # OfMesher.writeFiles(self)
         
         #Write additional files
         
-
-
-    def readSections(inputFile,sections=[]):
         
-        sdict = {}
-        
-        with open(inputFile) as f:
-            if len(sections)==0:
-                sect = re.findall(r'(#Section \d+)',f.read())
-                for s in sect:
-                    sections += [int(i) for i in s.split() if i.isdigit()]
-    
-        with open(inputFile,'r') as f:
-            lines = f.read()
-        
-        for isect in sections:
-            string = r'(#Section '+str(isect)+r'\n)+([^#]*)'
-            table = re.findall(string, lines)
-            table = list(table[0])
-            rows = StringIO(table[1])
-            data = pd.read_csv(rows,header=None,sep=r'\s+',names=['y','z'])
-            sdict[isect] = data[data.y>=0]
-            sdict[isect] = sdict[isect].assign(x= sdict[isect]['y'].values * 0.0)
-            sdict[isect] = sdict[isect].reindex(sorted(sdict[isect]),axis=1)
-                
-        return sdict
-
-    def createSectionStl(sdict):
-        if not os.path.exists('geo'): os.makedirs('geo')
-        if not os.path.exists('stl'): os.makedirs('stl')
-        
-        for isect in sdict.keys():
-            print('Section =',isect)
-            name = 'section_'+str(isect)
-            mysect = sdict[isect]
-            
-            fgeo=os.path.join(r'geo/',name+'.geo');
-            fstl=os.path.join(r'stl/',name+'.stl');
-        
-            #Create .geo file
-            thk = 10.0
-            
-            #Redistribute points
-            s = np.sqrt((mysect.diff()**2).sum(axis=1)).cumsum()
-            ds = 0.5 * np.sqrt((mysect.diff()*2).sum(axis=1)).mean()
-            ss = np.linspace(s.min(), s.max(), mt.ceil((s.max()-s.min())/ds))
-            
-            #interpolate according to curvilinear absissa
-            fx = interp.interp1d(s,mysect.x); x = fx(ss)
-            fy = interp.interp1d(s,mysect.y); y = fy(ss)
-            fz = interp.interp1d(s,mysect.z); z = fz(ss)
-            
-            #create symmetric
-            interpsect = pd.DataFrame({ 'x': np.concatenate((x,x[1:])),
-                                        'y': np.concatenate(( -1.0*y[:0:-1],y)),
-                                        'z': np.concatenate(( z[:0:-1],z)) })
-            ns = mt.ceil(16*len(ss))
-    
-            pSize = len(interpsect)
-            
-            lSize=1.0
-            nx=1.0
-            ny=2.0*mt.ceil((interpsect.max().y-interpsect.min().y)/(thk/nx))
-    
-            print('writing to file: ', fgeo)
-            f = open(fgeo,'w')
-            f.write('// Section {:d}\n'.format(isect))
-            f.write('thk={:.6e}; xmin=-0.5*thk;\n'.format(thk))   
-            f.write('p0=newp; pSize={:d};\n'.format(pSize))
-            for i in range(pSize):
-                f.write('Point(p0+{:d}) = {{xmin, {:.6e}, {:.6e}}};\n'.format(i,interpsect.loc[i].y,interpsect.loc[i].z))
-            f.write('l0=newl; lSize={:.2f};\n'.format(lSize))
-            f.write('Spline(l0+0) = {{p0:p0+{:d}}};\n'.format(pSize - 1))
-            f.write('Line(l0+lSize) = {p0+pSize-1,p0};\n')
-            f.write('Extrude {thk, 0, 0} {\n')
-            f.write(' Line{l0:l0+lSize};\n')
-            f.write(' Recombine;\n')
-            f.write('}\n')
-            f.write('Transfinite Line {{4, 5}} = {:.5f} Using Progression 1;\n'.format(nx))
-            f.write('Transfinite Line {{2, 6}} = {:.5f} Using Progression 1;\n'.format(ny))
-            f.write('Transfinite Line {{1, 3}} = {:.5f} Using Progression 1;'.format(ns))
-            f.write('Transfinite Surface "*";\n')
-            f.write('Recombine Surface "*";\n')
-            f.close()
-    
-            #Create STL
-            call('gmsh -2 -format stl -o "'+fstl+'" "'+fgeo+'"', shell=True)
-            
-            
     def writeAllinit(self):
         #Allinit
         print('Create run scripts')

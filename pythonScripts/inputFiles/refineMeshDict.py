@@ -1,6 +1,5 @@
-import PyFoam
 from inputFiles import ReadWriteFile
-from PyFoam.Basics.DataStructures import Dimension, Vector, DictProxy
+from PyFoam.Basics.DataStructures import DictProxy
 from os.path import join
 
 """
@@ -9,8 +8,7 @@ from os.path import join
 
 
 class RefineMeshDict(ReadWriteFile) :
-    """
-       RefineMeshDict dictionary
+    """RefineMeshDict dictionary
     """
     
     @classmethod
@@ -20,7 +18,6 @@ class RefineMeshDict(ReadWriteFile) :
         suffix = ''
         if orient is not None: suffix += '.'+orient
         if name is not None: suffix += '.'+name
-        
         res = cls(join(case, "system" , "refineMeshDict"+suffix ), read = False  )
       
         res["set"] = set
