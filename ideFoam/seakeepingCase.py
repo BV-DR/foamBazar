@@ -29,7 +29,6 @@ class SeakeepingCase(OfRun):
     def BuildFromParams(cls, case,
                              meshDir            = 'mesh',
                              meshTime           = 'constant',
-                             stlFile            = 'ship.stl',
                              startTime          = 'latestTime',
                              endTime            = 1000,
                              timeStep           = 0.01,
@@ -39,10 +38,10 @@ class SeakeepingCase(OfRun):
                              writeFormat        = "ascii",
                              symmetry           = 1,          # 0 = None ; 1 = symmetry ; 2 = symmetryPlane
                              
-                             outputVBM          = False,
+                             donFile            = None,
+                             
                              outputWave         = False,
                              waveProbes         = [],
-                             outputMotions      = True,
                              localMotionPts     = [],
                              outputForces       = False,
                              forcesPatch        = None,
@@ -50,9 +49,9 @@ class SeakeepingCase(OfRun):
                              pressuresPatch     = None,
                              outputInterval     = 1,
                              hullPatch          = 'ship',
-                             donFile            = 'ship.don',
+                             
                              mdFile             = None,
-                             modesToUse         = '',
+                             modesToUse         = [],
                              datFile            = None,
                              dmigFile           = None,
                              hmrUserOutput      = None,
@@ -87,13 +86,14 @@ class SeakeepingCase(OfRun):
                              innerDistance      = None,
                              outerDistance      = None,
 
-                             scheme             = 'Euler',
+                             ddtScheme          = 'Euler',
                              fsiTol             = 1e-6,
                              rhoWater           = 1025.,
                              nProcs             = 1,
                              OFversion          = 5,
                              application        = 'foamStar',
-                             clean              = False
+                             clean              = False,
+                             stlFile            = None,    # Require only for EulerCell and addDamping
                              ):
         """Build mesh for CFD seakeeping case from a few parameters.
         
@@ -121,8 +121,6 @@ class SeakeepingCase(OfRun):
             Define number of results time steps after wich results are erased
         writeFormat : str, default 'ascii'
         
-        outputVBM : bool, default False
-            Logical defining if VBM is output
         outputWave : bool, default False
             Logical defining if wave probes are output
         waveProbes : TODO, default []
@@ -196,7 +194,7 @@ class SeakeepingCase(OfRun):
         innerDistance      = None,
         outerDistance      = None,
 
-        scheme             = 'Euler',
+        ddtScheme             = 'Euler',
         fsiTol             = 1e-6,
         rhoWater           = 1025.,
         nProcs             = 1,
@@ -266,7 +264,7 @@ class SeakeepingCase(OfRun):
         
         #controlDict
         vbmPatch = None
-        if outputVBM:
+        if donFile is not None:
             donName = os.path.splitext(os.path.basename(donFile))[0]
             vbmPatch = [hullPatch,donName]
         
@@ -289,7 +287,6 @@ class SeakeepingCase(OfRun):
                                         purgeWrite          = purgeWrite,
                                         writePrecision      = 15,
                                         writeFormat         = writeFormat,
-                                        outputMotions       = outputMotions,
                                         outputLocalMotions  = len(localMotionPts)>0,
                                         vbmPatch            = vbmPatch,
                                         forcesPatch         = forcesPatch,
@@ -301,7 +298,7 @@ class SeakeepingCase(OfRun):
                                         
         #fvSchemes
         fvSchemes = FvSchemes.Build(case                    = case,
-                                    simType                 = scheme,
+                                    simType                 = ddtScheme,
                                     limitedGrad             = False,
                                     orthogonalCorrection    = "implicit",
                                     application             = application )
@@ -309,7 +306,7 @@ class SeakeepingCase(OfRun):
         #fvSolution
         fvSolution = FvSolution.Build(case          = case,
                                       fsiTol        = fsiTol,
-                                      useEuler      = scheme=='Euler',
+                                      useEuler      = ddtScheme=='Euler',
                                       application   = application )
         
         #decomposeParDict

@@ -95,7 +95,7 @@ class OfCase(object):
         case = abspath(case)
         fileDict = {}
         for f in cls.handledFiles:
-            fname =  join(source, path )
+            fname =  join(source, getFilePath(f)  )
             if exists(fname) :
                 tmpobj = getFileClass()( join(source, getFilePath(f) ) , read = True)
                 tmpobj.case = case
