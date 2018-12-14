@@ -1,11 +1,7 @@
-import PyFoam
+import os
 from inputFiles import ReadWriteFile, getFilePath
 from PyFoam.Basics.DataStructures import Vector, DictProxy
-import numpy as np
-import os
 from inputFiles.compatOF import waveTypeDict, foamStarPatch
-from math import pi 
-# from Spectral.omega2wn import omega2omegae
 
 """
 
@@ -39,14 +35,14 @@ class RelaxZone(object) :
         self.relax = relax  #If false no relaxation (just used for boundary condition)
         self.patchNames = patchNames
     
-    def pyFoamDict(self, version = "foamStar"):
+    def pyFoamDict(self, application = "foamStar"):
         d = DictProxy()
-        if version == "foamStar" :
-            # for key, val in self.waveCondition.pyFoamDict(version = version).items():
+        if application == "foamStar" :
+            # for key, val in self.waveCondition.pyFoamDict(application = application).items():
                 # d[key] = val
             d["$mycase"] = ""
         else :
-            d["waveTheoryName"] = waveTypeDict[self.waveCondition.waveType][version]
+            d["waveTheoryName"] = waveTypeDict[self.waveCondition.waveType][application]
         
         if self.relax :
             r = DictProxy()
@@ -92,7 +88,7 @@ class WaveCondition(object) :
     """
         Wave condition for foamStar run
     """
-    def __init__( self , waveType = "stokes5th" , height = 1.0 , period = 6.0 , U0 = 0.0 , depth = 60. , rampTime = 0.0 , startTime = 0. , refDirection = [1,0,0]):
+    def __init__( self , waveType = "noWaves" , height = 1.0 , period = 6.0 , U0 = 0.0 , depth = 60. , rampTime = 0.0 , startTime = 0. , refDirection = [1,0,0]):
         self.waveType = waveType
         self.height  = height
         self.period  = period
@@ -102,9 +98,9 @@ class WaveCondition(object) :
         self.startTime = startTime
         self.refDirection = refDirection
 
-    def pyFoamDict(self , version = "foamStar") :
+    def pyFoamDict(self , application = "foamStar") :
         d = DictProxy()
-        d["waveType"]  = waveTypeDict[self.waveType][version]
+        d["waveType"]  = waveTypeDict[self.waveType][application]
         if self.waveType != "noWaves":
             d["height"]    = self.height
             d["period"]    = self.period
@@ -116,7 +112,7 @@ class WaveCondition(object) :
         if self.waveType == "streamFunction" :
             d["order"] = 25
     
-        if version == "foamExtend" or  version == "swenseFoam":
+        if application == "foamExtend" or  application == "swenseFoam":
             d["wind"] = Vector( 0. ,0.,0. )
             d["currentType"] = "constantCurrent"
             d["U0"] = Vector( 0, 0. ,0. )
@@ -127,12 +123,12 @@ class WaveCondition(object) :
             #In wave2foam, with "EulerianCurrent", input is encounter period
             # d["period"] = 2*pi / omega2omegae(2*pi / self.period , v = self.U0, beta = 180.)
     
-        elif version == "foamStar" :
+        elif application == "foamStar" :
             if self.waveType != "noWaves": d["refDirection"] =  Vector( *self.refDirection)
             d["U0"] = Vector( self.U0 ,0.,0. )
             d["EulerianCurrent"] =  0.0
         else : 
-            raise(Exception("Version not known {}".format(version)))
+            raise(Exception("Application not known {}".format(application)))
     
         return d
 
@@ -143,7 +139,7 @@ class WaveProperties( ReadWriteFile ) :
     """
     
     @classmethod
-    def Build(cls, case, initWaveCondition, relaxZones=[], seaLevel=0., version="foamStar") :
+    def Build(cls, case, initWaveCondition, relaxZones=[], seaLevel=0., application="foamStar") :
     
         res = cls( name = os.path.join(case, getFilePath("waveProperties") ), read = False )
         
@@ -151,43 +147,43 @@ class WaveProperties( ReadWriteFile ) :
         res.relaxZones = relaxZones
         res ["#inputMode"]=  "overwrite";
     
-        if version == "foamStar" :
-            res["mycase"] = initWaveCondition.pyFoamDict(version = version)
+        if application == "foamStar" :
+            res["mycase"] = initWaveCondition.pyFoamDict(application = application)
             res["seaLevel"]=  0.0
             res["initCoeffs"] = {"$mycase" : ''}
             if len(relaxZones)>0:
                 res["relaxationNames"] =  [ relax.name for relax in relaxZones if relax.relax]
                 for relax  in relaxZones :
-                    if version=="foamStar": 
+                    if application=="foamStar": 
                         relaxName = '"({}|{})Coeffs"'.format(foamStarPatch[relax.name],relax.name)
                     else:
                         relaxName = "{}Coeff".foamat(relax.name)
-                    res[relaxName] = relax.pyFoamDict(version = version)
+                    res[relaxName] = relax.pyFoamDict(application = application)
     
-        elif version == "foamExtend" :
+        elif application == "foamExtend" :
             res["relaxationNames"] =  [ relax.name for relax in relaxZones if relax.relax]
             res ["seaLevel"]=  0.0;
-            res["initWaveTheory"] = waveTypeDict[initWaveCondition.waveType][version]
+            res["initWaveTheory"] = waveTypeDict[initWaveCondition.waveType][application]
             #Write the different wave condition
             uniqueWave = set([ initWaveCondition ] +  [i.waveCondition for i in relaxZones ])
-            res["waveTheories"] = [waveTypeDict[i.waveType][version] for i in uniqueWave]
+            res["waveTheories"] = [waveTypeDict[i.waveType][application] for i in uniqueWave]
             for w in uniqueWave:
-                res[ waveTypeDict[w.waveType][version] + "Coeffs"] =  w.pyFoamDict(version = version)
+                res[ waveTypeDict[w.waveType][application] + "Coeffs"] =  w.pyFoamDict(application = application)
             for relaxZone in relaxZones:
-                res[relaxZone.name + "Coeffs"] = relaxZone.pyFoamDict(version = version)
+                res[relaxZone.name + "Coeffs"] = relaxZone.pyFoamDict(application = application)
     
-        elif version == "swenseFoam" :
+        elif application == "swenseFoam" :
             res["relaxationName"] =  "farfield"
             res["limitMagUInc"] = 3
             res["seaLevel"]=  0.0
-            res["farfieldCoeffs"] = relaxZones[0].waveCondition.pyFoamDict(version = version)
-            res["farfieldCoeffs"] = dict(res["farfieldCoeffs"] , **relaxZones[0].pyFoamDict(version = version) )
+            res["farfieldCoeffs"] = relaxZones[0].waveCondition.pyFoamDict(application = application)
+            res["farfieldCoeffs"] = dict(res["farfieldCoeffs"] , **relaxZones[0].pyFoamDict(application = application) )
             
         return res
 
 
     def writeBlendingZoneBatch(self , filename = None ) :
-        if filename is None  :  filename = os.path.join( self.case , "blendingZone.batch")
+        if filename is None  :  filename = os.path.join( self.case, 'system', "setSet.relax")
         with open( filename , "w" ) as f :
             for relax in self.relaxZones :
                 f.write( relax.zoneBatch() + "\n" )
@@ -214,7 +210,7 @@ if __name__ == "__main__" :
     #relaxOutlet = RelaxZone( name = "outlet"  , relax = True , waveCondition = waveCond , origin = [600, 0, 0] , orientation = [-1 , 0, 0 ], length = 50 )
     relaxOutlet = RelaxZone( name = "outlet"  , relax = True , waveCondition = noWaves , origin = [600, 0, 0] , orientation = [-1 , 0, 0 ], length = 50 )
     
-    waveProperties = WaveProperties.Build("test" , waveCond  ,  relaxZones = (relaxInlet , relaxOutlet) , version = "foamStar" )
+    waveProperties = WaveProperties.Build("test" , waveCond  ,  relaxZones = (relaxInlet , relaxOutlet) , application = "foamStar" )
     
     print(waveProperties)
     

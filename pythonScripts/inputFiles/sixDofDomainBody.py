@@ -1,35 +1,38 @@
-import PyFoam
-from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
-from PyFoam.Basics.DataStructures import Vector, SymmTensor
 from os.path import join
+from inputFiles import ReadWriteFile, getFilePath
+from PyFoam.Basics.DataStructures import Vector, SymmTensor
+
 
 """
   Convenience class to simply write "SixDofDomainBody"
 """
 
 
-class SixDofDomainBody(WriteParameterFile):
+class SixDofDomainBody(ReadWriteFile):
+    """SixDofDomainBody dictionnary
     """
-        SixDofDomainBody dictionnary
-    """
-    def __init__(self , case, mass, inertia, COG, nModes=0, donName=None, version="foamStar") :
-        WriteParameterFile.__init__(self,  name = join(case, "0", "uniform", "sixDofDomainBody" ) )
-        self.header["class"] = "dictionary"
-        self.header["object"] = "singleBody"
     
-        self["mass"] = mass
-        self["momentOfInertia"] = SymmTensor( *inertia )
-        self["cogInitial"] = Vector( *COG )
-        self["Xrel"] = "(0 0 0)"
-        self["dotXrel"] = "(0 0 0)"
-        self["omega"] = "(0 0 0)"
-        self["EulerZYX"] = { "rollPitchYaw" : "(0 0 0)" }
+    @classmethod
+    def Build(cls , case, mass, inertia, COG, nModes=0, donName=None) :
+        res = cls(  name = join(case, getFilePath("transportProperties") ), read = False )
         
-        if nModes>0: self["modalData"] = { "readFromFile" : "constant/{}.flex".format(donName) }
+        res.header["class"] = "dictionary"
+        res.header["object"] = "singleBody"
+    
+        res["mass"] = mass
+        res["momentOfInertia"] = SymmTensor( *inertia )
+        res["cogInitial"] = Vector( *COG )
+        res["Xrel"] = "(0 0 0)"
+        res["dotXrel"] = "(0 0 0)"
+        res["omega"] = "(0 0 0)"
+        res["EulerZYX"] = { "rollPitchYaw" : "(0 0 0)" }
+        
+        if nModes>0: res["modalData"] = { "readFromFile" : "constant/{}.flex".format(donName) }
 
+        return res
 
 if __name__ == "__main__" : 
-    print(SixDofDomainBody("test", 1000., 2000., '1 2 3', version = "foamExtend"))
+    print(SixDofDomainBody.Build("test", 1000., 2000., '1 2 3'))
 
 
 

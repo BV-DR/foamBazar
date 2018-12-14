@@ -1,112 +1,79 @@
 
 import os
+from os.path import join, abspath, exists
 import shutil
 import subprocess
 
-from inputFiles.gravity import Gravity
-from inputFiles import ControlDict, FvSchemes, FvSolution, DecomposeParDict, DynamicMeshDict,  TransportProperties, WaveProperties
-from inputFiles.turbulenceProperties import TurbulenceProperties, RASProperties
+from inputFiles import getFileClass, getFilePath
 from fsTools import getFoamTimeFolders
-
-
-#Always written
-                    
 
 class OfCase(object):
     """ Base class for openFoam case
     Can be sub-classed to deal with more specific situation (example : DropTestCase, SeakeepingCase)
     """
     
-    handledFiles =   [
+    handledFiles =  [
                     "controlDict",
                     "decomposeParDict",
-
                     "fvSchemes",
-                    "fvSolution",
-                    "dynamicMeshDict",
-                    "transportProperties",
-                    "waveProperties",
-                      ]
-                    #Always written
-                    #"rasProperties"        : ("constant/RASProperties", RASProperties),
-                    #"turbulenceProperties" : ("constant/turbulenceProperties", TurbulenceProperties),
-                    #"gravity" : ("constant/gravity", Gravity),
-                    
-                 
+                    "fvSolution"
+                    ]
 
-    def __init__(self, case, nProcs=1, controlDict=None,
-                                       fvSchemes=None,
-                                       fvSolution=None,
-                                       waveProperties=None,
-                                       dynamicMeshDict=None,
-                                       transportProperties=None,
-                                       decomposeParDict=None,
-                                       turbulenceModel = "laminar",
-                                       symmetry = False,
-                                       gravity = 9.81,
-                                       OFversion = 5,         #OpenFoam version
-                                       solver = "foamStar",   #Solver name (foamStar, navalFoam)
-                                       isMesher = False,
-                                       clean = False,  #True => Remove case folder and go on. #False: ask user interactively
-                                       meshFolder = None ,
+    def __init__(self, case, nProcs=1, controlDict      = None,
+                                       fvSchemes        = None,
+                                       fvSolution       = None,
+                                       decomposeParDict = None,
+                                       symmetry         = False,
+                                       OFversion        = 5,
+                                       application      = 'foamStar',   #Solver name (foamStar, navalFoam)
+                                       isMesher         = False,
+                                       clean            = False,  #True => Remove case folder and go on. #False: ask user interactively
+                                       meshFolder       = None
                                        ) :
 
 
-        self.case = os.path.abspath(case)  # path to case
-        
+        self.case = abspath(case)  # path to case
         self.clean(clean)
-        
         self.nProcs = nProcs
 
         #system
         self.controlDict = controlDict
+        self.decomposeParDict = decomposeParDict
         self.fvSchemes = fvSchemes
         self.fvSolution = fvSolution
-        self.decomposeParDict = decomposeParDict
         
-        #constant
-        self.waveProperties = waveProperties
-        self.dynamicMeshDict = dynamicMeshDict
-        self.transportProperties = transportProperties
-        self.turbulenceModel = turbulenceModel
-        self.turbulenceProperties = TurbulenceProperties.Build(case , turbulenceModel )
-        self.RASProperties = RASProperties.Build(case , turbulenceModel )
-        
-
         self.meshFolder = meshFolder
 
         self.symmetry = symmetry
-        self.gravity = gravity
         self.OFversion = OFversion
-        self.solver = solver
+        self.application = application
         self.isMesher = isMesher
         
-        self.sysfolder_ = os.path.join(self.case,"system")
-        self.zerofolder_ = os.path.join(self.case,"0")
-        self.orgfolder_ = os.path.join(self.case,"0","org")
-        self.constfolder_ = os.path.join(self.case,"constant")
+        self.sysfolder_ = join(self.case,"system")
+        self.zerofolder_ = join(self.case,"0")
+        self.orgfolder_ = join(self.case,"0","org")
+        self.constfolder_ = join(self.case,"constant")
         
         self.writeFolders()
 
-
     def writeFolders(self) :
         print('Create file tree')
-        if not os.path.exists(self.sysfolder_): os.makedirs(self.sysfolder_)
-        if not os.path.exists( os.path.join(self.zerofolder_, "org")): os.makedirs( os.path.join(self.zerofolder_, "org"))
-        if not os.path.exists( self.zerofolder_): os.makedirs( self.zerofolder_)
-        if not os.path.exists( self.constfolder_): os.makedirs( self.constfolder_)
+        if not exists(self.sysfolder_): os.makedirs(self.sysfolder_)
+        if not exists( join(self.zerofolder_, "org")): os.makedirs( join(self.zerofolder_, "org"))
+        if not exists( self.zerofolder_): os.makedirs( self.zerofolder_)
+        if not exists( self.constfolder_): os.makedirs( self.constfolder_)
 
         if self.isMesher:
-            self.polyfolder_ = os.path.join(self.case,"constant","polyMesh")
-            self.trifolder_ = os.path.join(self.case,"constant","triSurface")
-            if not os.path.exists( self.polyfolder_): os.makedirs( self.polyfolder_)
-            if not os.path.exists( self.trifolder_): os.makedirs( self.trifolder_)
+            self.polyfolder_ = join(self.case,"constant","polyMesh")
+            self.trifolder_ = join(self.case,"constant","triSurface")
+            if not exists( self.polyfolder_): os.makedirs( self.polyfolder_)
+            if not exists( self.trifolder_): os.makedirs( self.trifolder_)
 
         self.createParaviewFile()
 
 
     def clean(self,clean = False) :
-        if os.path.exists(self.case):
+        if exists(self.case):
             if clean:
                 print('Overwriting case "{}"'.format(self.case))
                 shutil.rmtree(self.case)
@@ -121,27 +88,27 @@ class OfCase(object):
 
 
     @classmethod
-    def Read( cls, case, source, solver = "foamStar" ):
+    def Read( cls, case, source, application = "foamStar" ):
         """Read file from existing folder
         """
-        source = os.path.abspath(source)
-        case = os.path.abspath(case)
+        source = abspath(source)
+        case = abspath(case)
         fileDict = {}
         for f in cls.handledFiles:
-            fname =  os.path.join(source, path )
-            if os.path.exists(fname) :
-                tmpobj = getFileClass()( os.path.join(source, getFilePath(f) ) , read = True)
+            fname =  join(source, path )
+            if exists(fname) :
+                tmpobj = getFileClass()( join(source, getFilePath(f) ) , read = True)
                 tmpobj.case = case
                 tmpobj.name = tmpobj.name.replace(source, case)
                 fileDict[ f ] = tmpobj
             else: 
                 print (fname, "does not exists")
-        return cls( case, **fileDict , solver = solver, meshFolder = os.path.join(source, "constant") )
+        return cls( case, **fileDict , application = application, meshFolder = join(source, "constant") )
 
 
     def createParaviewFile(self):
         #create file for Paraview
-        open(os.path.join(self.case,'view.foam'), 'a').close()
+        open(join(self.case,'view.foam'), 'a').close()
 
     @classmethod
     def BuildFromAllParameters(cls, case, isMesher=False):
@@ -151,24 +118,14 @@ class OfCase(object):
     def writeFiles(self) :
         """Write all input file in case folder
         """
-
-        gravity = Gravity( case = self.case, g = self.gravity )
-        gravity.writeFile()
-
-        self.controlDict.writeFile()
-        self.fvSchemes.writeFile()
-        self.fvSolution.writeFile()
-        self.decomposeParDict.writeFile()
-        
-        if self.turbulenceProperties is not None:       self.turbulenceProperties.writeFile()
-        if self.RASProperties is not None:              self.RASProperties.writeFile()
-        if self.transportProperties is not None:        self.transportProperties.writeFile()
-        if self.dynamicMeshDict is not None:            self.dynamicMeshDict.writeFile()
-        if self.waveProperties is not None:             self.waveProperties.writeFile()
+        #write all handeled files
+        for f in self.handledFiles:
+            file_ = getattr(self, f)
+            if file_ is not None: file_.writeFile()
         
         #write Allinit and Allclean scripts
-        if not os.path.exists( "Allclean" ): self.writeAllclean()
-        if not os.path.exists( "Allinit" ): self.writeAllinit()
+        if not exists( "Allclean" ): self.writeAllclean()
+        if not exists( "Allinit" ): self.writeAllinit()
 
     def runInit(self) :
         #run Allclean and Allinit script
@@ -180,7 +137,7 @@ class OfCase(object):
 
     def run(self) :
         #run Allrun script
-        if not os.path.exists( "run" ):
+        if not exists( "run" ):
             self.writeRun()
         p = subprocess.Popen(['./run'], cwd=self.case)
         p.wait()
@@ -188,16 +145,17 @@ class OfCase(object):
     def writeAllinit(self):
         """To be implemented in subclass"""
         raise(NotImplementedError)
+        
+    def writeAllclean(self):
+        """To be implemented in subclass"""
+        raise(NotImplementedError)
 
     def writeRun(self):
         """To be implemented in subclass"""
         raise(NotImplementedError)
 
-    def Allclean(self):
-        """To be implemented in subclass"""
-        raise(NotImplementedError)
-
     def copyMesh(self, meshDir, meshTime, overwrite=False):
+        meshTime = str(meshTime)
         if meshTime=='latestTime':
             timeFolders = getFoamTimeFolders(meshDir)
             meshTimeFolder = timeFolders[-1]
@@ -208,9 +166,32 @@ class OfCase(object):
 
         print('Copy mesh from folder ' + meshTimeFolder)
 
-        shutil.copytree( os.path.join( meshDir , meshTimeFolder ,'polyMesh') , os.path.join( self.case , "constant/polyMesh"))
-        shutil.copytree( os.path.join( meshDir , "constant" ,'triSurface') , os.path.join( self.case  , "constant/triSurface"))
+        shutil.copytree( join( meshDir , meshTimeFolder ,'polyMesh') , join( self.case , "constant/polyMesh"))
+        shutil.copytree( join( meshDir , "constant" ,'triSurface') , join( self.case  , "constant/triSurface"))
 
+    def writeSbatch(self):
+        #run.sh
+       	print('Write run.sh batch file')
+        run = os.path.join(self.case,'run.sh')
+        with open(run,'w') as f:
+            f.write('#!/bin/bash -l\n')
+            f.write('#SBATCH -J {}\n\n'.format(self.case))
+            f.write('# 5 hour wall-clock\n')
+            f.write('#SBATCH --account I1608251\n')
+            if self.isMesher:
+                f.write('#SBATCH -t 0-02:00:00\n')
+            else:
+                f.write('#SBATCH -t 3-00:00:00\n')
+            f.write('#SBATCH -n {:d}\n'.format(self.nProcs))
+            f.write('#SBATCH -o log.run-%j\n\n')
+            f.write('module load gcc/4.9.3 openmpi/1.8.4-gcc lapack/3.6.1/gcc/4.9.3\n')
+            f.write('export FOAM_INST_DIR=/data/I1608251/OpenFOAM;\n')
+            if   self.OFversion == 2 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-2.4.x/etc/bashrc;\n')
+            elif self.OFversion == 3 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-3.0.x/etc/bashrc;\n')
+            elif self.OFversion == 5 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-5.x/etc/bashrc;\n')
+            f.write('export LC_ALL=C\n\n')
+            f.write('mpirun {} -parallel\n'.format(self.application))
+    
     def runSbatch(self):
         self.writeSbatch()
         subprocess.call(['sbatch', 'run.sh'], cwd=self.case)

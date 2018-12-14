@@ -48,19 +48,26 @@ def findBoundingBox(stlFile, verbose=True):
     boundingBox = [float(i) for i in boundingBox]
     if verbose: print( "   ",boundingBox)
     return boundingBox
-    
-def findCFDBoundingBox(case, verbose=True):
-    if verbose: print( "Compute CFD bounding box:")
-    p = subprocess.Popen("checkMesh -case "+case+" | grep 'Overall domain bounding box' | sed \"s/.*box (//;s/[(,)]//g\" ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    boundingBox,error = p.communicate()
-    if error:
-        print( 'error: ', error.decode('ascii'))
-        print('abort ...')
-        os._exit(1)
-    boundingBox = boundingBox.decode('ascii').split(' ')
-    boundingBox = [float(i) for i in boundingBox]
-    if verbose: print( "   ", boundingBox)
-    return boundingBox 
+
+
+# FUNCTION REPLACED BY "meshTools.getBounds()"
+def findCFDBoundingBox(case, time=None, verbose=True):
+    raise(Exception('Function replaced by "meshTools.getBounds()"'))
+#     if verbose: print( "Compute CFD bounding box:")
+#     cmd = "checkMesh -case {}".format(case)
+#     if time is not None: cmd+= " -time {}".format(time)
+#     cmd += " | grep 'Overall domain bounding box' | sed \"s/.*box (//;s/[(,)]//g\" "
+#     if verbose: print(cmd)
+#     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+#     boundingBox,error = p.communicate()
+#     if error:
+#         print( 'error: ', error.decode('ascii'))
+#         print('abort ...')
+#         os._exit(1)
+#     boundingBox = boundingBox.decode('ascii').split(' ')
+#     boundingBox = [float(i) for i in boundingBox]
+#     if verbose: print( "   ", boundingBox)
+#     return boundingBox 
 
 def runCommand(cmd,showlog):
     try:

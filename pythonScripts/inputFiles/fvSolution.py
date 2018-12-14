@@ -66,7 +66,7 @@ class FvSolution(ReadWriteFile) :
     """
     
     @classmethod
-    def Build(cls , case, fsiTol = 1e-8, useEuler=False, nOuterCorrectors=5, nInnerCorrectors = 4, version = "foamStar") :
+    def Build(cls , case, fsiTol = 1e-8, useEuler=False, nOuterCorrectors=5, nInnerCorrectors = 4, application = "foamStar") :
         
         res = cls( name = join(case, getFilePath("fvSolution") ), read = False )
 
@@ -132,4 +132,4 @@ class FvSolution(ReadWriteFile) :
         
 
 if __name__ == "__main__" :
-   print(FvSolution.Build("test" , version = "foamStar"))
+   print(FvSolution.Build("test" , application = "foamStar"))

@@ -1,7 +1,6 @@
-import PyFoam
-from inputFiles import ReadWriteFile, getFilePath
-from PyFoam.Basics.DataStructures import Dimension, Vector, DictProxy
 from os.path import join
+from inputFiles import ReadWriteFile, getFilePath
+from PyFoam.Basics.DataStructures import DictProxy
 from inputFiles.compatOF import namePatch
 
 """Convenient class to simply write ExtrudeMeshDict

@@ -14,7 +14,7 @@ class DecomposeParDict(ReadWriteFile) :
     """
     
     @classmethod
-    def Build(cls, case, nProcs = 1, method = "scotch", version = "foamStar") :
+    def Build(cls, case, nProcs = 1, method = "scotch", application = "foamStar") :
         
         res = cls( name = join(case, getFilePath("decomposeParDict") ), read = False )
         

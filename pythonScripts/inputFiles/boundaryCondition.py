@@ -10,9 +10,9 @@ from inputFiles import ReadWriteFile, getFilePath
 class BoundaryOmega(ReadWriteFile):
 
     @classmethod
-    def Build(cls,  case, symmetry=1, wallFunction=False, version="foamStar", namePatch=namePatch , omega = 2., case2D=False ) :
+    def Build(cls,  case, symmetry=1, wallFunction=False, application="foamStar", namePatch=namePatch , omega = 2., case2D=False ) :
         
-        patch = namePatch[version]
+        patch = namePatch[application]
         res = cls( name = join(case, getFilePath("boundaryOmega") ), read = False )
         res.header["class"] = "volScalarField"
         res["dimensions"] = Dimension(*[0,0,-1,0,0,0,0])
@@ -20,7 +20,7 @@ class BoundaryOmega(ReadWriteFile):
         bf = DictProxy()
         bf[patch["outlet"]] = { "type" : "fixedValue", "value" : omega }
         bf[patch["inlet"]] = { "type" : "fixedValue", "value" : omega }
-        if version=="foamStar":
+        if application=="foamStar":
             bf[patch["side1"]] = { "type" : "fixedValue", "value" : omega }
             bf[patch["side2"]] = { "type" : "fixedValue", "value" : omega }
         else:
@@ -41,9 +41,9 @@ class BoundaryOmega(ReadWriteFile):
 class BoundaryK(ReadWriteFile):
     
     @classmethod
-    def Build(cls,  case, symmetry=1, wallFunction = False, version="foamStar", namePatch = namePatch , k = 0.00015, case2D=False ) :
+    def Build(cls,  case, symmetry=1, wallFunction = False, application="foamStar", namePatch = namePatch , k = 0.00015, case2D=False ) :
         
-        patch = namePatch[version]
+        patch = namePatch[application]
         res = cls( name = join(case, getFilePath("boundaryK") ), read = False )
         res.header["class"] = "volScalarField"
         res["dimensions"] = Dimension(*[0,2, -2,0,0,0,0])
@@ -68,17 +68,17 @@ class BoundaryAlpha(ReadWriteFile) :
         Alpha boundary
     """
     @classmethod
-    def Build(cls , case, symmetry=1, namePatch=namePatch, case2D=False, wave=True, relaxZone=False, struct='', version="foamStar"):
+    def Build(cls , case, symmetry=1, namePatch=namePatch, case2D=False, wave=True, relaxZone=False, struct='', application="foamStar"):
         
-        patch = namePatch[version]
-        if version=="foamStar": res = cls( name = join(case, getFilePath("boundaryAlpha") ), read = False )
-        else: res = cls( name = join(case, "0" , "org", alpha[version]) , read = False )
+        patch = namePatch[application]
+        if application=="foamStar": res = cls( name = join(case, getFilePath("boundaryAlpha") ), read = False )
+        else: res = cls( name = join(case, "0" , "org", alpha[application]) , read = False )
         res.header["class"] = "volScalarField"
         res["dimensions"] = Dimension(*[0,0,0,0,0,0,0])
         res["internalField"] = "uniform 0"
         
         bf = DictProxy()
-        if wave: wavePatch = { "type" : waveAlpha[version], "value" : "uniform 0" }
+        if wave: wavePatch = { "type" : waveAlpha[application], "value" : "uniform 0" }
         else: wavePatch = { "type" : "zeroGradient" }
         
         if case2D:
@@ -111,16 +111,16 @@ class BoundaryVelocity(ReadWriteFile) :
         Velocity boundary
     """
     @classmethod
-    def Build(cls , case, speed, symmetry=1, namePatch=namePatch, case2D=False, wave = True, relaxZone=False, struct='', version = "foamStar") :
+    def Build(cls , case, speed, symmetry=1, namePatch=namePatch, case2D=False, wave = True, relaxZone=False, struct='', application = "foamStar") :
         
-        patch = namePatch[version]
+        patch = namePatch[application]
         res = cls( name = join(case, getFilePath("boundaryVelocity") ), read = False )
         res.header["class"] =  "volVectorField"
         res["dimensions"] = Dimension(*[ 0, 1, -1, 0, 0, 0, 0])
         res["internalField"] = "uniform ({} 0. 0.)".format(-speed)
         bf = DictProxy()
         
-        if wave: wavePatch = { "type" : waveVelocity[version], "value" : "uniform (0 0 0)" }
+        if wave: wavePatch = { "type" : waveVelocity[application], "value" : "uniform (0 0 0)" }
         else: wavePatch = { "type" : "fixedValue", "value" : "uniform (0. 0. 0.)" }
         
         if case2D:
@@ -155,17 +155,17 @@ class BoundaryVelocity(ReadWriteFile) :
 
 class BoundaryPressure(ReadWriteFile) :
     @classmethod
-    def Build(cls , case,  symmetry=1, namePatch=namePatch, case2D=False, struct='', version="foamStar") :
+    def Build(cls , case,  symmetry=1, namePatch=namePatch, case2D=False, struct='', application="foamStar") :
         
-        patch = namePatch[version]
-        if version=="foamStar":
+        patch = namePatch[application]
+        if application=="foamStar":
             res = cls( name = join(case, getFilePath("boundaryPressure") ), read = False )
         else:
-            res = cls(name = join(case, "0" ,"org",  p_rgh[version]) , read = False )
+            res = cls(name = join(case, "0" ,"org",  p_rgh[application]) , read = False )
         res.header["class"] = "volScalarField"
         res["dimensions"] = Dimension(*[1, -1, -2, 0, 0, 0, 0])
         res["internalField"] = "uniform 0"
-        if version=="foamStar":
+        if application=="foamStar":
             bf = DictProxy()
             if case2D:
                 bf[patch["outlet"]] = { "type" : "empty" }
@@ -211,17 +211,17 @@ class BoundaryPressure(ReadWriteFile) :
 
 class BoundaryPointDisplacement(ReadWriteFile) :
     @classmethod
-    def Build(cls , case,  symmetry=1, namePatch=namePatch, case2D=False, cpMorphing = False, version="foamStar") :
+    def Build(cls , case,  symmetry=1, namePatch=namePatch, case2D=False, cpMorphing = False, application="foamStar") :
         
-        patch = namePatch[version]
-        if version=="foamStar":
+        patch = namePatch[application]
+        if application=="foamStar":
             res = cls( name = join(case, getFilePath("boundaryPointDisplacement") ), read = False )
         else:
-            res = cls(name = join(case, "0" ,"org",  pointDisp[version]) , read = False )
+            res = cls(name = join(case, "0" ,"org",  pointDisp[application]) , read = False )
         res.header["class"] = "pointVectorField"
         res["dimensions"] = Dimension(*[0, 1, 0, 0, 0, 0, 0])
         res["internalField"] = "uniform (0 0 0)"
-        if version=="foamStar":
+        if application=="foamStar":
             bf = DictProxy()
             bf[patch["outlet"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
             bf[patch["inlet"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
@@ -251,9 +251,9 @@ class BoundaryLevelSetDiff(ReadWriteFile) :
         Velocity boundary
     """
     @classmethod
-    def Build(cls ,case, symmetry=1, namePatch = namePatch, case2D=False, version = "swenseFoam") :
+    def Build(cls ,case, symmetry=1, namePatch = namePatch, case2D=False, application = "swenseFoam") :
         
-        patch = namePatch[version]
+        patch = namePatch[application]
         res = cls( name = join(case, getFilePath("BoundaryLevelSetDiff") ), read = False )
         res.header["class"] =  "volScalarField"
         res["dimensions"] = Dimension(*[ 0, 0, 0, 0, 0, 0, 0])
@@ -277,8 +277,8 @@ class BoundaryUdiff(ReadWriteFile) :
         Velocity boundary
     """
     @classmethod
-    def Build(cls ,case, speed, symmetry=1, namePatch = namePatch, case2D=False, version = "foamStar") :
-        patch = namePatch[version]
+    def Build(cls ,case, speed, symmetry=1, namePatch = namePatch, case2D=False, application = "foamStar") :
+        patch = namePatch[application]
         res = cls( name = join(case, getFilePath("BoundaryUdiff") ), read = False )
         res.header["class"] =  "volVectorField"
         res["dimensions"] = Dimension(*[ 0, 1, -1, 0, 0, 0, 0])
@@ -304,27 +304,27 @@ class BoundaryUinc(BoundaryUdiff):
         return res
 
 
-def writeAllBoundaries(case, version, speed=0.0,  symmetry=1, case2D=False, wave=True, relaxZone=False, struct='', namePatch=namePatch) :
+def writeAllBoundaries(case, application, speed=0.0,  symmetry=1, case2D=False, wave=True, relaxZone=False, struct='', namePatch=namePatch) :
 
-    a = BoundaryAlpha.Build( case, symmetry=symmetry, case2D=case2D, wave=wave, relaxZone=relaxZone, struct=struct, version=version)
+    a = BoundaryAlpha.Build( case, symmetry=symmetry, case2D=case2D, wave=wave, relaxZone=relaxZone, struct=struct, application=application)
     a.writeFile()
     
-    a = BoundaryVelocity.Build( case, speed=speed, symmetry=symmetry, case2D=case2D, wave=wave, relaxZone=relaxZone, struct=struct, version=version)
+    a = BoundaryVelocity.Build( case, speed=speed, symmetry=symmetry, case2D=case2D, wave=wave, relaxZone=relaxZone, struct=struct, application=application)
     a.writeFile()
     
-    a = BoundaryPressure.Build( case, symmetry=symmetry, case2D=case2D, struct=struct, version=version)
+    a = BoundaryPressure.Build( case, symmetry=symmetry, case2D=case2D, struct=struct, application=application)
     a.writeFile()
     
     # if not case2D:
-        # a = BoundaryPointDisplacement( case, symmetry=symmetry, case2D=case2D, version=version)
+        # a = BoundaryPointDisplacement( case, symmetry=symmetry, case2D=case2D, application=application)
         # a.writeFile()
     
-    if version == "swenseFoam" :
-        a = BoundaryUdiff.Build( case , speed = speed, symmetry=symmetry , version = version)
+    if application == "swenseFoam" :
+        a = BoundaryUdiff.Build( case , speed = speed, symmetry=symmetry , application = application)
         a.writeFile()
-        a = BoundaryUinc.Build( case , speed = speed, symmetry=symmetry , version = version)
+        a = BoundaryUinc.Build( case , speed = speed, symmetry=symmetry , application = application)
         a.writeFile()
-        a = BoundaryLevelSetDiff.Build( case , symmetry=symmetry , version = version)
+        a = BoundaryLevelSetDiff.Build( case , symmetry=symmetry , application = application)
         a.writeFile()
 
 if __name__ == "__main__" :

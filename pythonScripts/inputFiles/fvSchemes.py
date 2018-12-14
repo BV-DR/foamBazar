@@ -14,7 +14,7 @@ class FvSchemes(ReadWriteFile) :
     """
     
     @classmethod
-    def Build( cls , case, version = "foamStar", prsJump = False,  orthogonalCorrection = False, blendCN = 0.9, simType = "steady", limitedGrad=False):
+    def Build( cls , case, application = "foamStar", prsJump = False,  orthogonalCorrection = False, blendCN = 0.9, simType = "steady", limitedGrad=False):
         
         res = cls( name = join(case, getFilePath("fvSchemes") ), read = False )
 
@@ -49,8 +49,8 @@ class FvSchemes(ReadWriteFile) :
         div = DictProxy()
         div["div(rhoPhi,U)"] = "{} Gauss linearUpwind GradU".format(bounded)
 
-        if version == "foamStar" :
-            div["div(phi,alpha)"]   = "Gauss vanLeer"            #vanLeer01DC not in openCFD version
+        if application == "foamStar" :
+            div["div(phi,alpha)"]   = "Gauss vanLeer"            #vanLeer01DC not in openCFD application
             div["div(phirb,alpha)"] = "Gauss interfaceCompression" #From Vuko's opinion "Gauss linear" should not be used
             if limitedGrad:
                 div["div(phi,k)"] = "Gauss linearUpwind limitedGrad"
@@ -60,7 +60,7 @@ class FvSchemes(ReadWriteFile) :
         else :
             div["div(phi,alpha)"]   = "Gauss vanLeer01DC"
             div["div(phirb,alpha)"] = "Gauss vofCompression" #From Vuko's opinion "Gauss linear" should not be used
-            if version == "swenseFoam" :
+            if application == "swenseFoam" :
                 div["div(phi,UDiff)"]        = "Gauss linearUpwind Gauss linear"
                 div["div(phi,levelSetDiff)"] = "Gauss vanLeerDC"
                 div["div(phi,UInc)"]         = "Gauss linear"
@@ -108,12 +108,12 @@ class FvSchemes(ReadWriteFile) :
         #-------- fluxRequired
         flux = DictProxy()
         flux["default"]      = "no"
-        flux[p_rgh[version]] = ""
+        flux[p_rgh[application]] = ""
         flux["pcorr"]        = ""
-        flux[alpha[version]] = ""
+        flux[alpha[application]] = ""
         res["fluxRequired"] = flux
         return res
 
 if __name__ == "__main__" :
-   a = FvSchemes.Build("test" , version = "foamStar" , orthogonalCorrection = "implicit") 
+   a = FvSchemes.Build("test" , application = "foamStar" , orthogonalCorrection = "implicit") 
    #a.writeFile()

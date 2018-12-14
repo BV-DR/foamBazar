@@ -2,7 +2,7 @@ from os.path import join
 from inputFiles import ReadWriteFile, getFilePath
 from PyFoam.Basics.DataStructures import DictProxy
 from inputFiles.waveProbes import setWaveProbes
-from inputFiles.compatOF import application, surfaceElevation
+from inputFiles.compatOF import app, surfaceElevation
 
 class ControlDict( ReadWriteFile ) :
     """controlDict dictionary
@@ -14,7 +14,7 @@ class ControlDict( ReadWriteFile ) :
               writeInterval=1, purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no",
               writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputInterval=1, writeFormat = "ascii",
               outputMotions=False, vbmPatch=None, forcesPatch=None, pressuresPatch=None, outputLocalMotions=False, rhoWater = 1000,
-              OFversion=5, version="foamStar"):
+              OFversion=5, application="foamStar"):
         """Build controlDict file from a few parameters.
 
         Parameters
@@ -67,14 +67,14 @@ class ControlDict( ReadWriteFile ) :
             Fuild density
         OFversion : int, default 5
             OpenFOAM version used
-        version : str, default 'foamStar'
-            OpenFOAM distribution used
+        application : str, default 'foamStar'
+            OpenFOAM application used
 
         """
 
         res = cls( name = join(case, getFilePath("controlDict") ), read = False )
         
-        res["application"]       = application[version]
+        res["application"]       = app[application]
         res["startFrom"]         = startFrom
         res["startTime"]         = startTime
         res["stopAt"]            = "endTime"
@@ -104,9 +104,9 @@ class ControlDict( ReadWriteFile ) :
             res["maxAlphaCo"]     = 0.5
             res["maxDeltaT"]      = 1.
 
-        if version == "foamStar" :
+        if application == "foamStar" :
             res ["libs"] =  ['"libfoamStar.so"' , '"libBVtabulated6DoFMotion.so"', ]
-        elif version == "snappyHexMesh" :
+        elif application == "snappyHexMesh" :
             pass
         else :
             res ["libs"] =  [ '"libforces.so"' , ]
@@ -199,7 +199,7 @@ class ControlDict( ReadWriteFile ) :
 
         #Construct waveProbe dict from waveProbes list  [ ( x,y,z_min,nb_point ) , ... ]
         if waveProbesList is not None:
-            fDict[surfaceElevation[version]] = setWaveProbes( waveProbesList , version = version , writeProbesInterval = writeProbesInterval )
+            fDict[surfaceElevation[application]] = setWaveProbes( waveProbesList , application = application , writeProbesInterval = writeProbesInterval )
 
         if len(fDict)>0:
             res["functions"] = fDict

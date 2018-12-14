@@ -1,6 +1,5 @@
 from inputFiles import ReadWriteFile, getFilePath
 from os.path import join
-from inputFiles.compatOF import alpha, p_rgh
 
 """
   Convenience class to simply write "TurbulenceProperties" and RASModel
@@ -46,6 +45,8 @@ class RASProperties(ReadWriteFile) :
             res["printCoeffs"] = True
         else :
             print("Unknown turbulence model")
+            
+        return res
          
 def writeTurbulenceProperties( case , turbulenceModel ) :
 

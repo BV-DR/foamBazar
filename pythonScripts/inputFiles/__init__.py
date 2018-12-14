@@ -11,9 +11,8 @@ from inputFiles.dynamicMeshDict import DynamicMeshDict
 from inputFiles.transportProperties import TransportProperties
 from inputFiles.turbulenceProperties import TurbulenceProperties, RASProperties
 from inputFiles.blockMeshDict import BlockMeshDict
+
 from inputFiles import boundaryCondition
-
-
 BoundaryPointDisplacement = boundaryCondition.BoundaryPointDisplacement
 BoundaryPressure = boundaryCondition.BoundaryPressure
 BoundaryVelocity = boundaryCondition.BoundaryVelocity
@@ -26,24 +25,28 @@ from inputFiles.waveProperties import RelaxZone, WaveCondition, WaveProperties, 
 from inputFiles.snappyHexMeshDict import SnappyHexMeshDict
 from inputFiles.surfaceFeatureExtractDict import SurfaceFeatureExtractDict
 from inputFiles.extrudeMeshDict import ExtrudeMeshDict
+from inputFiles.sixDofDomainBody import SixDofDomainBody
+from inputFiles.flexProperties import InitFlexDict, FlexFile
+from inputFiles.setSelection import SetSelection
+from inputFiles.waveProbes import createLinearWaveProbesList
 
 f = {
-        "controlDict"          : ControlDict,
-        "fvSchemes"            : FvSchemes,
-        "fvSolution"           : FvSolution,
-        "decomposeParDict"     : DecomposeParDict,
-        "dynamicMeshDict"      : DynamicMeshDict,
-        "transportProperties"  : TransportProperties,
-        "waveProperties"       : WaveProperties,
-        "rasProperties"        : RASProperties,
-        "turbulenceProperties" : TurbulenceProperties,
-        "boundaryPressure" : BoundaryPressure,
-        "boundaryVelocity" : BoundaryVelocity,
+        "controlDict"               : ControlDict,
+        "fvSchemes"                 : FvSchemes,
+        "fvSolution"                : FvSolution,
+        "decomposeParDict"          : DecomposeParDict,
+        "dynamicMeshDict"           : DynamicMeshDict,
+        "transportProperties"       : TransportProperties,
+        "waveProperties"            : WaveProperties,
+        "rasProperties"             : RASProperties,
+        "turbulenceProperties"      : TurbulenceProperties,
+        "boundaryPressure"          : BoundaryPressure,
+        "boundaryVelocity"          : BoundaryVelocity,
         "boundaryPointDisplacement" : BoundaryPointDisplacement,
-        "boundaryAlpha" : BoundaryAlpha,
-        "blockMeshDict" : BlockMeshDict,
-        "snappyHexMeshDict" : SnappyHexMeshDict,
-        "extrudeMeshDict" : ExtrudeMeshDict,
+        "boundaryAlpha"             : BoundaryAlpha,
+        "blockMeshDict"             : BlockMeshDict,
+        "snappyHexMeshDict"         : SnappyHexMeshDict,
+        "extrudeMeshDict"           : ExtrudeMeshDict,
         "surfaceFeatureExtractDict" : SurfaceFeatureExtractDict,
     }
 

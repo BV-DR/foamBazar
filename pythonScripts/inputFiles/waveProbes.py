@@ -2,7 +2,7 @@
    Prepare input for wave probes
 """
 
-from inputFiles.compatOF import surfaceElevation, alpha
+from inputFiles.compatOF import alpha
 from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import DictProxy
 

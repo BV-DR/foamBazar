@@ -12,16 +12,18 @@ default = {
         "transportProperties"       : "constant/transportProperties",
         "waveProperties"            : "constant/waveProperties",
         "RASProperties"             : "constant/RASProperties",
-        "turbulenceProperties"      : "constant/turbulenceProperties", 
+        "turbulenceProperties"      : "constant/turbulenceProperties",
         "blockMeshDict"             : "system/blockMeshDict",
-        "boundaryPressure"          : "0/org/p_rgh", 
-        "boundaryVelocity"          : "0/org/U", 
-        "boundaryPointDisplacement" : "0/org/pointDisplacement", 
+        "boundaryPressure"          : "0/org/p_rgh",
+        "boundaryVelocity"          : "0/org/U",
+        "boundaryPointDisplacement" : "0/org/pointDisplacement",
         "boundaryAlpha"             : "0/org/alpha.water",
         "boundaryOmega"             : "0/org/omega",
         "boundaryK"                 : "0/org/k",
         "BoundaryLevelSetDiff"      : "0/org/levelSetDiff",
-        "BoundaryUdiff"             : "0/org/UDiff"
+        "BoundaryUdiff"             : "0/org/UDiff",
+        "sixDofDomainBody"          : "0/uniform/sixDofDomainBody",
+        "initFlexDict"              : "initFlexDict"
               }
 
 #Modification of file path in plus version

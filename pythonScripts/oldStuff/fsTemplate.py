@@ -3,7 +3,7 @@
 #########################################################################
 # Filename: fsTemplate.py                                               #
 # Date:     2017-May-02                                                 #
-# Version:  1.                                                          #
+# application:  1.                                                          #
 # Author:   Alexis Benhamou                                             #
 # Org.:     Bureau Veritas, (HO, France)                                #
 # Email:    alexis.benhamou@bureauveritas.com                           #
@@ -571,21 +571,21 @@ def foamCase_template(data):
                                vbmPatch            = vbmPatch,
                                forcesPatch         = forcesPatch,
                                waveProbesList      = wpList,
-                               version             = "foamStar" )
+                               application             = "foamStar" )
     controlDict.writeFile()
 
     #fvSchemes
     fvSchemes = FvSchemes( case     = data.caseDir,
                            simType  = data.scheme,
                            orthogonalCorrection = "implicit",
-                           version  = "foamStar" )
+                           application  = "foamStar" )
     fvSchemes.writeFile()
 
     #fvSolution
     fvSolution = FvSolution( case    = data.caseDir,
                              fsiTol  = data.fsiTol,
                              useEuler = data.scheme=='Euler',
-                             version  = "foamStar" )
+                             application  = "foamStar" )
     fvSolution.writeFile()
     
     #decomposeParDict
@@ -617,7 +617,7 @@ def foamCase_template(data):
         relaxInlet  = RelaxZone( "inlet" , relax=True, waveCondition=waveCond, origin=[bBox[3], 0., 0.], orientation = [ -1. ,  0. , 0.], bound=data.inletRelaxZone)
         relaxZones += [relaxInlet]
     
-    waveProperties = WaveProperties( filename, initWaveCondition=waveCond, relaxZones=relaxZones, version = "foamStar" )
+    waveProperties = WaveProperties( filename, initWaveCondition=waveCond, relaxZones=relaxZones, application = "foamStar" )
     waveProperties.writeFile()
     
     #cell.Set
@@ -638,7 +638,7 @@ def foamCase_template(data):
     transportProperties = TransportProperties( case = data.caseDir,
                                                nuWater = 1.14e-06,
                                                rhoWater = 1025,
-                                               version = "foamStar"
+                                               application = "foamStar"
                                              )
     transportProperties.writeFile()
     
@@ -646,7 +646,7 @@ def foamCase_template(data):
     if data.case2D:
         dynamicMeshDict = DynamicMeshDict( case = data.caseDir,
                                            static = True,
-                                           version = "foamStar"
+                                           application = "foamStar"
                                          )
     else:
         if data.addDamping:
@@ -661,7 +661,7 @@ def foamCase_template(data):
                                         addDamping = data.addDamping,
                                         lpp = LBP,
                                         bc = BC,
-                                        version = "foamStar"
+                                        application = "foamStar"
                                         )
     dynamicMeshDict.writeFile()
 
@@ -674,7 +674,7 @@ def foamCase_template(data):
     writeAllBoundaries( case=data.caseDir,
                         speed=data.velocity,
                         case2D = data.case2D,
-                        version = "foamStar" )
+                        application = "foamStar" )
     
     #sixDofDomainBody, flexProperties
     if not data.case2D:
@@ -684,7 +684,7 @@ def foamCase_template(data):
                                             COG = data.shipCOG,
                                             nModes = data.modesToUse,
                                             donName = data.donName,
-                                            version = "foamStar"
+                                            application = "foamStar"
                                             )
         sixDofDomainBody.writeFile()
      
@@ -703,7 +703,7 @@ def foamCase_template(data):
                                  localPts = data.localMotionPts,
                                  freq = data.shipFreq,
                                  damping = data.shipDamping,
-                                 version = "foamStar"
+                                 application = "foamStar"
                                 )
 
     #run.sh
@@ -836,7 +836,7 @@ fsHeader =r'''
 /*--------------------------------*- C++ -*----------------------------------*\ 
 | =========                 |                                                 | 
 | \\\\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           | 
-|  \\\\    /   O peration     | Version:  2.4.x                                 | 
+|  \\\\    /   O peration     | application:  2.4.x                                 | 
 |   \\\\  /    A nd           | Web:      www.OpenFOAM.org                      | 
 |    \\\\/     M anipulation  |                                                 | 
 \*---------------------------------------------------------------------------*/ 

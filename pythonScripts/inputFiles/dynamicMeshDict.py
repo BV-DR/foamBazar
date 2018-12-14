@@ -1,19 +1,16 @@
 import os
-import numpy as np
-from PyFoam.Basics.DataStructures import DictProxy, Vector, Field, TupleProxy
 from os.path import join
+from PyFoam.Basics.DataStructures import DictProxy, Vector
 from inputFiles import ReadWriteFile, getFilePath
 
 """
   Convenience class to simply write "DynamicMeshDict"
 """
 
-
-
 template_free = """
 FoamFile
 {
-    version     5.0;
+    application     5.0;
     format      ascii;
     class       dictionary;
     object      dynamicMeshDict;
@@ -64,20 +61,21 @@ multiBodyFvMeshCoeffs
 }
 """
 
-
-
 class DynamicMeshDict( ReadWriteFile ):
     
-   
     @classmethod
     def Build_static( cls, case ):
+        """Build dynamicMeshDict for static cases
+        """
         res = cls( name = join(case, getFilePath("dynamicMeshDict") ), read = False )
         res.header["class"] = "dictionary"
         res["dynamicFvMesh"] = "staticFvMesh"
         return res
      
     @classmethod
-    def Build_free( cls, case, mass, cog, inertia, rampTime, releaseTime, hullPatch="(ship)", meshMotion = "cpMorphing", innerDistance=None, outerDistance=None, OFversion=5, version="foamStar"):
+    def Build_free( cls, case, mass, cog, inertia, rampTime, releaseTime, hullPatch="(ship)", meshMotion = "cpMorphing", innerDistance=None, outerDistance=None, OFversion=5, application="foamStar"):
+        """Build dynamicMeshDict for standard rigid seakeeping
+        """
         res = cls( name = join(case, getFilePath("dynamicMeshDict") ), read = False )
         res.header["class"] = "dictionary"
         
@@ -100,7 +98,74 @@ class DynamicMeshDict( ReadWriteFile ):
         res["multiBodyFvMeshCoeffs"]["releaseTime"] = releaseTime
         
         return res
+        
+    @classmethod
+    def Build_imposed(cls, case,  dispFile='', cog=[0.,0.,0.], OFversion=5, application="foamStar") :
+        """Build dynamicMeshDict for cases with imposed motions
+        """
+        res = cls( name = join(case, getFilePath("dynamicMeshDict") ), read = False )
+        if OFversion==5:
+            res["dynamicFvMesh"] = "dynamicMotionSolverFvMesh"
+            res["motionSolver"] = "solidBody"
+            res["solidBodyMotionFunction"] = "tabulated6DoFMotion"
+            tab = DictProxy()
+            tab["timeDataFileName"] = '"'+dispFile+'"'
+            tab["CofG"] = '( {:.6f} {:.6f} {:.6f} )'.format(*cog)
+            res["tabulated6DoFMotionCoeffs"] = tab
+        else:
+            res["dynamicFvMesh"] = "solidBodyMotionFvMesh"
+            sdc = DictProxy()
+            sdc["solidBodyMotionFunction"] = "BVtabulated6DoFMotion"
+            tab = DictProxy()
+            tab["timeDataFileName"] = '"'+dispFile+'"'
+            tab["CofG"] = '( {:.6f} {:.6f} {:.6f} )'.format(*cog)
+            sdc["BVtabulated6DoFMotionCoeffs"] = tab
+            res["solidBodyMotionFvMeshCoeffs"] = sdc
+        return res
+
+    @classmethod
+    def Build_elastic(cls, case, hullPatch=None, addDamping=False, lpp=0, bc=0, OFversion=5, application="foamStar") :
+        """Build dynamicMeshDict for cases with hydro-elasticity
+        """
+        res = cls( name = join(case, getFilePath("dynamicMeshDict") ), read = False )
+        
+        res["dynamicFvMesh"] = "sixDofDomainFvMesh"
+        res["motionSolverLibs"] = ['"libfvMotionSolvers.so"', ]
+        res["solver"] = "displacementLaplacian"
+        res["displacementLaplacianCoeffs"] = { "diffusivity" : "invDistSqr ({})".format(hullPatch) }
+        sdc = DictProxy()
+        sdc["hullPatches"] = "({})".format(hullPatch)
+        sdc["meshConfigType"] = 4
+        sdc["solver"] = "RKCK45"
+        sdc["absTol"] = 1e-8
+        sdc["relTol"] = 0
+        sdc["rampTime"] = 15
+        ldc = DictProxy()
+        ldc["gravity"] = { "type" : "gravity", "value" : "(0 0 -9.81)" }
+        ff = DictProxy()
+        ff["type"] = "fluidForce"
+        ff["patches"] = "({})".format(hullPatch)
+        ff["dynRelax"] = "off"
+        ff["relaxCoeff"] = 0.5
+        ff["ySym"] = "yes"
+        ldc["fluid"] = ff
+        if addDamping:
+            dmp = DictProxy()
+            dmp["type"] = "dampingSinkageAndTrim"
+            dmp["heaveDampingCoef"] = 1000
+            dmp["pitchDampingCoef"] = 1000
+            dmp["Lpp"] = lpp
+            dmp["Breadth"] = bc
+            ldc["dampingCoeff"] = dmp
+        sdc["loads"] = ldc
+        hp = DictProxy()
+        hp["type"] = "cog6DOF"
+        hp["default"] = '"fixAll"'
+        hp["except"] = "(heave pitch)"
+        sdc["constraints"] = { "heavePitch" : hp }
+        res["sixDofDomainFvMeshCoeffs"] = sdc
             
+        return res
          
     def setMechanics(self, mass, cog , inertia,hullPatch):
         self["multiBodyFvMeshCoeffs"]["ship"]["mass"] = mass
@@ -119,32 +184,9 @@ class DynamicMeshDict( ReadWriteFile ):
                 "hullPatch" : self["multiBodyFvMeshCoeffs"]["ship"]["motionPatches"]
               }
         return res
-        
-    @classmethod
-    def Build_imposed(cls, case,  dispFile='', COG=[0.,0.,0.], OFversion=5, version="foamStar") :
-        res = cls( name = join(case, getFilePath("dynamicMeshDict") ), read = False )
-        if OFversion==5:
-            res["dynamicFvMesh"] = "dynamicMotionSolverFvMesh"
-            res["motionSolver"] = "solidBody"
-            res["solidBodyMotionFunction"] = "tabulated6DoFMotion"
-            tab = DictProxy()
-            tab["timeDataFileName"] = '"'+dispFile+'"'
-            tab["CofG"] = '( {:.6f} {:.6f} {:.6f} )'.format(*COG)
-            res["tabulated6DoFMotionCoeffs"] = tab
-        else:
-            res["dynamicFvMesh"] = "solidBodyMotionFvMesh"
-            sdc = DictProxy()
-            sdc["solidBodyMotionFunction"] = "BVtabulated6DoFMotion"
-            tab = DictProxy()
-            tab["timeDataFileName"] = '"'+dispFile+'"'
-            tab["CofG"] = '( {:.6f} {:.6f} {:.6f} )'.format(*COG)
-            sdc["BVtabulated6DoFMotionCoeffs"] = tab
-            res["solidBodyMotionFvMeshCoeffs"] = sdc
-        return res
-
 
 if __name__ == "__main__" :
-    #print(DynamicMeshDict.Build_free("test", inertia = [1,1,1,1,1,1], cog = [1,1,1], mass = 123, releaseTime = 0.0, rampTime = 0.0, hullPatch='ship',  version = "foamExtend"))
+    #print(DynamicMeshDict.Build_free("test", inertia = [1,1,1,1,1,1], cog = [1,1,1], mass = 123, releaseTime = 0.0, rampTime = 0.0, hullPatch='ship',  application = "foamExtend"))
     
     a = ReadWriteFile(r"/mnt/d/Etudes/Model_test_ECN/VBM_MODEL_TEST/OFRun/test/constant/dynamicMeshDict", read = True)
     b = DynamicMeshDict(r"/mnt/d/Etudes/Model_test_ECN/VBM_MODEL_TEST/OFRun/test/constant/dynamicMeshDict", read = True)

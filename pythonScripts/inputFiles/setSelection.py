@@ -1,6 +1,6 @@
-
 import math as mt
 from os.path import join
+from fsTools import findBoundingBox
 
 """
   Convenience class to simply write set selection input file
@@ -10,29 +10,24 @@ from os.path import join
 class SetSelection() :
     """SetSelection dictionary
     """
-    def __init__(self , case, selType='box', BB=None, stlFile=None, opts=None, distance=None, outsidePoints=None, name=''):
+    def __init__(self , case, selType='box', BB=None, stlFile=None, opts=None, distance=None, outsidePoints=None, name='', selName='c0'):
         #set selection parameters
         if selType=='box':
-            BBtxt = '({} {} {}) ({} {} {})'.format(*BB)
-            self.cmd = 'cellSet c0 new boxToCell '+BBtxt
+            self.cmd = 'cellSet {} new boxToCell ({} {} {}) ({} {} {})'.format(selName,*BB)
         elif selType=='proximity':
             stlFile = './constant/triSurface/'+stlFile
             if not stlFile.endswith('.stl'): stlFile += '.stl'
             if outsidePoints==None:
                 tmp = findBoundingBox(stlFile, False)
                 tmp = [0.5*(tmp[0]+tmp[3]), 0.5*(tmp[1]+tmp[4])+mt.fabs(tmp[1]-tmp[4]), 0.5*(tmp[2]+tmp[5])]
-                outsidePoints = " (({} {} {}))".format(*tmp)
-            else:
-                outsidePoints = " (({} {} {}))".format(*outsidePoints)
+                outsidePoints = tmp
             includeCutCells=' yes'
             includeInside=' yes'
             includeOutside=' no'
             curvature=' -1e6'
-            distance = " " + str(distance)
-            self.cmd = 'cellSet c0 '+opts+' surfaceToCell "'+ stlFile +'"'+ outsidePoints + includeCutCells + includeInside + includeOutside + distance + curvature
+            self.cmd = 'cellSet {} {} surfaceToCell "{}"  (({} {} {})) {} {} {} {} {}'.format(selName,opts,stlFile,*outsidePoints,includeCutCells,includeInside,includeOutside,distance,curvature)
             if BB is not None:
-                BBtxt = '({} {} {}) ({} {} {})'.format(*BB)
-                self.cmd += '\n' + 'cellSet c0 subset boxToCell '+BBtxt
+                self.cmd += '\n cellSet {} subset boxToCell ({} {} {}) ({} {} {})'.format(selName,*BB)
         
         #set command file name
         if case==None: self.path = '.'

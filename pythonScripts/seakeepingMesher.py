@@ -86,7 +86,7 @@ class SeakeepingMesher( OfMesher ):
                                 refSurfExtra     = None,
                                 shipBL           = [3, 1.3, 0.7, 0.7],
                                 noLayers         = [],
-                                solver           = "snappyHexMesh",
+                                application           = "snappyHexMesh",
                                 OFversion        = 5,
                                 onLiger          = False,
                                 clean            = False
@@ -156,8 +156,8 @@ class SeakeepingMesher( OfMesher ):
         noLayers: list of str
             Disable layers creation on selected patches (e.g. deck)
             
-        solver : str, default 'snappyHexMesh'
-            Solver to run
+        application : str, default 'snappyHexMesh'
+            application to run
         OFversion : int or str, default 5
             OpenFOAM version
         onLiger : boolean, default False
@@ -225,7 +225,7 @@ class SeakeepingMesher( OfMesher ):
         print('Create system folder input files')
         #controlDict
         controlDict = ControlDict.Build(case              = case,
-                                        version           = "snappyHexMesh",
+                                        application           = "snappyHexMesh",
                                         endTime           = 100,
                                         deltaT            = 1,
                                         writeControl      = "timeStep",
@@ -732,7 +732,7 @@ class SeakeepingMesher( OfMesher ):
                           surfaceFeatureExtractDict=surfaceFeatureExtractDict,
                           blockMeshDict=blockMeshDict,
                           setSelections=setSelections,
-                          solver = solver,
+                          application = application,
                           isMesher = True,
                           clean = clean
                           )
@@ -858,24 +858,3 @@ class SeakeepingMesher( OfMesher ):
             f.write('eval clean_parallel_mesh\n')
             f.write('eval clean_0\n')
         os.chmod(aclean, 0o755)
-        
-    def writeSbatch(self):
-        """Write bash script used to launch case on Liger cluster
-        """
-        run = os.path.join(self.case,'run.sh')
-        with open(run,'w') as f:
-            f.write('#!/bin/bash -l\n')
-            f.write('#SBATCH -J {}\n\n'.format(self.case))
-            f.write('# 5 hour wall-clock\n')
-            f.write('#SBATCH --account I1608251\n')
-            f.write('#SBATCH -t 0-02:00:00\n')
-            f.write('#SBATCH -n {:d}\n'.format(self.nProcs))
-            f.write('#SBATCH -o log.run-%j\n\n')
-            f.write('module load gcc/4.9.3 openmpi/1.8.4-gcc lapack/3.6.1/gcc/4.9.3\n')
-            f.write('export FOAM_INST_DIR=/data/I1608251/OpenFOAM;\n')
-            if   self.OFversion == 2 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-2.4.x/etc/bashrc;\n')
-            elif self.OFversion == 3 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-3.0.x/etc/bashrc;\n')
-            elif self.OFversion == 5 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-5.x/etc/bashrc;\n')
-            elif 'p' in str(self.OFversion).lower(): f.write('source /data/I1608251/OpenFOAM/OpenFOAM-v1712/etc/bashrc;\n')
-            f.write('export LC_ALL=C\n\n')
-            f.write('mpirun {} -parallel\n'.format(self.solver))
