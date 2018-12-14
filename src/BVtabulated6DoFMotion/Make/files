@@ -1,0 +1,4 @@
+BVtabulated6DoFMotion.C
+
+LIB = $(FOAM_USER_LIBBIN)/libBVtabulated6DoFMotion
+
