@@ -7,16 +7,18 @@ import gzip
 def readPoints(polyMeshDir):
     """Read points from a polymesh
     """
-    #points in compressed format (*.gz)
-    pointsFile = os.path.join(polyMeshDir,'points.gz')
-    if os.path.isfile(os.path.join(polyMeshDir,'points.gz'))
-        with gzip.open(pointsFile, "rb") as f : 
-            data = f.read().decode()
-    #points in ascii format (*.gz)
     pointsFile = os.path.join(polyMeshDir,'points')
-    elif os.path.isfile(os.path.join(polyMeshDir,'points'))
-        with open(pointsFile,'r')
+    pointsFileGZ = os.path.join(polyMeshDir,'points.gz')
+    #points in compressed format (*.gz)
+    if os.path.isfile(pointsFileGZ):
+        with gzip.open(pointsFileGZ, "rb") as f : 
+            data = f.read().decode()
+    #points in ascii format
+    elif os.path.isfile(pointsFile):
+        with open(pointsFile,'r') as f:
             data = f.read()
+    else:
+        raise(FileNotFoundError)
     pattern = r"\(\n(.*)\)\n\)"
     s = StringIO( re.search(pattern, data, re.DOTALL).group(1).replace("(", "").replace(")", ""))
     return pd.read_csv(s, delim_whitespace = True, header = None, names = ["x", "y", "z"] )
