@@ -10,6 +10,79 @@ from pythonScripts.meshTools import getBounds
 
 
 class DropTestCase( OfRun ) :
+    """Class used to generate a CFD seakeeping case.
+    It should be called by a python script as presented in the following example
+    
+    Example
+    -------
+    For 2D cases (slamming sections)
+    
+    >>> import os
+    >>> 
+    >>> #Import meshing or template routine from foamBazar
+    >>> # WARNING : foamBazar must be added to PYTHONPATH !
+    >>> from ideFoam.dropTestCase import DropTestCase
+    >>> 
+    >>> sections = [1,2]
+    >>> case = 'drop'
+    >>> 
+    >>> for isect in sections:
+    >>>     sectPatch = 'section_'+str(isect)
+    >>>     #Sample of parameters dict
+    >>>     myParams = {'nProcs' : 12,
+    >>>                 'OFversion' : 3,
+    >>>                 'hullPatch' : sectPatch,
+    >>>                 'symmetry' : True,
+    >>>                 'meshDir' : 'Sections/sym/'+sectPatch,
+    >>>                 'endTime' : 4.0,
+    >>>                 'timeStep' : 0.000625,
+    >>>                 'writeInterval' : 800,
+    >>>                 'outputForces' : True,
+    >>>                 'outputPressures' : True,
+    >>>                 'outputInterval' : 4,
+    >>>                 'dispSignal' : '../dispSignals.dat',
+    >>>                 'translate' : [0.0,0.0,0.5],
+    >>>                 'gravity' : 1e-8
+    >>>                 }
+    >>> 
+    >>>     #Calling routine for meshing or template here
+    >>>     drop = DropTestCase.BuildFromParams( case, **myParams )
+    >>>     drop.runInit()
+    >>>     drop.runSbatch()
+    
+    For 3D cases (slamming sections)
+    
+    >>> import os
+    >>> 
+    >>> #Import meshing or template routine from foamBazar
+    >>> # WARNING : foamBazar must be added to PYTHONPATH !
+    >>> from ideFoam.dropTestCase import DropTestCase
+    >>> 
+    >>> case = 'drop'
+    >>> myParams = {'nProcs' : 120,
+    >>>             'OFversion' : 3,
+    >>>             'ndim' : 3,
+    >>>             'symmetry' : True,
+    >>>             'meshDir' : 'Mesh/sym/grid_3_bow',
+    >>>             'meshTime' : 'latestTime',
+    >>>             'endTime' : 4.0,
+    >>>             'timeStep' : 0.000625,
+    >>>             'writeInterval' : 320,
+    >>>             'outputForces' : True,
+    >>>             'forcesPatch' : ['ship_seg01','ship_seg02'],
+    >>>             'outputPressures' : False,
+    >>>             'outputInterval' : 1,
+    >>>             'dispSignal' : '../dispSignals.dat',
+    >>>             'translate' : [0.0,0.0,0.5],
+    >>>             'gravity' : 1e-8
+    >>>             }
+    >>> 
+    >>> #Calling routine for meshing or template here
+    >>> drop = DropTestCase.BuildFromParams( case, **myParams )
+    >>> drop.runInit()
+    >>> drop.writeSbatch()
+    
+    """
 
     additionalFiles = ["boundaryPressure" , "boundaryVelocity" ,"boundaryPointDisplacement" , "boundaryAlpha"]
     handledFiles = OfRun.handledFiles + additionalFiles
@@ -167,7 +240,7 @@ class DropTestCase( OfRun ) :
         waveCond = noWaves
 
         relaxZones = []
-        bBox = getBounds(os.path.join(meshDir,str(meshTime),'polyMesh'))
+        bBox = getBounds(os.path.join(meshDir,'constant','polyMesh'))
             
         if inletRelaxZone is not None:
             if inletRelaxZone > 0: relaxFront = RelaxZone( "inlet" , relax=True, waveCondition=waveCond, origin=[bBox[0][0], 0., 0.], orientation = [ -1., 0., 0.], length=inletRelaxZone)
