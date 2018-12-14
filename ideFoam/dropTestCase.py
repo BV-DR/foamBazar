@@ -2,7 +2,7 @@ import os
 from ideFoam.ofRun import OfRun
 
 from ideFoam.inputFiles import ControlDict, FvSchemes, FvSolution, DecomposeParDict
-from ideFoam.inputFiles import DynamicMeshDict, WaveProperties, RelaxZone, WaveCondition, TransportProperties
+from ideFoam.inputFiles import DynamicMeshDict, WaveProperties, RelaxZone, noWaves, TransportProperties
 from ideFoam.inputFiles import BoundaryPressure, BoundaryVelocity, BoundaryPointDisplacement, BoundaryAlpha
 
 from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
@@ -11,7 +11,7 @@ from pythonScripts.meshTools import getBounds
 
 class DropTestCase( OfRun ) :
 
-    additionalFiles = ["boundaryPressure" , "boundaryVelocity" ,"boundaryPointDisplacement" , "boundaryAlpha", "sixDofDomainBody"]
+    additionalFiles = ["boundaryPressure" , "boundaryVelocity" ,"boundaryPointDisplacement" , "boundaryAlpha"]
     handledFiles = OfRun.handledFiles + additionalFiles
 
     def __init__(self, *args, **kwargs):
@@ -44,11 +44,6 @@ class DropTestCase( OfRun ) :
                              scheme           = "Euler",
                              nProcs           = 4,
                              nOuterCorrectors = 5,
-                             waveType         = "noWaves",
-                             waveH            = 0.0,
-                             waveT            = 0.0,
-                             velocity         = 0.0,
-                             depth            = 100.,
                              inletRelaxZone   = None,
                              outletRelaxZone  = None,
                              sideRelaxZone    = None,
@@ -61,7 +56,79 @@ class DropTestCase( OfRun ) :
                              COG              = [0.0,0.0,0.0],
                              gravity          = 0.0,
                              turbulenceModel  = "laminar",
+                             clean            = False
                              ):
+        """Build mesh for CFD drop test case from a few parameters.
+        
+        Parameters
+        ----------
+        case : str
+            Name of case to create
+        meshDir : str, default 'mesh'
+            Path to mesh directory
+        meshTime : int or str, default'constant'
+            Name of folder containing mesh in meshDir
+        ndim : int, default 2
+            Number of dimentions of mesh (2 for 2D mesh or 3 for 3D mesh)
+        symmetry : int, default 1
+            Define symmetry type : 0 = None, 1 = symmetry, 2 = symmetryPlane
+            
+        outputForces : bool, default False
+            Logical defining if forces are output on forcesPatch
+        forcesPatch : list of str, default None
+            List of patch where forces are output
+        outputPressures : bool, default False
+            Logical defining if pressures are output on pressuresPatch
+        pressuresPatch : list of str, default None
+            List of patch where pressures are output
+        outputInterval : int, default 1
+            Define interval at wich simualtion outputs are written
+        hullPatch : str, default 'ship'
+            Set patch name given for hull in boundary file
+            
+        startTime : str, default 'latestTime'
+            String defining simulation startTime parameter
+        endTime : float, default 1000
+            End simulation time
+        timeStep : float, default 0.01
+            Simulation time step
+        writeInterval : int, default 1
+            Define interval at wich simualtion results are written
+        purgeWrite : int, default 0
+            Define number of results time steps after wich results are erased
+        scheme, str, default 'Euler'
+            TODO
+        
+        inletRelaxZone : float, default None
+            Length of inlet relaxation zone. If not provided, default value will be used.
+        outletRelaxZone : float, default None
+            Length of outlet relaxation zone. If not provided, default value will be used.
+        sideRelaxZone : float, default None
+            Length of side relaxation zone. If not provided, default value will be used.
+        
+        translate : list of floats, dimension(3), default [0.0,0.0,0.0]
+            Initial ship translation.
+        rotate  : list of floats, dimension(3), default [0.0,0.0,0.0]
+            Initial ship rotation (in degrees).
+        COG : list of floats, dimension(3), default [0.0,0.0,0.0]
+            Ship center of grativty, used for rotations
+        rhoWater : float, default 1025.
+            Water density
+            
+        nOuterCorrectors : int, default 5
+            TODO
+        nProcs : int, default 1
+            Number of processors
+        application : str, default 'foamStar'
+            Application to run 
+        OFversion : int or str, default 5
+            OpenFOAM version
+        onLiger : boolean, default False
+            Logical defining if case is run on Liger cluster
+        clean : boolean, default False
+            Logical to force case overwrite
+     
+        """
 
         #controlDict
         if outputForces and (forcesPatch is None): forcesPatch = [hullPatch]
@@ -97,24 +164,24 @@ class DropTestCase( OfRun ) :
                                                   nProcs = nProcs )
                                                   
         #waveProperties
-        waveCond  = WaveCondition( waveType   = waveType )
+        waveCond = noWaves
 
         relaxZones = []
-        bBox = getBounds(os.path.join(meshDir,str(meshTime),'polyMesh','points.gz'))
+        bBox = getBounds(os.path.join(meshDir,str(meshTime),'polyMesh'))
             
         if inletRelaxZone is not None:
-            if inletRelaxZone > 0: relaxFront = RelaxZone( "inlet" , relax=True, waveCondition=waveCond, origin=[bBox[0][0], 0., 0.], orientation = [ -1., 0., 0.], bound=inletRelaxZone)
-            else: relaxFront = RelaxZone( "inlet" , relax=True, waveCondition=waveCond, origin=[bBox[0][0], 0., 0.], orientation = [ -1., 0., 0.], bound=0.1*bBox[0][0])
+            if inletRelaxZone > 0: relaxFront = RelaxZone( "inlet" , relax=True, waveCondition=waveCond, origin=[bBox[0][0], 0., 0.], orientation = [ -1., 0., 0.], length=inletRelaxZone)
+            else: relaxFront = RelaxZone( "inlet" , relax=True, waveCondition=waveCond, origin=[bBox[0][0], 0., 0.], orientation = [ -1., 0., 0.], length=0.1*bBox[0][0])
             relaxZones += [relaxFront]
             
         if outletRelaxZone is not None:
-            if outletRelaxZone > 0: relaxBack = RelaxZone( "outlet" , relax=True, waveCondition=waveCond, origin=[bBox[0][1], 0., 0.], orientation = [ 1., 0., 0.], bound=outletRelaxZone)
-            else: relaxBack = RelaxZone( "outlet" , relax=True, waveCondition=waveCond, origin=[bBox[0][1], 0., 0.], orientation = [ 1., 0., 0.], bound=0.1*bBox[0][1])
+            if outletRelaxZone > 0: relaxBack = RelaxZone( "outlet" , relax=True, waveCondition=waveCond, origin=[bBox[0][1], 0., 0.], orientation = [ 1., 0., 0.], length=outletRelaxZone)
+            else: relaxBack = RelaxZone( "outlet" , relax=True, waveCondition=waveCond, origin=[bBox[0][1], 0., 0.], orientation = [ 1., 0., 0.], length=0.1*bBox[0][1])
             relaxZones += [relaxBack]
         
         if sideRelaxZone is not None:
-            if sideRelaxZone > 0: relaxSide = RelaxZone( "side" , relax=True, waveCondition=waveCond, origin=[0., bBox[1][1], 0.], orientation = [  0., -1., 0.], bound=sideRelaxZone)
-            else: relaxSide = RelaxZone( "side" , relax=True, waveCondition=waveCond, origin=[0., bBox[1][1], 0.], orientation = [  0., -1., 0.], bound=0.5*bBox[1][1])
+            if sideRelaxZone > 0: relaxSide = RelaxZone( "side" , relax=True, waveCondition=waveCond, origin=[0., bBox[1][1], 0.], orientation = [  0., -1., 0.], length=sideRelaxZone)
+            else: relaxSide = RelaxZone( "side" , relax=True, waveCondition=waveCond, origin=[0., bBox[1][1], 0.], orientation = [  0., -1., 0.], length=0.5*bBox[1][1])
             relaxZones += [relaxSide]
             
         waveProperties = WaveProperties.Build(case              = case,
@@ -161,7 +228,6 @@ class DropTestCase( OfRun ) :
                                                                     symmetry = symmetry,
                                                                     case2D      = (ndim==2),
                                                                     application   = application)
-
 
         res =  cls( case, nProcs                    = nProcs,
                           OFversion                 = OFversion,

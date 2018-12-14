@@ -11,6 +11,59 @@ from pythonScripts.meshTools import getBounds
 from pythonScripts.fsTools import findBoundingBox
 
 class SeakeepingCase(OfRun):
+    """Class used to generate a CFD seakeeping case.
+    It should be called by a python script as presented in the following example
+    
+    Example
+    -------
+    >>> import os
+    >>> #
+    >>> # Import case routine from foamBazar
+    >>> # WARNING : foamBazar must be added to PYTHONPATH !
+    >>> from ideFoam.seakeepingCase import SeakeepingCase
+    >>> #
+    >>> # Case name and additional optional parameters
+    >>> case = "run"
+    >>> myParams = {'nProcs'            : 12,
+    >>>             'meshDir'           : 'mesh',
+    >>>             'meshTime'          : 13,
+    >>>             'endTime'           : 1.0,
+    >>>             'timeStep'          : 0.075,
+    >>>             'writeInterval'     : 40,
+    >>>             'purgeWrite'        : 5,
+    >>>             'outputWave'        : False,
+    >>>             'fsiTol'            : 5e-5,
+    >>>             'wave'              : None,
+    >>>             'depth'             : 443,
+    >>>             'draft'             : 11.75,
+    >>>             'speed'             : 2.5722,
+    >>>             'waveType'          : 'noWaves',
+    >>>             'waveH'             : 11.1,
+    >>>             'waveT'             : 12.75,
+    >>>             'waveStartTime'     : 0,
+    >>>             'waveRampTime'      : 12,
+    >>>             'addDamping'        : True,
+    >>>             'EulerCellsDist'    : 4,
+    >>>             'inletRelaxZone'    : 390,
+    >>>             'outletRelaxZone'   : -313,
+    >>>             'sideRelaxZone'     : 352,
+    >>>             'datFile'           : 'homer/4400_Bulk.dat',
+    >>>             'donFile'           : 'homer/4400.don',
+    >>>             'dmigFile'          : 'homer/4400_dmig.pch',
+    >>>             'mdFile'            : 'homer/4400_md.pch',
+    >>>             'hmrUserOutput'     : 'homer/HmFEM.out',
+    >>>             'modesToUse'        : [7,8,9],
+    >>>             'shipDamping'       : [0.0,0.0,0.0],
+    >>>             'clean'             : True
+    >>>             }
+    >>> #
+    >>> # Call routines for meshing here
+    >>> run = SeakeepingCase.BuildFromParams( case, **myParams )
+    >>> fname = os.path.join(case,'log.input')
+    >>> with open(fname,'w') as f: f.write(str(myParams))
+    >>> run.runInit()
+    
+    """
 
     additionalFiles = ["boundaryPressure" , "boundaryVelocity" ,"boundaryPointDisplacement" , "boundaryAlpha", "sixDofDomainBody", "initFlexDict", "flexFile"]
     handledFiles = OfRun.handledFiles + additionalFiles
@@ -32,14 +85,13 @@ class SeakeepingCase(OfRun):
                              startTime          = 'latestTime',
                              endTime            = 1000,
                              timeStep           = 0.01,
-                             adjustTimeStep     = None,  # None for constant time step, [maxCo, maxAlphaCo, maxDeltaT] otherwise
+                             adjustTimeStep     = None,
                              writeInterval      = 1,
                              purgeWrite         = 0,
                              writeFormat        = "ascii",
-                             symmetry           = 1,          # 0 = None ; 1 = symmetry ; 2 = symmetryPlane
+                             symmetry           = 1,
                              
                              donFile            = None,
-                             
                              outputWave         = False,
                              waveProbes         = [],
                              localMotionPts     = [],
@@ -76,7 +128,6 @@ class SeakeepingCase(OfRun):
                              speed              = 0.,
                              depth              = 500,
                              draft              = 0,
-                             waveSeaLvl         = 0,
                              waveStartTime      = 0,
                              waveRampTime       = 0,
                              addDamping         = False,
@@ -120,6 +171,9 @@ class SeakeepingCase(OfRun):
         purgeWrite : int, default 0
             Define number of results time steps after wich results are erased
         writeFormat : str, default 'ascii'
+            TODO
+        symmetry : int, default 1
+            Define symmetry type : 0 = None, 1 = symmetry, 2 = symmetryPlane
         
         outputWave : bool, default False
             Logical defining if wave probes are output
@@ -162,13 +216,13 @@ class SeakeepingCase(OfRun):
         EulerCellsDist : flaot, default None
             Distance from ship used for Euler cells blending
         inletRelaxZone : float, default None
-            X-min position of inlet relaxation zone. None for no relaxation zone.
+            Length of inlet relaxation zone. None for no relaxation zone.
         outletRelaxZone : float, default None
-            X-max position of outlet relaxation zone. None for no relaxation zone.
+            Length of outlet relaxation zone. None for no relaxation zone.
         outletRelaxTarget : str, default 'still'
             Target for outlet relaxation zone. Either 'still' (wave damping zone) or 'incident'.
         sideRelaxZone : float, default None
-            Y-max position of side relaxation zone. None for no relaxation zone.
+            Length of side relaxation zone. None for no relaxation zone.
         
         mass : float, default None
             If Homer is not used, mass of ship.
@@ -177,44 +231,58 @@ class SeakeepingCase(OfRun):
         COG : list of floats, dimension(3), default None
             If Homer is not used, ship center of grativty
             
-        wave               = None,
-        waveType           = None,
-        waveH              = None,
-        waveT              = None,
-        speed              = 0.,
-        depth              = 500,
-        draft              = 0,
-        waveSeaLvl         = 0,
-        waveStartTime      = 0,
-        waveRampTime       = 0,
-        addDamping         = False,
-        vtkOut             = True,
-                             
-        meshMotion         = 'cpMorphing',
-        innerDistance      = None,
-        outerDistance      = None,
-
-        ddtScheme             = 'Euler',
-        fsiTol             = 1e-6,
-        rhoWater           = 1025.,
-        nProcs             = 1,
-        OFversion          = 5,
-        application        = 'foamStar',
-        
-        draft : float
+        wave : ideFoam.waveProperties.WaveCondition, default None
+            Wave condition defined by ideFoam.waveProperties.WaveCondition object. Otherwise, define wave condition with the following arguments (waveType, waveH, waveT, ... )
+        waveType : str, default None
+            Wave type used for simulation.
+            options available: "noWave", ""
+        waveH : float, default None
+            Wave height
+        waveT : float, default  None
+            Wave period
+        speed : float, default 0.
+            Ship speed (in m/s)
+        depth : float, default 500
+            Depth
+        draft : float, default 0.
             Draft (measured from keel)
-                if defined, ship.stl will be moved into position
-                if "None", no operation will be performed to ship.stl
+            if defined, ship.stl will be moved into position
+            if "None", no operation will be performed to ship.stl
+        waveStartTime : float, default 0.
+            Wave start time
+        waveRampTime : float, default 0.
+            Duration of ramp applied to wave
+        addDamping : bool, default False
+            Logical defining if additional artificial damping should be added. This is typically used to speed up ship balancing.
+        vtkOut : bool, default True
+            TODO
+                             
+        meshMotion : TODO, default 'cpMorphing'
+            TODO
+        innerDistance : TODO
+            TODO
+        outerDistance : TODO
+            TODO
 
-            
+        ddtScheme, str, default 'Euler'
+            TODO
+        fsiTol : TODO, default 1e-6
+            TODO
+        rhoWater : float, default 1025.
+            Water density
+        nProcs : int, default 1
+            Number of processors
+        OFversion : int or str, default 5
+            OpenFOAM version number
+        application : str, default 'foamStar'
+            Application to run 
+                   
         nProcs : int, default 4
             Number of processors used to build the mesh
         OFversion : int or str, default 5
             OpenFOAM version
         onLiger : boolean, default False
             Logical defining if case is run on Liger cluster
-        application : str, default 'snappyHexMesh'
-            application to run
         clean : boolean, default False
             Logical to force case overwrite
      
@@ -332,18 +400,18 @@ class SeakeepingCase(OfRun):
         relaxZones = []
         bBox = getBounds(os.path.join(meshDir,str(meshTime),'polyMesh','points.gz'))
         if sideRelaxZone is not None:
-            relaxSide   = RelaxZone( "side"  , relax=True, waveCondition=waveCond, origin=[0., bBox[1][1], 0.], orientation = [  0. , -1. , 0.], bound=sideRelaxZone)
+            relaxSide   = RelaxZone( "side"  , relax=True, waveCondition=waveCond, origin=[0., bBox[1][1], 0.], orientation = [  0. , -1. , 0.], length=sideRelaxZone)
             relaxZones += [relaxSide]
         if outletRelaxZone is not None:
             if outletRelaxTarget == "still":
-                relaxOutlet = RelaxZone( "outlet", relax=True, waveCondition=noWaves, origin=[bBox[0][0], 0., 0.], orientation = [  1. ,  0. , 0.], bound=outletRelaxZone)
+                relaxOutlet = RelaxZone( "outlet", relax=True, waveCondition=noWaves, origin=[bBox[0][0], 0., 0.], orientation = [  1. ,  0. , 0.], length=outletRelaxZone)
             elif outletRelaxTarget == "incident":
-                relaxOutlet = RelaxZone( "outlet", relax=True, waveCondition=waveCond, origin=[bBox[0][0], 0., 0.], orientation = [  1. ,  0. , 0.], bound=outletRelaxZone)
+                relaxOutlet = RelaxZone( "outlet", relax=True, waveCondition=waveCond, origin=[bBox[0][0], 0., 0.], orientation = [  1. ,  0. , 0.], length=outletRelaxZone)
             else:
                 raise(ValueError('"still" of "incident" expected for outletRelaxTarget'))
             relaxZones += [relaxOutlet]
         if inletRelaxZone  is not None:
-            relaxInlet  = RelaxZone( "inlet" , relax=True, waveCondition=waveCond, origin=[bBox[0][1], 0., 0.], orientation = [ -1. ,  0. , 0.], bound=inletRelaxZone)
+            relaxInlet  = RelaxZone( "inlet" , relax=True, waveCondition=waveCond, origin=[bBox[0][1], 0., 0.], orientation = [ -1. ,  0. , 0.], length=inletRelaxZone)
             relaxZones += [relaxInlet]
         
         waveProperties = WaveProperties.Build(case              = case,

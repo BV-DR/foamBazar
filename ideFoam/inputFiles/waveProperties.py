@@ -199,7 +199,7 @@ class WaveProperties( ReadWriteFile ) :
         
         
 
-noWaves = WaveCondition( waveType = "noWaves" , U0 = 0.0)        
+noWaves = WaveCondition( waveType = "noWaves" , U0 = 0.0)
         
 if __name__ == "__main__" :
     """Example of use

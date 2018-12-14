@@ -39,8 +39,8 @@ class SeakeepingMesher( OfMesher ):
     >>> import os
     >>> #
     >>> # Import meshing routine from foamBazar
-    >>> # WARNING : foamBazar/pythonScripts must be added to PYTHONPATH !
-    >>> from seakeepingMesher import SeakeepingMesher
+    >>> # WARNING : foamBazar must be added to PYTHONPATH !
+    >>> from ideFoam.seakeepingMesher import SeakeepingMesher
     >>> #
     >>> # Case name and additional optional parameters
     >>> case = "mesh"

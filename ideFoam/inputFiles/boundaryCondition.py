@@ -111,7 +111,7 @@ class BoundaryVelocity(ReadWriteFile) :
         Velocity boundary
     """
     @classmethod
-    def Build(cls , case, speed, symmetry=1, namePatch=namePatch, case2D=False, wave = True, relaxZone=False, struct='', application = "foamStar") :
+    def Build(cls , case, speed=0., symmetry=1, namePatch=namePatch, case2D=False, wave = True, relaxZone=False, struct='', application = "foamStar") :
         
         patch = namePatch[application]
         res = cls( name = join(case, getFilePath("boundaryVelocity") ), read = False )
