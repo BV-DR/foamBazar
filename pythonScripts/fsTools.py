@@ -50,9 +50,9 @@ def findBoundingBox(stlFile, verbose=True):
     return boundingBox
 
 
-# FUNCTION REPLACED BY "meshTools.getBounds()"
+# FUNCTION REPLACED BY "pythonScripts.meshTools.getBounds()"
 def findCFDBoundingBox(case, time=None, verbose=True):
-    raise(Exception('Function replaced by "meshTools.getBounds()"'))
+    raise(Exception('Function replaced by "pythonScripts.meshTools.getBounds()"'))
 #     if verbose: print( "Compute CFD bounding box:")
 #     cmd = "checkMesh -case {}".format(case)
 #     if time is not None: cmd+= " -time {}".format(time)

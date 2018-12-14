@@ -1,6 +1,6 @@
-from ofCase import OfCase
-from inputFiles.gravity import Gravity
-from inputFiles.turbulenceProperties import TurbulenceProperties, RASProperties
+from ideFoam.ofCase import OfCase
+from ideFoam.inputFiles.gravity import Gravity
+from ideFoam.inputFiles.turbulenceProperties import TurbulenceProperties, RASProperties
 
 class OfRun( OfCase ):
 

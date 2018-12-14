@@ -1,14 +1,14 @@
 import os
-from ofRun import OfRun
-from inputFiles import FvSchemes, FvSolution, ControlDict, DecomposeParDict, TransportProperties, SetSelection
-from inputFiles import BoundaryPressure, BoundaryVelocity, BoundaryPointDisplacement, BoundaryAlpha
-from inputFiles import RelaxZone, noWaves, WaveCondition, WaveProperties, DynamicMeshDict
-from inputFiles import SixDofDomainBody, InitFlexDict, FlexFile
-from inputFiles import createLinearWaveProbesList
+from ideFoam.ofRun import OfRun
+from ideFoam.inputFiles import FvSchemes, FvSolution, ControlDict, DecomposeParDict, TransportProperties, SetSelection
+from ideFoam.inputFiles import BoundaryPressure, BoundaryVelocity, BoundaryPointDisplacement, BoundaryAlpha
+from ideFoam.inputFiles import RelaxZone, noWaves, WaveCondition, WaveProperties, DynamicMeshDict
+from ideFoam.inputFiles import SixDofDomainBody, InitFlexDict, FlexFile
+from ideFoam.inputFiles import createLinearWaveProbesList
 
 from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
-from meshTools import getBounds
-from fsTools import findBoundingBox
+from pythonScripts.meshTools import getBounds
+from pythonScripts.fsTools import findBoundingBox
 
 class SeakeepingCase(OfRun):
 

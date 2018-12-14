@@ -1,4 +1,4 @@
-from ofCase import OfCase
+from ideFoam.ofCase import OfCase
 
 class OfMesher( OfCase ):
 

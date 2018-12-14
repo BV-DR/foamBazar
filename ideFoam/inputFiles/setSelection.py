@@ -1,11 +1,10 @@
 import math as mt
 from os.path import join
-from fsTools import findBoundingBox
+from pythonScripts.fsTools import findBoundingBox
 
 """
   Convenience class to simply write set selection input file
 """
-
 
 class SetSelection() :
     """SetSelection dictionary

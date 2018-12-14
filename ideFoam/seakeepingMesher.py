@@ -16,19 +16,19 @@ import os
 import shutil
 import math as mt
 import numpy as np
-from fsTools import findBoundingBox, findSTLPatches, translateStl, rotateStl, simpleGrading, simpleGradingN
+from pythonScripts.fsTools import findBoundingBox, findSTLPatches, translateStl, rotateStl, simpleGrading, simpleGradingN
 
-from ofMesher import OfMesher
+from ideFoam.ofMesher import OfMesher
 
-from inputFiles.fvSchemes import FvSchemes
-from inputFiles.fvSolution import FvSolution
-from inputFiles.controlDict import ControlDict
-from inputFiles.decomposeParDict import DecomposeParDict
-from inputFiles.refineMeshDict import RefineMeshDict
-from inputFiles.snappyHexMeshDict import SnappyHexMeshDict
-from inputFiles.surfaceFeatureExtractDict import SurfaceFeatureExtractDict
-from inputFiles.blockMeshDict import BlockMeshDict
-from inputFiles.setSelection import SetSelection
+from ideFoam.inputFiles.fvSchemes import FvSchemes
+from ideFoam.inputFiles.fvSolution import FvSolution
+from ideFoam.inputFiles.controlDict import ControlDict
+from ideFoam.inputFiles.decomposeParDict import DecomposeParDict
+from ideFoam.inputFiles.refineMeshDict import RefineMeshDict
+from ideFoam.inputFiles.snappyHexMeshDict import SnappyHexMeshDict
+from ideFoam.inputFiles.surfaceFeatureExtractDict import SurfaceFeatureExtractDict
+from ideFoam.inputFiles.blockMeshDict import BlockMeshDict
+from ideFoam.inputFiles.setSelection import SetSelection
 
 class SeakeepingMesher( OfMesher ):
     """Class used to generate a CFD mesh for seakeeping cases.
