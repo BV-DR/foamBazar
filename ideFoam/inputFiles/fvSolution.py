@@ -66,7 +66,7 @@ class FvSolution(ReadWriteFile) :
     """
     
     @classmethod
-    def Build(cls , case, fsiTol = 1e-8, useEuler=False, nOuterCorrectors=5, nInnerCorrectors = 4, application = "foamStar") :
+    def Build(cls , case, fsiTol = 1e-8, useEulerCells=False, nOuterCorrectors=5, nInnerCorrectors = 4, application = "foamStar") :
         
         res = cls( name = join(case, getFilePath("fvSolution") ), read = False )
 
@@ -112,8 +112,7 @@ class FvSolution(ReadWriteFile) :
         solvers['"cellDisplacement.*"'] = cdisp
 
         pimp = DictProxy()
-        if useEuler:
-            pimp["EulerCells"] = "EulerCells"
+        if useEulerCells: pimp["EulerCells"] = "EulerCells"
         pimp["momentumPredictor"] = "yes"
         pimp["nOuterCorrectors"] = nOuterCorrectors
         pimp["fsiTol"] = fsiTol

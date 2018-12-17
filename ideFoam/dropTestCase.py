@@ -229,7 +229,6 @@ class DropTestCase( OfRun ) :
 
         #fvSolution
         fvSolution = FvSolution.Build(case          = case,
-                                      useEuler      = (scheme=='Euler'),
                                       application   = application )
 
         #decomposeParDict

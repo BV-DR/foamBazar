@@ -377,7 +377,7 @@ class SeakeepingCase(OfRun):
         #fvSolution
         fvSolution = FvSolution.Build(case          = case,
                                       fsiTol        = fsiTol,
-                                      useEuler      = ddtScheme=='Euler',
+                                      useEulerCells = (EulerCellsDist is not None),
                                       application   = application )
         
         #decomposeParDict
