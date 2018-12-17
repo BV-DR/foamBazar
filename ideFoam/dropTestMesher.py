@@ -12,27 +12,13 @@
 #  with no wave propagation. It work for both 2D and 3D configurations. #
 #########################################################################
 
-import re
 import os
-import math as mt
-import numpy as np
-import pandas as pd
-from io import StringIO
-from subprocess import call
-from scipy import interpolate as interp
-from pythonScripts.fsTools import findBoundingBox, findSTLPatches
 
 from ideFoam.ofMesher import OfMesher
+from ideFoam.inputFiles import ControlDict, FvSchemes, FvSolution, DecomposeParDict
+from ideFoam.inputFiles.extrudeMeshDict import BlockMeshDict, ExtrudeMeshDict, RefineMeshDict, SurfaceFeatureExtractDict, SnappyHexMeshDict
 
-from ideFoam.inputFiles.fvSchemes import FvSchemes
-from ideFoam.inputFiles.fvSolution import FvSolution
-from ideFoam.inputFiles.controlDict import ControlDict
-from ideFoam.inputFiles.decomposeParDict import DecomposeParDict
-from ideFoam.inputFiles.extrudeMeshDict import ExtrudeMeshDict
-from ideFoam.inputFiles.refineMeshDict import RefineMeshDict
-from ideFoam.inputFiles.snappyHexMeshDict import SnappyHexMeshDict
-from ideFoam.inputFiles.surfaceFeatureExtractDict import SurfaceFeatureExtractDict
-from ideFoam.inputFiles.blockMeshDict import BlockMeshDict
+from pythonScripts.fsTools import findBoundingBox, findSTLPatches
 
 class DropTestMesher( OfMesher ):
     """Class used to generate a CFD mesh for drop test cases (i.e. without wave propagation)
@@ -45,8 +31,8 @@ class DropTestMesher( OfMesher ):
     >>> import os
     >>> #
     >>> # Import meshing routine from foamBazar
-    >>> # WARNING : foamBazar/pythonScripts must be added to PYTHONPATH !
-    >>> from dropTestMesher import DropTestMesher
+    >>> # WARNING : foamBazar must be added to PYTHONPATH !
+    >>> from ideFoam.dropTestMesher import DropTestMesher
     >>> from pythonScripts.fsTools import readSections, createSectionStl
     >>> #
     >>> # Input parameters

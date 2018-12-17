@@ -15,20 +15,11 @@
 import os
 import shutil
 import math as mt
-import numpy as np
 from pythonScripts.fsTools import findBoundingBox, findSTLPatches, translateStl, rotateStl, simpleGrading, simpleGradingN
 
 from ideFoam.ofMesher import OfMesher
-
-from ideFoam.inputFiles.fvSchemes import FvSchemes
-from ideFoam.inputFiles.fvSolution import FvSolution
-from ideFoam.inputFiles.controlDict import ControlDict
-from ideFoam.inputFiles.decomposeParDict import DecomposeParDict
-from ideFoam.inputFiles.refineMeshDict import RefineMeshDict
-from ideFoam.inputFiles.snappyHexMeshDict import SnappyHexMeshDict
-from ideFoam.inputFiles.surfaceFeatureExtractDict import SurfaceFeatureExtractDict
-from ideFoam.inputFiles.blockMeshDict import BlockMeshDict
-from ideFoam.inputFiles.setSelection import SetSelection
+from ideFoam.inputFiles import ControlDict, FvSchemes, FvSolution, DecomposeParDict
+from ideFoam.inputFiles import BlockMeshDict, SetSelection, RefineMeshDict, SurfaceFeatureExtractDict, SnappyHexMeshDict
 
 class SeakeepingMesher( OfMesher ):
     """Class used to generate a CFD mesh for seakeeping cases.
@@ -187,7 +178,7 @@ class SeakeepingMesher( OfMesher ):
         shipBB = findBoundingBox(filename)
         
         if draft is not None:
-            draft = mt.fabs(float(draft))
+            draft = abs(float(draft))
             print("Set draft:",draft)
             move = -shipBB[2] - draft
             translateStl(filename, [0.0,0.0,move], filename)
@@ -281,8 +272,8 @@ class SeakeepingMesher( OfMesher ):
     
         # compute vertical thickness of each box
         # All boxes must be larger than the ship's bounding box
-        fsCellTop = int(mt.ceil(round(mt.fabs(fsZone[1])/(fsCellHeight),1)))
-        fsCellBottom = int(mt.ceil(round(mt.fabs(fsZone[0])/(fsCellHeight),1)))
+        fsCellTop = int(mt.ceil(round(abs(fsZone[1])/(fsCellHeight),1)))
+        fsCellBottom = int(mt.ceil(round(abs(fsZone[0])/(fsCellHeight),1)))
         fsZmax = fsCellTop*fsCellHeight
         fsZmin = -fsCellBottom*fsCellHeight
         fsZone[1] = fsZmax
@@ -316,10 +307,10 @@ class SeakeepingMesher( OfMesher ):
 
         # compute grading at the top/bottom block(s)
         ZratioTop = cellWidth/dZ[-nRefBox-1]
-        dx1 = dZ[-nRefBox-1]/mt.fabs(domain[5]-upperCut[-1])
+        dx1 = dZ[-nRefBox-1]/abs(domain[5]-upperCut[-1])
         ZcellsTop = simpleGradingN(dx1, ZratioTop)
         ZratioBottom = cellWidth/dZ[-nRefBox-1]
-        dx1 = dZ[-nRefBox-1]/mt.fabs(domain[4]-lowerCut[-1])
+        dx1 = dZ[-nRefBox-1]/abs(domain[4]-lowerCut[-1])
         ZcellsBottom = simpleGradingN(dx1, ZratioBottom)
         ZratioBottom = 1.0/ZratioBottom
 
@@ -400,9 +391,9 @@ class SeakeepingMesher( OfMesher ):
         # compute x,y data for refBox
         if (len(refBoxData) == 1):
             grad = simpleGrading(nRefBox+1, refBoxRatio)
-            xGradMin = [mt.fabs(val-1.0) for val in grad[::-1]]
+            xGradMin = [abs(val-1.0) for val in grad[::-1]]
             xGradMax = grad
-            yGradMin = [mt.fabs(val-1.0) for val in grad[::-1]]
+            yGradMin = [abs(val-1.0) for val in grad[::-1]]
             yGradMax = grad
             #
             xCutMin = [(shipBBRot[0]-domain[0])*val for val in xGradMin]
@@ -461,7 +452,7 @@ class SeakeepingMesher( OfMesher ):
             raise SystemExit('\nData for refinement box is missing.\nrefBoxData=[#n, #xmin,#xmax,#ymax,#ymax, #xmin,#xmax,#ymin,#ymax, ..., repeat n times]\nabort ...')
 
         # number of level(s) for uniform 'xy'-refinement
-        nxy = int(mt.log(mt.fabs(float(fsCellRatio)), float(2))) - 1
+        nxy = int(mt.log(abs(float(fsCellRatio)), float(2))) - 1
 
         # refine free surface (using proximity method)
         distance = fsCellHeight*refCellBuffer*2.0*(nxy-1.0 + nRefBox-1.0 + float(refBow | refStern | refFS))
@@ -525,7 +516,7 @@ class SeakeepingMesher( OfMesher ):
             pass
             
         # this is a point outside ship.stl
-        outsidePoints = [0.5*(shipBBRot[0]+shipBBRot[3]), 0.5*(shipBBRot[1]+shipBBRot[4])+mt.fabs(shipBBRot[1]-shipBBRot[4]), 0.5*(shipBBRot[2]+shipBBRot[5])]
+        outsidePoints = [0.5*(shipBBRot[0]+shipBBRot[3]), 0.5*(shipBBRot[1]+shipBBRot[4])+abs(shipBBRot[1]-shipBBRot[4]), 0.5*(shipBBRot[2]+shipBBRot[5])]
 
         for i in range(nxy):
             setSelections.append(SetSelection(case          = case,

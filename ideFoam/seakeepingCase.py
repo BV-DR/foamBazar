@@ -16,6 +16,9 @@ class SeakeepingCase(OfRun):
     
     Example
     -------
+    
+    For hydro-elastic case
+    
     >>> import os
     >>> #
     >>> # Import case routine from foamBazar
@@ -44,9 +47,9 @@ class SeakeepingCase(OfRun):
     >>>             'waveRampTime'      : 12,
     >>>             'addDamping'        : True,
     >>>             'EulerCellsDist'    : 4,
-    >>>             'inletRelaxZone'    : 390,
-    >>>             'outletRelaxZone'   : -313,
-    >>>             'sideRelaxZone'     : 352,
+    >>>             'inletRelaxZone'    : 255.,
+    >>>             'outletRelaxZone'   : 51.,
+    >>>             'sideRelaxZone'     : 150.,
     >>>             'datFile'           : 'homer/4400_Bulk.dat',
     >>>             'donFile'           : 'homer/4400.don',
     >>>             'dmigFile'          : 'homer/4400_dmig.pch',

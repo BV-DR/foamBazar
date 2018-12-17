@@ -300,6 +300,7 @@ class DropTestCase( OfRun ) :
         boundaryPointDisplacement = BoundaryPointDisplacement.Build(case = case,
                                                                     symmetry = symmetry,
                                                                     case2D      = (ndim==2),
+                                                                    struct = '"' + hullPatch + '.*"',
                                                                     application   = application)
 
         res =  cls( case, nProcs                    = nProcs,

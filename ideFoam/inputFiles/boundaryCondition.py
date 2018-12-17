@@ -211,7 +211,7 @@ class BoundaryPressure(ReadWriteFile) :
 
 class BoundaryPointDisplacement(ReadWriteFile) :
     @classmethod
-    def Build(cls , case,  symmetry=1, namePatch=namePatch, case2D=False, cpMorphing = False, application="foamStar") :
+    def Build(cls , case,  symmetry=1, namePatch=namePatch, case2D=False, struct='', cpMorphing = False, application="foamStar") :
         
         patch = namePatch[application]
         if application=="foamStar":
@@ -223,24 +223,28 @@ class BoundaryPointDisplacement(ReadWriteFile) :
         res["internalField"] = "uniform (0 0 0)"
         if application=="foamStar":
             bf = DictProxy()
-            bf[patch["outlet"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
-            bf[patch["inlet"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
             if case2D:
-                bf[patch["side1"]] = { "type" : "empty" }
-                bf[patch["side2"]] = { "type" : "empty" }
-            elif symmetry==1:
-                bf[patch["side1"]] = { "type" : "symmetry" }
-                bf[patch["side2"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
-            elif symmetry==2:
-                bf[patch["side1"]] = { "type" : "symmetryPlane" }
-                bf[patch["side2"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
+                bf[patch["outlet"]] = { "type" : "empty" }
+                bf[patch["inlet"]] = { "type" : "empty" }
+            else:
+                bf[patch["outlet"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
+                bf[patch["inlet"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
+                
+            if symmetry==1: bf[patch["side1"]] = { "type" : "symmetry" }
+            elif symmetry==2: bf[patch["side1"]] = { "type" : "symmetryPlane" }
+            else: bf[patch["side1"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
+            bf[patch["side2"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
             bf[patch["bottom"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
             bf[patch["top"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
+            
+            if len(struct)>0: bf[struct] = { "type" : "fixedFluxPressure", "value" : "uniform 0" }
+            else: bf[patch["structure"]] = { "type" : "fixedFluxPressure", "value" : "uniform 0" }
             
             if cpMorphing :
                 bf[patch["structure"]] = { "type" : "calculated" }
             else :
-                bf[patch["structure"]] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
+                if len(struct)>0: bf[struct] = { "type" : "fixedFluxPressure", "value" : "uniform 0" }
+                else: bf[patch["structure"]] = { "type" : "fixedFluxPressure", "value" : "uniform 0" }
             
             bf["InternalFaces"] = { "type" : "fixedValue", "value" : "uniform (0 0 0)" }
             res["boundaryField"] = bf

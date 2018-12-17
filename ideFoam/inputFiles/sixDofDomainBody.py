@@ -14,7 +14,7 @@ class SixDofDomainBody(ReadWriteFile):
     
     @classmethod
     def Build(cls , case, mass, inertia, COG, nModes=0, donName=None) :
-        res = cls(  name = join(case, getFilePath("transportProperties") ), read = False )
+        res = cls(  name = join(case, getFilePath("sixDofDomainBody") ), read = False )
         
         res.header["class"] = "dictionary"
         res.header["object"] = "singleBody"
