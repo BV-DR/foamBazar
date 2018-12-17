@@ -128,7 +128,7 @@ if __name__ == "__main__" :
    if True :
       import argparse
       parser = argparse.ArgumentParser(description='FoamStar log parser')
-      parser.add_argument('-exclude',  help='delimited list input', type= lambda s: s.split(',') )
+      parser.add_argument('-exclude',  help='delimited list input', type= lambda s: s.split(','), default='' )
       parser.add_argument( "file1" )
       parser.add_argument( "file2" )
       args = parser.parse_args()
