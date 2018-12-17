@@ -11,7 +11,7 @@ from ideFoam.inputFiles.transportProperties import TransportProperties
 from ideFoam.inputFiles.turbulenceProperties import TurbulenceProperties, RASProperties
 from ideFoam.inputFiles.blockMeshDict import BlockMeshDict
 from ideFoam.inputFiles.setSelection import SetSelection
-from ideFoam.inputFiles.refineMeshDic import RefineMeshDict
+from ideFoam.inputFiles.refineMeshDict import RefineMeshDict
 from ideFoam.inputFiles.waveProperties import RelaxZone, WaveCondition, WaveProperties, noWaves
 from ideFoam.inputFiles.snappyHexMeshDict import SnappyHexMeshDict
 from ideFoam.inputFiles.surfaceFeatureExtractDict import SurfaceFeatureExtractDict
