@@ -11,23 +11,23 @@ def readPoints(polyMeshDir):
     pointsFileGZ = os.path.join(polyMeshDir,'points.gz')
     #points in compressed format (*.gz)
     if os.path.isfile(pointsFileGZ):
-        with gzip.open(pointsFileGZ, "rb") as f : 
+        with gzip.open(pointsFileGZ, "rb") as f :
             data = f.read().decode()
     #points in ascii format
     elif os.path.isfile(pointsFile):
         with open(pointsFile,'r') as f:
             data = f.read()
     else:
-        raise(FileNotFoundError)
+        raise(FileNotFoundError( 1, "{} or {} does not exists".format(pointsFile,pointsFileGZ) ))
     pattern = r"\(\n(.*)\)\n\)"
     s = StringIO( re.search(pattern, data, re.DOTALL).group(1).replace("(", "").replace(")", ""))
     return pd.read_csv(s, delim_whitespace = True, header = None, names = ["x", "y", "z"] )
 
 
-def getBounds(pointsFile):
-    
-    points = readPoints(pointsFile)
-    
+def getBounds(polyMeshDir):
+
+    points = readPoints(polyMeshDir)
+
     return ( (float(points.x.min()) , float(points.x.max())),
              (float(points.y.min()) , float(points.y.max())),
              (float(points.z.min()) , float(points.z.max())),

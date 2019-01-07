@@ -13,12 +13,12 @@ from pythonScripts.fsTools import findBoundingBox
 class SeakeepingCase(OfRun):
     """Class used to generate a CFD seakeeping case.
     It should be called by a python script as presented in the following example
-    
+
     Example
     -------
-    
+
     For hydro-elastic case
-    
+
     >>> import os
     >>> #
     >>> # Import case routine from foamBazar
@@ -65,7 +65,7 @@ class SeakeepingCase(OfRun):
     >>> fname = os.path.join(case,'log.input')
     >>> with open(fname,'w') as f: f.write(str(myParams))
     >>> run.runInit()
-    
+
     """
 
     additionalFiles = ["boundaryPressure" , "boundaryVelocity" ,"boundaryPointDisplacement" , "boundaryAlpha", "sixDofDomainBody", "initFlexDict", "flexFile"]
@@ -93,7 +93,8 @@ class SeakeepingCase(OfRun):
                              purgeWrite         = 0,
                              writeFormat        = "ascii",
                              symmetry           = 1,
-                             
+                             turbulenceModel    = "laminar",
+
                              donFile            = None,
                              outputWave         = False,
                              waveProbes         = [],
@@ -104,7 +105,7 @@ class SeakeepingCase(OfRun):
                              pressuresPatch     = None,
                              outputInterval     = 1,
                              hullPatch          = 'ship',
-                             
+
                              mdFile             = None,
                              modesToUse         = [],
                              datFile            = None,
@@ -112,18 +113,18 @@ class SeakeepingCase(OfRun):
                              hmrUserOutput      = None,
                              hmrScaling         = 0,
                              shipDamping        = None,
-                             
+
                              EulerCellsDist     = None,
-                             
+
                              inletRelaxZone     = None,
                              outletRelaxZone    = None,
                              outletRelaxTarget  = 'still',
                              sideRelaxZone      = None,
-                             
+
                              mass               = None,
                              inertia            = None,
                              COG                = None,
-                             
+
                              wave               = None,
                              waveType           = None,
                              waveH              = None,
@@ -135,7 +136,7 @@ class SeakeepingCase(OfRun):
                              waveRampTime       = 0,
                              addDamping         = False,
                              vtkOut             = True,
-                             
+
                              meshMotion         = 'cpMorphing',
                              innerDistance      = None,
                              outerDistance      = None,
@@ -150,7 +151,7 @@ class SeakeepingCase(OfRun):
                              stlFile            = None,    # Require only for EulerCell and addDamping
                              ):
         """Build mesh for CFD seakeeping case from a few parameters.
-        
+
         Parameters
         ----------
         case : str
@@ -177,7 +178,7 @@ class SeakeepingCase(OfRun):
             TODO
         symmetry : int, default 1
             Define symmetry type : 0 = None, 1 = symmetry, 2 = symmetryPlane
-        
+
         outputWave : bool, default False
             Logical defining if wave probes are output
         waveProbes : TODO, default []
@@ -196,7 +197,7 @@ class SeakeepingCase(OfRun):
             List of patch where pressures are output
         outputInterval : int, default 1
             Define interval at wich simualtion outputs are written
-            
+
         hullPatch : str, default 'ship'
             Set patch name given for hull in boundary file
         donFile : str, default 'ship.don'
@@ -215,7 +216,7 @@ class SeakeepingCase(OfRun):
             List of scaling factors used by Homer for each structural mode
         shipDamping : list of float, deault None
             List of additional damping coefficients for each structural mode
-        
+
         EulerCellsDist : flaot, default None
             Distance from ship used for Euler cells blending
         inletRelaxZone : float, default None
@@ -226,14 +227,14 @@ class SeakeepingCase(OfRun):
             Target for outlet relaxation zone. Either 'still' (wave damping zone) or 'incident'.
         sideRelaxZone : float, default None
             Length of side relaxation zone. None for no relaxation zone.
-        
+
         mass : float, default None
             If Homer is not used, mass of ship.
         inertia : list of floats, dimension(3), default None
             If Homer is not used, ship inertias.
         COG : list of floats, dimension(3), default None
             If Homer is not used, ship center of grativty
-            
+
         wave : ideFoam.waveProperties.WaveCondition, default None
             Wave condition defined by ideFoam.waveProperties.WaveCondition object. Otherwise, define wave condition with the following arguments (waveType, waveH, waveT, ... )
         waveType : str, default None
@@ -259,7 +260,7 @@ class SeakeepingCase(OfRun):
             Logical defining if additional artificial damping should be added. This is typically used to speed up ship balancing.
         vtkOut : bool, default True
             TODO
-                             
+
         meshMotion : TODO, default 'cpMorphing'
             TODO
         innerDistance : TODO
@@ -278,8 +279,8 @@ class SeakeepingCase(OfRun):
         OFversion : int or str, default 5
             OpenFOAM version number
         application : str, default 'foamStar'
-            Application to run 
-                   
+            Application to run
+
         nProcs : int, default 4
             Number of processors used to build the mesh
         OFversion : int or str, default 5
@@ -288,19 +289,19 @@ class SeakeepingCase(OfRun):
             Logical defining if case is run on Liger cluster
         clean : boolean, default False
             Logical to force case overwrite
-     
+
         """
-        
+
         #Read data from Homer or from inputs
         nModesToUse = len(modesToUse)
         if hmrUserOutput is not None:
             print('Reading mass properties from Homer file : "{}"'.format(hmrUserOutput))
             modesToUse.sort()
-            
+
             freq = []
             scaling = []
             inertia = [0.]*6
-    
+
             with open(hmrUserOutput,'r') as f:
                 itf = iter(f)
                 for line in itf:
@@ -317,7 +318,7 @@ class SeakeepingCase(OfRun):
                     elif 'Yaw Inertia =' in line:
                         inertia[2] = float(line.split()[3])
                         break
-                    elif nModesToUse>0:
+                    elif nModesToUse > 0:
                         for mode in modesToUse:
                             mstr = 'Mode '+str(mode)
                             if mstr in line:
@@ -325,30 +326,32 @@ class SeakeepingCase(OfRun):
                                 scaling.append(float(sline[3]))
                                 freq.append(float(sline[6])**2)
 
-            if nModesToUse>0:
+            if nModesToUse > 0:
                 hmrScaling  = ('{:20.14e}').format(scaling[0])
                 shipFreq    = ('{:20.14e} '*len(freq)).format(*freq)
-        elif all((mass,inertia,COG)):
+        elif mass is not None and inertia is not None and COG is not None:
             print('Reading mass properties  from user inputs')
         else:
             raise(Exception('No or incomplete mass properties provided. Please provide "hmrUserOutput" (for Homer) or all the following parameters ("mass","inertia","COG").'))
-        
+
         #controlDict
         vbmPatch = None
         if donFile is not None:
             donName = os.path.splitext(os.path.basename(donFile))[0]
             vbmPatch = [hullPatch,donName]
-        
+        else:
+            donName = None
+
         wpList = None
         if outputWave:
             print('WARNING: Wave probes cannot be included yet')
             wpList = []
             for wp in waveProbes:
                 wpList += createLinearWaveProbesList(*wp)
-        
+
         if outputForces and (forcesPatch is None): forcesPatch = [hullPatch]
         if outputPressures and (pressuresPatch is None): pressuresPatch = [hullPatch]
-        
+
         controlDict = ControlDict.Build(case                = case,
                                         startFrom           = startTime,
                                         endTime             = endTime,
@@ -366,24 +369,24 @@ class SeakeepingCase(OfRun):
                                         rhoWater            = rhoWater,
                                         waveProbesList      = wpList,
                                         application         = application )
-                                        
+
         #fvSchemes
         fvSchemes = FvSchemes.Build(case                    = case,
                                     simType                 = ddtScheme,
                                     limitedGrad             = False,
                                     orthogonalCorrection    = "implicit",
                                     application             = application )
-        
+
         #fvSolution
         fvSolution = FvSolution.Build(case          = case,
                                       fsiTol        = fsiTol,
                                       useEulerCells = (EulerCellsDist is not None),
                                       application   = application )
-        
+
         #decomposeParDict
         decomposeParDict = DecomposeParDict.Build(case    = case,
                                                   nProcs  = nProcs )
-        
+
         #waveProperties
         if wave is not None:
             waveCond = wave
@@ -399,9 +402,9 @@ class SeakeepingCase(OfRun):
                                       )
         else:
             raise(Exception('No or incomplete wave properties provided. Please provide "wave" or all the following parameters ("waveType","waveH","waveT").'))
-        
+
         relaxZones = []
-        bBox = getBounds(os.path.join(meshDir,str(meshTime),'polyMesh','points.gz'))
+        bBox = getBounds(os.path.join(meshDir,str(meshTime),'polyMesh'))
         if sideRelaxZone is not None:
             relaxSide   = RelaxZone( "side"  , relax=True, waveCondition=waveCond, origin=[0., bBox[1][1], 0.], orientation = [  0. , -1. , 0.], length=sideRelaxZone)
             relaxZones += [relaxSide]
@@ -413,15 +416,15 @@ class SeakeepingCase(OfRun):
             else:
                 raise(ValueError('"still" of "incident" expected for outletRelaxTarget'))
             relaxZones += [relaxOutlet]
-        if inletRelaxZone  is not None:
+        if inletRelaxZone is not None:
             relaxInlet  = RelaxZone( "inlet" , relax=True, waveCondition=waveCond, origin=[bBox[0][1], 0., 0.], orientation = [ -1. ,  0. , 0.], length=inletRelaxZone)
             relaxZones += [relaxInlet]
-        
+
         waveProperties = WaveProperties.Build(case              = case,
                                               initWaveCondition = waveCond,
                                               relaxZones        = relaxZones,
                                               application       = application )
-                                              
+
         #Euler blending cell selection
         setSelections = []
         if EulerCellsDist is not None:
@@ -434,14 +437,14 @@ class SeakeepingCase(OfRun):
                                              stlFile       = stlFile,
                                              outsidePoints = outsidePoints,
                                              distance      = EulerCellsDist ))
-                
-        
+
+
         #transportProperties
         transportProperties = TransportProperties.Build(case        = case,
                                                         nuWater     = 1.14e-06,
                                                         rhoWater    = rhoWater,
                                                         application = application )
-    
+
         #dynamicMeshDict
         if addDamping:
             bBox = findBoundingBox(os.path.join(meshDir,'constant','triSurface',stlFile),False)
@@ -450,7 +453,7 @@ class SeakeepingCase(OfRun):
         else:
             LBP = 0.
             BC = 0.
-        
+
         # dynamicMeshDict
         # for use with Homer
         if hmrUserOutput is not None:
@@ -461,7 +464,7 @@ class SeakeepingCase(OfRun):
                                                             bc          = BC,
                                                             application = application )
         # for use without Homer
-        elif all((mass,inertia,COG)):
+        elif mass is not None and inertia is not None and COG is not None:
             dynamicMeshDict = DynamicMeshDict.Build_free(case           = case,
                                                          mass           = mass,
                                                          cog            = COG,
@@ -477,29 +480,33 @@ class SeakeepingCase(OfRun):
         boundaryAlpha = BoundaryAlpha.Build(case        = case,
                                             symmetry    = symmetry,
                                             application = application)
-    
+
         boundaryVelocity = BoundaryVelocity.Build(case          = case,
                                                   speed         = speed,
                                                   symmetry      = symmetry,
                                                   application   = application)
-    
+
         boundaryPressure = BoundaryPressure.Build(case          = case,
                                                   symmetry      = symmetry,
                                                   application   = application)
-                            
+
         boundaryPointDisplacement = BoundaryPointDisplacement.Build(case = case,
                                                                     symmetry = symmetry,
                                                                     cpMorphing = (meshMotion.lower() == "cpmorphing") )
-                            
+
         #sixDofDomainBody, flexProperties
-        sixDofDomainBody = SixDofDomainBody.Build(case    = case,
-                                                  mass    = mass,
-                                                  inertia = inertia,
-                                                  COG     = COG,
-                                                  nModes  = nModesToUse,
-                                                  donName = donName )
-        
-        if nModesToUse>0:
+        if nModesToUse > 0 :
+            sixDofDomainBody = SixDofDomainBody.Build(case    = case,
+                                                      mass    = mass,
+                                                      inertia = inertia,
+                                                      COG     = COG,
+                                                      nModes  = nModesToUse,
+                                                      donName = donName )
+        else:
+            sixDofDomainBody=None
+
+
+        if nModesToUse > 0:
             #initFlexDict
             initFlexDict = InitFlexDict.Build(case      = case,
                                               mdFile    = mdFile,
@@ -523,10 +530,11 @@ class SeakeepingCase(OfRun):
         else:
             initFlexDict = None
             flexFile = None
-        
+
         res =  cls( case, nProcs                    = nProcs,
                           OFversion                 = OFversion,
                           controlDict               = controlDict,
+                          turbulenceModel           = turbulenceModel,
                           fvSchemes                 = fvSchemes,
                           fvSolution                = fvSolution,
                           dynamicMeshDict           = dynamicMeshDict,
@@ -543,9 +551,9 @@ class SeakeepingCase(OfRun):
                           setSelections             = setSelections,
                           clean                     = clean,
                           application               = application )
-        
+
         res.meshMotion = meshMotion
-        res.hullPatch = hullPatch 
+        res.hullPatch = hullPatch
         res.symmetry = symmetry
         res.meshDir = meshDir
         res.stlFile = stlFile
@@ -553,10 +561,10 @@ class SeakeepingCase(OfRun):
         res.EulerCellsDist = EulerCellsDist
         res.nRelaxZones = len(relaxZones)
         res.nModesToUse = nModesToUse
-        
+
         res.copyMesh(meshDir,meshTime)
         res.setBoundaries()
-        
+
         res.writeFiles()
         return res
 
@@ -564,7 +572,7 @@ class SeakeepingCase(OfRun):
 
         s = OfRun.__str__(self)
         return "SeakeepingCase : " + s
-        
+
     def setBoundaries(self):
         boundfile = os.path.join(self.constfolder_,"polyMesh","boundary")
         boundDict = ParsedParameterFile(boundfile,boundaryDict=True)
@@ -573,20 +581,20 @@ class SeakeepingCase(OfRun):
         nFacesMerge = 0
         #read and modify entries
         for i in range(nbound):
-            if self.symmetry>0 and (boundDict[2*i] in ['domainY0']):
-                if self.symmetry==1: boundDict[2*i+1]['type'] = 'symmetry'
-                elif self.symmetry==2: boundDict[2*i+1]['type'] = 'symmetryPlane'
+            if self.symmetry > 0 and (boundDict[2*i] in ['domainY0']):
+                if self.symmetry == 1 : boundDict[2*i+1]['type'] = 'symmetry'
+                elif self.symmetry == 2 : boundDict[2*i+1]['type'] = 'symmetryPlane'
             elif self.hullPatch in boundDict[2*i]:
                 idMerge.append(2*i)
                 nFacesMerge += boundDict[2*i+1]['nFaces']
-            
+
         #merge all hull patches
         boundDict[idMerge[0]] = self.hullPatch
         boundDict[idMerge[0]+1]['nFaces'] = nFacesMerge
         for id in idMerge[:0:-1]:
             del boundDict[id+1]
             del boundDict[id]
-            
+
         boundDict.writeFile()
 
     def writeAllinit(self, batchName="Allinit"):
@@ -597,16 +605,16 @@ class SeakeepingCase(OfRun):
         with open(ainit,'w') as f:
             f.write('#! /bin/bash\n')
             f.write('set -x\n\n')
-            
+
             #copy DON
             if self.donFile is not None:
                 f.write('function copyDON()\n')
                 f.write('{\n')
-                fin  = os.path.join(os.getcwd(),self.donFile)
-                fout = os.path.join(os.getcwd(),self.case)
+                fin  = self.donFile
+                fout = self.case
                 f.write('    cp {:s} {:s}\n'.format(fin,fout))
                 f.write('}\n\n')
-                
+
             #set Euler blending zone
             if self.EulerCellsDist is not None:
                 #copy STL
@@ -617,37 +625,37 @@ class SeakeepingCase(OfRun):
                 f.write('    mkdir constant/triSurface \n'.format(fin,fout))
                 f.write('    cp -r {:s} {:s}\n'.format(fin,fout))
                 f.write('}\n\n')
-                
+
                 f.write('function setEuler()\n')
                 f.write('{\n')
                 f.write('    copySTL\n')
                 f.write('    setSet -batch {}\n'.format(os.path.join('system','setSet.euler')))
                 f.write('    setsToZones -noFlipMap\n')
                 f.write('}\n\n')
-                
+
             #set Relax blending zone
-            if self.nRelaxZones>0:
+            if self.nRelaxZones > 0:
                 f.write('function setRelax()\n')
                 f.write('{\n')
                 f.write('    setSet -batch {}\n'.format(os.path.join('system','setSet.relax')))
                 f.write('    setsToZones -noFlipMap\n')
                 f.write('}\n\n')
-            
+
             # __main__
             f.write('(\n')
             if self.donFile is not None: f.write('    copyDON\n')
             if self.EulerCellsDist is not None: f.write('    setEuler\n')
-            if self.nRelaxZones>0: f.write('    setRelax\n')
+            if self.nRelaxZones > 0: f.write('    setRelax\n')
             f.write('    cp -rf ./0/org/* ./0/\n')
-            if self.nModesToUse>0: f.write('    initFlx initFlexDict\n')
-            if self.nProcs>1:
+            if self.nModesToUse > 0: f.write('    initFlx initFlexDict\n')
+            if self.nProcs > 1:
                 f.write('    decomposePar -cellDist\n')
                 f.write('    mpirun -np {} initWaveField -parallel\n'.format(self.nProcs))
             else:
                 f.write('    initWaveField\n')
             f.write(') 2>&1 | tee log.init\n\n')
         os.chmod(ainit, 0o755)
-        
+
     def writeAllclean(self):
         """Write bash script 'Allclean' to clean case folder(s)
         """
@@ -676,9 +684,9 @@ class SeakeepingCase(OfRun):
         """To be implemented in subclass"""
         with open(os.path.join(self.case, "Allrun"), "w") as f:
             if self.nProcs > 1:
-                f.write("mpirun -n {} {} -parallel 2>&1 | tee foamStar.log".format(self.nProcs, self.application))
+                f.write("mpirun -n {} {} -parallel 2>&1 | tee foamStar.log".format(self.nProcs, self.executable))
             else:
-                f.write("{} 2>&1 | tee foamStar.log".format(self.application))
+                f.write("{} 2>&1 | tee foamStar.log".format(self.executable))
 
     def runInit(self):
         import subprocess
