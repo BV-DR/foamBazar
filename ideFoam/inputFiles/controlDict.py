@@ -6,9 +6,9 @@ from ideFoam.inputFiles.compatOF import app, surfaceElevation
 
 class ControlDict( ReadWriteFile ) :
     """controlDict dictionary
-    
+
     """
-   
+
     @classmethod
     def Build(cls, case, deltaT, endTime, startFrom="latestTime", startTime=0., autoDeltaTCo=None, writeControl="timeStep",
               writeInterval=1, purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no",
@@ -62,7 +62,7 @@ class ControlDict( ReadWriteFile ) :
             List of patches names to compute pressure
         outputLocalMotions : bool, default False
             Logical defining if local motions shoudl be output
-            
+
         rhoWater : float, default 1000.
             Fuild density
         OFversion : int, default 5
@@ -73,7 +73,7 @@ class ControlDict( ReadWriteFile ) :
         """
 
         res = cls( name = join(case, getFilePath("controlDict") ), read = False )
-        
+
         res["application"]       = app[application]
         res["startFrom"]         = startFrom
         res["startTime"]         = startTime
@@ -84,9 +84,11 @@ class ControlDict( ReadWriteFile ) :
         res["writeInterval"]     = writeInterval
         res["purgeWrite"]        = purgeWrite
         res["writeFormat"]       = writeFormat
+        res["writeCompression"]  = "off"   # Compressed binary is reported as inefficient by openFoam
         if writeFormat == "ascii" :
             res["writePrecision"]    = writePrecision
-        res["writeCompression"]  = writeCompression
+            res["writeCompression"]  = writeCompression
+
         res["timeFormat"]        = "general"
         res["timePrecision"]     = 6
         res["runTimeModifiable"] = runTimeModifiable
