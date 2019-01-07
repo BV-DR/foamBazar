@@ -11,7 +11,7 @@ class OfCase(object):
     """ Base class for openFoam case
     Can be sub-classed to deal with more specific situation (example : DropTestCase, SeakeepingCase)
     """
-    
+
     handledFiles =  [
                     "controlDict",
                     "decomposeParDict",
@@ -26,6 +26,7 @@ class OfCase(object):
                                        symmetry         = False,
                                        OFversion        = 5,
                                        application      = 'foamStar',   #Solver name (foamStar, navalFoam)
+                                       executable       = None,   # => default to application name
                                        isMesher         = False,
                                        clean            = False,  #True => Remove case folder and go on. #False: ask user interactively
                                        meshFolder       = None
@@ -41,19 +42,24 @@ class OfCase(object):
         self.decomposeParDict = decomposeParDict
         self.fvSchemes = fvSchemes
         self.fvSolution = fvSolution
-        
+
         self.meshFolder = meshFolder
 
         self.symmetry = symmetry
         self.OFversion = OFversion
         self.application = application
         self.isMesher = isMesher
-        
+
         self.sysfolder_ = join(self.case,"system")
         self.zerofolder_ = join(self.case,"0")
         self.orgfolder_ = join(self.case,"0","org")
         self.constfolder_ = join(self.case,"constant")
-        
+
+        self.executable = executable
+        if self.executable :
+            self.executable = self.application
+
+
         self.writeFolders()
 
     def writeFolders(self) :
@@ -101,7 +107,7 @@ class OfCase(object):
                 tmpobj.case = case
                 tmpobj.name = tmpobj.name.replace(source, case)
                 fileDict[ f ] = tmpobj
-            else: 
+            else:
                 print (fname, "does not exists")
         return cls( case, **fileDict , application = application, meshFolder = join(source, "constant") )
 
@@ -121,8 +127,10 @@ class OfCase(object):
         #write all handeled files
         for f in self.handledFiles:
             file_ = getattr(self, f)
-            if file_ is not None: file_.writeFile()
-        
+            if file_ is not None:
+                print ("Writting :", file_.name)
+                file_.writeFile()
+
         #write Allinit and Allclean scripts
         if not exists( "Allclean" ): self.writeAllclean()
         if not exists( "Allinit" ): self.writeAllinit()
@@ -145,7 +153,7 @@ class OfCase(object):
     def writeAllinit(self):
         """To be implemented in subclass"""
         raise(NotImplementedError)
-        
+
     def writeAllclean(self):
         """To be implemented in subclass"""
         raise(NotImplementedError)
@@ -190,8 +198,8 @@ class OfCase(object):
             elif self.OFversion == 3 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-3.0.x/etc/bashrc;\n')
             elif self.OFversion == 5 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-5.x/etc/bashrc;\n')
             f.write('export LC_ALL=C\n\n')
-            f.write('mpirun {} -parallel\n'.format(self.application))
-    
+            f.write('mpirun {} -parallel\n'.format(self.executable))
+
     def runSbatch(self):
         self.writeSbatch()
         subprocess.call(['sbatch', 'run.sh'], cwd=self.case)
