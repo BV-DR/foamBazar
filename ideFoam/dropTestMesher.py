@@ -16,8 +16,7 @@ import os
 
 from ideFoam.ofMesher import OfMesher
 from ideFoam.inputFiles import ControlDict, FvSchemes, FvSolution, DecomposeParDict
-from ideFoam.inputFiles.extrudeMeshDict import BlockMeshDict, ExtrudeMeshDict, RefineMeshDict, SurfaceFeatureExtractDict, SnappyHexMeshDict
-
+from ideFoam.inputFiles import BlockMeshDict, ExtrudeMeshDict, RefineMeshDict, SurfaceFeatureExtractDict, SnappyHexMeshDict
 from pythonScripts.fsTools import findBoundingBox, findSTLPatches
 
 class DropTestMesher( OfMesher ):
@@ -27,7 +26,7 @@ class DropTestMesher( OfMesher ):
     Examples
     --------
     For 2D mesh generation (slamming sections)
-    
+
     >>> import os
     >>> #
     >>> # Import meshing routine from foamBazar
@@ -71,9 +70,9 @@ class DropTestMesher( OfMesher ):
     >>> fname = os.path.join(case,'log.input')
     >>> with open(fname,'w') as f: f.write(str(myParams))
     >>> drop.runInit()
-    
+
     For 3D mesh generation
-    
+
     >>> import os
     >>> #
     >>> # Import meshing routine from foamBazar
@@ -104,7 +103,7 @@ class DropTestMesher( OfMesher ):
     >>> fname = os.path.join(case,'log.input')
     >>> with open(fname,'w') as f: f.write(str(myParams))
     >>> drop.runInit()
-    
+
     """
     @classmethod
     def BuildFromParams(cls, case,
@@ -134,7 +133,7 @@ class DropTestMesher( OfMesher ):
                              clean            = False
                              ):
         """Build mesh for CFD drop test mesk from a few parameters.
-        
+
         Parameters
         ----------
         case : str
@@ -153,7 +152,7 @@ class DropTestMesher( OfMesher ):
             TODO
         symmetry : bool, default False
             Logical defining if symmetric mesh (Y) should be created
-        
+
         trans : list of float, dimension(3), default [0.0,0.0,0.0]
             Vector defining STl file translation in mesh
         rot : list of float, dimension(3), default [0.0,0.0,0.0]
@@ -166,7 +165,7 @@ class DropTestMesher( OfMesher ):
             Background mesh cell ratio
         fsBounds : list of floats, dimension(2), default [-0.5,1.5]
             Coefficients defining free surface area (relative to STL hight) [Zmin, Zmax]
-        
+
         nRefBoxes : int, default 6
             Number of refinement boxes to create
         xRefineBox : list of floats, dimension(2*nRefBoxes), default [-0.6,-0.5,-0.4,-0.3,-0.2,-0.1,1.6,1.5,1.4,1.3,1.2,1.1]
@@ -183,13 +182,13 @@ class DropTestMesher( OfMesher ):
         fsRefineBox : list of floats, dimension(2*nfsRefBoxes), default [-1.5,-1.0,-0.5,-0.3,-0.2,2.5,2.0,1.5,1.3,1.2]
             List of coefficients defining size of free surface refinement boxes (relative to STL height)
             example: [Zmin_1,Zmin_2,Zmin_3,...,Zmax_1,Zmax_2,Zmax_3]
-        
+
         refineLength : list of float, default [0.1]
             Coeffiecients defining refinements around the body (relative to STL reference length defined as 'min(0.5*y-size,z-size)')
             The length of the list defines the number of proximity refinements.
         layerLength : float, default 0.005
             Coefficient defining length of boundary layer (relative to STL reference length defined as 'min(0.5*y-size,z-size)')
-        
+
         solver : str, default 'snappyHexMesh'
             Solver to run
         OFversion : int or str, default 5
@@ -198,23 +197,23 @@ class DropTestMesher( OfMesher ):
             Logical defining if case is run on Liger cluster
         clean : boolean, default False
             Logical to force case overwrite
-     
+
         """
-        
+
         if hullPatch is None:
             if ndim==2: hullPatch='section_'+str(section)
             elif ndim==3: hullPatch = 'ship'
-        
+
         #get STL size
         if (ndim==2) and (stlFile is None): stlFile = os.path.join('stl',hullPatch+'.stl')
         stlFile = os.path.join(os.getcwd(),stlFile)
-        
+
         bBox = findBoundingBox(stlFile, verbose=True)
         Length = bBox[3]-bBox[0]
         Beam   = bBox[4]-bBox[1]
         Depth  = bBox[5]-bBox[2]
         print('Length = {}; Beam = {}; Depth = {}'.format(Length,Beam,Depth))
-        
+
         print('Create system folder input files')
         #controlDict
         controlDict = ControlDict.Build(case                = case,
@@ -225,49 +224,49 @@ class DropTestMesher( OfMesher ):
                                         writeInterval       = 1,
                                         writeCompression    = "off",
                                         runTimeModifiable   = "true")
-                                  
+
         #fvSchemes
         fvSchemes = FvSchemes.Build(case     = case,
                                     simType  = "Euler" )
 
         #fvSolution
         fvSolution = FvSolution.Build(case = case )
-        
+
         #decomposeParDict
         decomposeParDict = DecomposeParDict.Build(case   = case,
                                             nProcs = nProcs,
                                             method = "scotch")
-        
+
         #extrudeMeshDict
         extrudeMeshDict = ExtrudeMeshDict.Build(case = case)
-        
+
         #refineMeshDict
         refineMeshDicts = []
         refineMeshDicts.append(RefineMeshDict.Build(case                = case,
-                                                    refineUptoCellLevel = 5)
-        
+                                                    refineUptoCellLevel = 5))
+
         refineMeshDicts.append(RefineMeshDict.Build(case           = case,
                                                     orient         = 'z',
                                                     set            = "c0",
                                                     useHexTopology = True,
-                                                    geometricCut   = False)
-        if ndim==2:
+                                                    geometricCut   = False))
+        if ndim == 2:
             orient = 'yz'
             directions = "tan2 normal"
-        elif ndim==3:
+        elif ndim == 3:
             orient = 'xyz'
             directions = "tan1 tan2 normal"
-         
+
         refineMeshDicts.append(RefineMeshDict.Build(case         = case,
                                                     orient         = orient,
                                                     set            = "c0",
                                                     directions     = directions,
                                                     useHexTopology = True,
-                                                    geometricCut   = False)
-                                         
+                                                    geometricCut   = False))
+
         #read stl patches
         stlPatches = findSTLPatches(stlFile)
-        
+
         #snappyHexMeshDict
         stlName = os.path.splitext(os.path.basename(stlFile))[0]
         referenceLength = min(Beam*0.5,Depth)
@@ -282,7 +281,7 @@ class DropTestMesher( OfMesher ):
                                                     finalLayerThickness = referenceLength*layerLength,
                                                     minThickness        = referenceLength*layerLength*0.1,
                                                     OFversion           = OFversion)
-                                              
+
         #surfaceFeatureExtractDict
         surfaceFeatureExtractDict = SurfaceFeatureExtractDict.Build(case = case,
                                                               stlname = stlName+'.stl')
@@ -354,16 +353,16 @@ class DropTestMesher( OfMesher ):
         res.fsRefineBox = fsRefineBox
         res.OFversion = OFversion
         res.onLiger = onLiger
-        
+
         res.writeFiles()
         return res
-        
+
     # def writeFiles(self) :
         # OfMesher.writeFiles(self)
-        
+
         #Write additional files
-        
-        
+
+
     def writeAllinit(self):
         #Allinit
         print('Create run scripts')
@@ -371,13 +370,13 @@ class DropTestMesher( OfMesher ):
         with open(ainit,'w') as f:
             f.write('#! /bin/bash\n')
             f.write('set -x\n\n')
-            
+
             #clearMeshInfo
             f.write('function clearMeshInfo()\n')
             f.write('{\n')
             f.write('    rm -fr background.msh 0/{ccx,ccy,ccz,*Level,polyMesh/cellMap}* constant/polyMesh/{sets,*Level*,*Zone*,refine*,surfaceIndex*}\n')
             f.write('}\n\n')
-            
+
             #copySTL
             f.write('function copySTL()\n')
             f.write('{\n')
@@ -395,7 +394,7 @@ class DropTestMesher( OfMesher ):
                 f.write('    rm {:s}\n'.format(fstltmp))
             f.write('    surfaceFeatureExtract\n')
             f.write('}\n\n')
-            
+
             #refineBox
             f.write('function refineBox()\n')
             f.write('{\n')
@@ -403,7 +402,7 @@ class DropTestMesher( OfMesher ):
             if self.ndim==2:   f.write('    eval BVrefineMesh -dict "system/refineMeshDict.yz"\n')
             elif self.ndim==3: f.write('    eval BVrefineMesh -dict "system/refineMeshDict.xyz"\n')
             f.write('}\n\n')
-            
+
             #refineFS
             f.write('function refineFS()\n')
             f.write('{\n')
@@ -413,7 +412,7 @@ class DropTestMesher( OfMesher ):
             f.write('    echo "cellSet c0 new boxToCell $PARAM" | setSet -latestTime\n')
             f.write('    eval BVrefineMesh -dict "system/refineMeshDict.z" -refineUpToLevel $REFLEVEL $@\n')
             f.write('}\n\n')
-            
+
             #snap
             f.write('function snap()\n')
             f.write('{\n')
@@ -428,19 +427,19 @@ class DropTestMesher( OfMesher ):
             else:
                 f.write('    snappyHexMesh\n')
             f.write('}\n\n')
-            
+
             # __main__
             f.write('(\n')
             f.write('    copySTL\n')
             f.write('    blockMesh\n')
-            
+
             nx = int(len(self.xRefineBox)/2)
             ny = int(len(self.yRefineBox)/2)
             nz = int(len(self.zRefineBox)/2)
             nf = int(len(self.fsRefineBox)/2)
             if self.ndim==2: n = min(ny,nz)
             elif self.ndim==3: n = min(nx,ny,nz)
-                
+
             if n < self.nRefBoxes:
                 print('ERROR: Requested number of boxes is greater than refinement level provided!')
                 os._exit(1)
@@ -449,7 +448,7 @@ class DropTestMesher( OfMesher ):
                     f.write('    refineBox "(-1e6 {:.2f} {:.2f}) (1e6 {:.2f} {:.2f})"\n'.format(self.yRefineBox[i]*self.Beam*0.5,self.zRefineBox[i]*self.Depth,self.yRefineBox[i+ny]*self.Beam*0.5,self.zRefineBox[i+nz]*self.Depth))
                 elif self.ndim==3:
                     f.write('    refineBox "({:.2f} {:.2f} {:.2f}) ({:.2f} {:.2f} {:.2f})"\n'.format(self.xRefineBox[i]*self.Length,self.yRefineBox[i]*self.Beam*0.5,self.zRefineBox[i]*self.Depth,self.xRefineBox[i+nx]*self.Length,self.yRefineBox[i+ny]*self.Beam*0.5,self.zRefineBox[i+nz]*self.Depth))
-            
+
             if nf < self.nfsRefBoxes:
                 print('ERROR: Requested number of boxes is greater than refinement level provided!')
                 os._exit(1)

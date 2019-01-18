@@ -7,6 +7,33 @@ import subprocess
 from ideFoam.inputFiles import getFileClass, getFilePath
 from pythonScripts.fsTools import getFoamTimeFolders
 
+
+def cleanCase(case, clean):
+    """Clean case directory
+    clean = True  => Remove directory
+    clean = "i"   => Interactive : prompt to ask whether existing folder should be removed
+    clean = False => Do nothing
+    """
+
+    if clean is None :
+        return
+    if exists(case):
+        if clean is True:
+            print('Overwriting case "{}"'.format(case))
+            shutil.rmtree(case)
+        elif clean == "i" :
+            res = input('Case "{}" already exists, do you want to overwrite ? (y (yes) / n (no) / a (abord)'.format(case)).lower()
+            if res[0] == "y" :
+                shutil.rmtree(case)
+            elif res[0] == "n" :
+                return
+            elif res[0] == "a" :
+                print('Exiting')
+                os._exit(1)
+            else:
+                print ("Not valid answer")
+                cleanCase(case, clean)
+
 class OfCase(object):
     """ Base class for openFoam case
     Can be sub-classed to deal with more specific situation (example : DropTestCase, SeakeepingCase)
@@ -19,6 +46,12 @@ class OfCase(object):
                     "fvSolution"
                     ]
 
+    @staticmethod
+    def makeCaseFolder( case, clean ):
+        cleanCase(case, clean)
+        if not os.path.exists(case) :
+            os.makedirs(case)
+
     def __init__(self, case, nProcs=1, controlDict      = None,
                                        fvSchemes        = None,
                                        fvSolution       = None,
@@ -28,7 +61,7 @@ class OfCase(object):
                                        application      = 'foamStar',   #Solver name (foamStar, navalFoam)
                                        executable       = None,   # => default to application name
                                        isMesher         = False,
-                                       clean            = False,  #True => Remove case folder and go on. #False: ask user interactively
+                                       clean            = "i"  ,  #True => Remove case folder and go on. #False: ask user interactively
                                        meshFolder       = None
                                        ) :
 
@@ -79,19 +112,7 @@ class OfCase(object):
 
 
     def clean(self,clean = False) :
-        if exists(self.case):
-            if clean:
-                print('Overwriting case "{}"'.format(self.case))
-                shutil.rmtree(self.case)
-            else:
-                valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
-                res = input('Case "{}" already exists, do you want to overwrite ? (y/n) '.format(self.case)).lower()
-                if valid.get(res,False):
-                    shutil.rmtree(self.case)
-                else:
-                    print('Exiting')
-                    os._exit(1)
-
+        cleanCase(self.case, clean)
 
     @classmethod
     def Read( cls, case, source, application = "foamStar" ):

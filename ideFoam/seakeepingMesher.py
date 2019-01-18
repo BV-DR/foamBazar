@@ -24,7 +24,7 @@ from ideFoam.inputFiles import BlockMeshDict, SetSelection, RefineMeshDict, Surf
 class SeakeepingMesher( OfMesher ):
     """Class used to generate a CFD mesh for seakeeping cases.
     It should be called by a python script as presented in the following example
-    
+
     Example
     -------
     >>> import os
@@ -50,7 +50,7 @@ class SeakeepingMesher( OfMesher ):
     >>> fname = os.path.join(case,'log.input')
     >>> with open(fname,'w') as f: f.write(str(myParams))
     >>> mesh.runInit()
-    
+
     """
     @classmethod
     def BuildFromParams(cls,    case,
@@ -58,7 +58,7 @@ class SeakeepingMesher( OfMesher ):
                                 stlFiles         = None,
                                 stlName          = 'ship',
                                 refCellBuffer       = 4,
-                                domain           = [-3.0,2.5, -2.0,2.0, -1.5,0.5], 
+                                domain           = [-3.0,2.5, -2.0,2.0, -1.5,0.5],
                                 side             = 'port',
                                 LOA              = None,
                                 draft            = None,
@@ -77,13 +77,13 @@ class SeakeepingMesher( OfMesher ):
                                 refSurfExtra     = None,
                                 shipBL           = [3, 1.3, 0.7, 0.7],
                                 noLayers         = [],
-                                application           = "snappyHexMesh",
+                                application      = "snappyHexMesh",
                                 OFversion        = 5,
                                 onLiger          = False,
-                                clean            = False
+                                clean            = "i"
                                 ):
         """Build mesh for CFD seakeeping mesh form a few parameters.
-        
+
         Parameters
         ----------
         case : str
@@ -106,14 +106,14 @@ class SeakeepingMesher( OfMesher ):
                 if "None", no operation will be performed to ship.stl
         heading : float, default 180.
             Heading of ship (180 is head sea)
-            
+
         fsZone : list of floats, default [0.02*LOA, 0.01*LOA]
             Free surface zone [fsZmin, fsZmax]
         fsCellHeight : float, default fsZmax/3
             Cell height within the free surface zone
         fsCellRatio : int, default 4
             Cell ratio length/height within the free surface zone
-            
+
         refBow : boolean, default False
             Logical defining if bow area should be refined
         refBowLength : flaot
@@ -124,7 +124,7 @@ class SeakeepingMesher( OfMesher ):
             Coefficient defining lengh of selection for stern refinement (relatively to LOA)
         refFS: boolean, default True
             Additional vertical refinement in the free surface zone near the ship
-            
+
         refBoxType : str, default 'wave'
             Type of refinement box(es) in the domain ('wave', 'kelvin' or 'both')
         refBoxData : list of int, default [3]
@@ -140,13 +140,13 @@ class SeakeepingMesher( OfMesher ):
             Number of cells between each refinement level
         refSurfExtra : str
             STL file of regions where extra refinement in bow/stern areas with strong curvatures will be applied.
-            
+
         shipBL : list of float, default [3, 1.3, 0.7, 0.7]
              Dimension for boundary layers (relative to cell size)
              format: [nLayers, layerGrowth, finalLayerThickness, minThicknessRatio]
         noLayers: list of str
             Disable layers creation on selected patches (e.g. deck)
-            
+
         application : str, default 'snappyHexMesh'
             application to run
         OFversion : int or str, default 5
@@ -155,16 +155,23 @@ class SeakeepingMesher( OfMesher ):
             Logical defining if case is run on Liger cluster
         clean : boolean, default False
             Logical to force case overwrite
-     
+
         """
 
         ###FORMER ROUTINE : UserInput
         # create ship.stl and compute bounding box(es)
         if not isinstance(stlFiles, list): stlFiles = [stlFiles]
-        filename = stlName+'_tmp.stl'
+        stlFiles = [os.path.abspath( f ) for f in stlFiles]
+
+        cwd_save = os.getcwd()
+
+        #Work in the case directory, to get temporary file there.
+        SeakeepingMesher.makeCaseFolder(case, clean)
+        os.chdir(case)
+
+        filename = os.path.join(case, stlName+'_tmp.stl')
         if os.path.isfile(filename): os.remove(filename)
-        if len(stlFiles)==0: raise SystemExit('No STL file specified.')
-        
+
         with open(filename, 'w') as outfile:
             for fstl in stlFiles:
                 if not fstl.endswith('.stl'): fstl += '.stl'
@@ -176,7 +183,7 @@ class SeakeepingMesher( OfMesher ):
         shipPatches = findSTLPatches(filename)
         print("Found patches in stl: ", shipPatches)
         shipBB = findBoundingBox(filename)
-        
+
         if draft is not None:
             draft = abs(float(draft))
             print("Set draft:",draft)
@@ -192,24 +199,24 @@ class SeakeepingMesher( OfMesher ):
             shutil.copyfile(refSurfExtra,surfFile)
             if draft is not None:
                 translateStl(surfFile, [0.0,0.0,move], surfFile)
-        
+
         if rotateStl(filename, heading, filename):
             shipBBRot = findBoundingBox(filename)
         else:
             shipBBRot = shipBB
 
-        LOA = shipBB[3]-shipBB[0] if LOA==None else LOA
-        fsZone = [0.02*LOA, 0.01*LOA] if fsZone==None else fsZone
-        fsCellHeight = fsZone[1]/3 if fsCellHeight==None else fsCellHeight
-        
+        LOA = shipBB[3] - shipBB[0] if LOA is None else LOA
+        fsZone = [0.02*LOA, 0.01*LOA] if fsZone is None else fsZone
+        fsCellHeight = fsZone[1] / 3 if fsCellHeight is None else fsCellHeight
+
         #set default refinement values
-        if (refBow and refBowLength==None): refBowLength=0.20*LOA
-        if (refStern and refSternLength==None): refSternLength=0.20*LOA
-        
-        if side=='port': domain[2]=0
-        elif side=='starboard': domain[3]=0
+        if (refBow and refBowLength is None): refBowLength = 0.20 * LOA
+        if (refStern and refSternLength is None): refSternLength = 0.20 * LOA
+
+        if side == 'port': domain[2] = 0
+        elif side == 'starboard': domain[3] = 0
         domain = [ round(LOA*val, 3) for val in domain ]
-        
+
         locationInMesh = [0.5*(domain[1]+shipBBRot[3]), 0.5*(domain[3]+domain[2]), 0.5*(domain[5]+domain[4])]
 
         ###FORMER ROUTINE : foamCase_template
@@ -223,45 +230,45 @@ class SeakeepingMesher( OfMesher ):
                                         writeInterval     = 1,
                                         writeCompression  = "compressed",
                                         runTimeModifiable = "true")
-        
+
         #fvSchemes
         fvSchemes = FvSchemes.Build(case        = case,
                                     simType     = "CrankNicolson",
                                     limitedGrad = True,
                                     orthogonalCorrection = "implicit")
-        
+
         #fvSolution
         fvSolution = FvSolution.Build(case = case )
-    
+
         #decomposeParDict
         decomposeParDict = DecomposeParDict.Build(case   = case,
                                                   nProcs = nProcs)
-        
+
         ###FORMER ROUTINE : createBlockMeshDict
         nRefBox = int(refBoxData[0])    # how many refinement box? minimum is 1
-    
+
         # The inner cell size is defined by fsCellHeight
         dZ = [ 0 for i in range(nRefBox+2)]
         dZ[nRefBox+1] = round(fsCellHeight, 5)
         for i in range(nRefBox, -1, -1):
-            dZ[i] = dZ[i+1]*2  
+            dZ[i] = dZ[i+1]*2
 
         # keep is in a reverse order: i.e. level [n+1, n, n-1, n-2,..., 0]
         dZ = dZ[::-1]
         zCellSize = list(dZ)
 
-        # horizontal cells for the whole domain    
+        # horizontal cells for the whole domain
         cellWidth = dZ[-2]*fsCellRatio
         Xcells = int((domain[1]-domain[0])/cellWidth)
         Ycells = int((domain[3]-domain[2])/cellWidth)
 
         # update domain data
-        domain[0]= round(domain[1] - cellWidth*Xcells, 3)
-        if side=='port':
+        domain[0] = round(domain[1] - cellWidth*Xcells, 3)
+        if side == 'port':
             domain[3] = round(domain[2] + cellWidth*Ycells, 3)
-        elif side=='starboard':
+        elif side == 'starboard':
             domain[2] = round(domain[3] - cellWidth*Ycells, 3)
-        elif side=='both':
+        elif side == 'both':
             if (Ycells % 2 != 0):
                 Ycells += 1 # we need this to be even
             domain[2] = -round(cellWidth*Ycells/2, 3)
@@ -269,7 +276,7 @@ class SeakeepingMesher( OfMesher ):
         else:
             print("\nUnknown parameters, side=",side)
             raise SystemExit('abort ...')
-    
+
         # compute vertical thickness of each box
         # All boxes must be larger than the ship's bounding box
         fsCellTop = int(mt.ceil(round(abs(fsZone[1])/(fsCellHeight),1)))
@@ -281,21 +288,21 @@ class SeakeepingMesher( OfMesher ):
 
         # z-cuts in lower block
         lowerCutNCells = refCellBuffer
-        lowerCut = fsZone[0] - dZ[1]*lowerCutNCells;
-        while (lowerCut>(shipBBRot[2]-refCellBuffer*dZ[1])) | (lowerCutNCells < refCellBuffer):
+        lowerCut = fsZone[0] - dZ[1] * lowerCutNCells;
+        while (lowerCut > (shipBBRot[2]-refCellBuffer*dZ[1])) | (lowerCutNCells < refCellBuffer):
             lowerCut -= dZ[1]
             lowerCutNCells += 1
         lowerCutNCells = [lowerCutNCells]
-        lowerCut = [lowerCut]   
+        lowerCut = [lowerCut]
 
         #for i in range(1, nRefBox):
         #    lowerCutNCells.append(refCellBuffer)
         #    lowerCut.append(lowerCut[i-1] - refCellBuffer*dZ[i+1])
-    
+
         # z-cuts in upper block
         upperCutNCells = refCellBuffer
-        upperCut = fsZone[1] + dZ[1]*upperCutNCells;
-        while (upperCut<(shipBBRot[5]+refCellBuffer*dZ[1])) | (upperCutNCells < refCellBuffer):
+        upperCut = fsZone[1] + dZ[1] * upperCutNCells
+        while (upperCut < (shipBBRot[5] + refCellBuffer*dZ[1])) | (upperCutNCells < refCellBuffer):
             upperCut += dZ[1]
             upperCutNCells += 1
         upperCutNCells = [upperCutNCells]
@@ -319,7 +326,7 @@ class SeakeepingMesher( OfMesher ):
         zAllCutNCells = [ZcellsBottom] + lowerCutNCells[::-1] + [fsCellBottom, fsCellTop] + upperCutNCells + [ZcellsTop]
         zAllCutRatio = [ZratioBottom] + list(1 for i in range(len(lowerCut)*2+2)) + [ZratioTop]
 
-        # compute vertical position of all grid points 
+        # compute vertical position of all grid points
         zGrid = [domain[4]]
         for i in range(len(zAllCut)):
             grad = simpleGrading(zAllCutNCells[i], zAllCutRatio[i])
@@ -327,7 +334,7 @@ class SeakeepingMesher( OfMesher ):
             zGrid = zGrid + [zGrid[-1]+L*grad[val] for val in range(1,len(grad)-1)]
             zGrid.append(zAllCut[i])
         zGridDelta = [zGrid[i+1]-zGrid[i] for i in range(0,len(zGrid)-1)]
-    
+
         # compute vertical extension for all refBox
         dx = cellWidth/2.0
         refBoxZdata = [zGrid[0]]*nRefBox + [zGrid[-1]]*nRefBox
@@ -345,17 +352,17 @@ class SeakeepingMesher( OfMesher ):
                     refBoxZdata[-i-1] = zGrid[-j-1]
                     break
             dx /= 2.0
-    
+
         print('Domain bounding box:')
         print("   ", [domain[0], domain[2], domain[4], domain[1], domain[3], domain[5]])
-        
+
         ptype = {}
         ptype['X0'], ptype['X1'] = "patch", "patch"
         if side=='port': ptype['Y0'], ptype['Y1'] = "symmetryPlane", "patch"
         elif side=='starboard': ptype['Y0'], ptype['Y1'] = "patch", "symmetryPlane"
         else: ptype['Y0'], ptype['Y1'] = "patch", "patch"
         ptype['Z0'], ptype['Z1'] = "wall", "patch"
-        
+
         nz = len(zAllCut)
         patches = []
         for ps in ['X0','X1','Y0','Y1','Z0','Z1']:
@@ -369,7 +376,7 @@ class SeakeepingMesher( OfMesher ):
             if ps=='Z0': vert.append([0, 1, 2, 3])
             if ps=='Z1': vert.append([4*nz+0, 4*nz+1, 4*nz+2, 4*nz+3])
             patches.append(vert)
-        
+
         #Write blockMeshDict file
         blockMeshDict = BlockMeshDict.Build(case        = case,
                                             ndim        = 3,
@@ -438,10 +445,10 @@ class SeakeepingMesher( OfMesher ):
                 refBoxData.append(xCutMax[i])
                 refBoxData.append(yCutMin[i])
                 refBoxData.append(yCutMax[i])
-                
-                
+
+
         ###FORMER ROUTINE : createBackGroundMesh
-        # how many refinement boxes ? minimum is 1 
+        # how many refinement boxes ? minimum is 1
         refBoxBB = []
         if len(refBoxData)>1:
             if nRefBox != (len(refBoxData)-1)/4.:
@@ -456,7 +463,7 @@ class SeakeepingMesher( OfMesher ):
 
         # refine free surface (using proximity method)
         distance = fsCellHeight*refCellBuffer*2.0*(nxy-1.0 + nRefBox-1.0 + float(refBow | refStern | refFS))
-    
+
         lastInnerBox = refBoxBB[-1]
         if lastInnerBox[0] > (shipBBRot[0] - distance - cellWidth*refCellBuffer/mt.pow(2.0, float(nRefBox))):
             diff = lastInnerBox[0] - (shipBBRot[0] - distance - cellWidth*refCellBuffer/mt.pow(2.0, float(nRefBox)))
@@ -482,10 +489,10 @@ class SeakeepingMesher( OfMesher ):
             diff = -lastInnerBox[5] + shipBBRot[5] + distance + zCellSize[1]*refCellBuffer
             for i in range(len(refBoxBB)):
                 refBoxBB[i][5] += diff
-        
+
         refineMeshDicts = []
         setSelections = []
-        
+
         for i, BB in enumerate(refBoxBB):
             tmp = BB[4]
             BB[4]=domain[3] # YmaxDomain
@@ -501,7 +508,7 @@ class SeakeepingMesher( OfMesher ):
                                                         geometricCut   = False))
             BB[4] = tmp
             pass
-    
+
         for i, BB in enumerate(refBoxBB):
             setSelections.append(SetSelection(case    = case,
                                               selType = 'box',
@@ -514,7 +521,7 @@ class SeakeepingMesher( OfMesher ):
                                                         useHexTopology = True,
                                                         geometricCut   = False))
             pass
-            
+
         # this is a point outside ship.stl
         outsidePoints = [0.5*(shipBBRot[0]+shipBBRot[3]), 0.5*(shipBBRot[1]+shipBBRot[4])+abs(shipBBRot[1]-shipBBRot[4]), 0.5*(shipBBRot[2]+shipBBRot[5])]
 
@@ -549,7 +556,7 @@ class SeakeepingMesher( OfMesher ):
                                                     directions     = 'tan1 tan2',
                                                     useHexTopology = True,
                                                     geometricCut   = False))
-        
+
         BB = [-1e6,-1e6,-1e6,1e6,1e6,fsZmin]
         setSelections.append(SetSelection(case          = case,
                                           selType       = 'proximity',
@@ -565,7 +572,7 @@ class SeakeepingMesher( OfMesher ):
                                                     directions     = 'tan1 tan2 normal',
                                                     useHexTopology = True,
                                                     geometricCut   = False))
-                                              
+
         BB = [-1e6,-1e6,fsZmax,1e6,1e6,1e6]
         setSelections.append(SetSelection(case          = case,
                                           selType       = 'proximity',
@@ -584,7 +591,7 @@ class SeakeepingMesher( OfMesher ):
 
         # align cutting locations
         if not refBow: refBowLength = 0.2*(shipBBRot[3]-shipBBRot[0])
-        refBowLength = shipBBRot[3]-refBowLength 
+        refBowLength = shipBBRot[3]-refBowLength
         refBowLength = domain[1]-mt.ceil((domain[1]-refBowLength)/fsCellHeight)*fsCellHeight
         if refBow:
             distance *= 0.5
@@ -603,7 +610,7 @@ class SeakeepingMesher( OfMesher ):
                                                         directions     = 'tan1 tan2 normal',
                                                         useHexTopology = True,
                                                         geometricCut   = False))
-    
+
         if refSurfExtra is not None:
             nameOnly = os.path.basename(refSurfExtra)
             BB = [refBow+0.5*fsCellHeight*refCellBuffer,-1e6,-1e6,1e6,1e6,shipBBRot[5]-1.5*fsCellHeight*refCellBuffer]
@@ -661,7 +668,7 @@ class SeakeepingMesher( OfMesher ):
                                                         directions     = 'tan1 tan2 normal',
                                                         useHexTopology = True,
                                                         geometricCut   = False))
-    
+
         if refFS & (refBow | refStern):
             BB = [refSternLength,-1e6,fsZmin,refBowLength,1e6,fsZmax]
             setSelections.append(SetSelection(case          = case,
@@ -678,7 +685,7 @@ class SeakeepingMesher( OfMesher ):
                                                         directions     = 'normal',
                                                         useHexTopology = True,
                                                         geometricCut   = False))
-        
+
         ###FORMER ROUTINE : createSnappyMesh
         #surfaceFeatureExtract
         surfaceFeatureExtractDict = SurfaceFeatureExtractDict.Build(case = case,
@@ -712,7 +719,7 @@ class SeakeepingMesher( OfMesher ):
                                                     nSmoothScale               = 5,
                                                     errorReduction             = 0.75,
                                                     OFversion                  = OFversion)
-        
+
         res =  cls( case, nProcs=nProcs,
                           controlDict=controlDict,
                           fvSchemes=fvSchemes,
@@ -725,9 +732,9 @@ class SeakeepingMesher( OfMesher ):
                           setSelections=setSelections,
                           application = application,
                           isMesher = True,
-                          clean = clean
+                          clean = False
                           )
-                          
+
         res.stlName = stlName
         res.nxy = nxy
         res.refBoxBB = refBoxBB
@@ -737,10 +744,13 @@ class SeakeepingMesher( OfMesher ):
         res.refSurfExtra = refSurfExtra
         res.OFversion = OFversion
         res.onLiger = onLiger
-        
+
         res.writeFiles()
+
+        os.chdir(cwd_save)
+
         return res
-        
+
     def writeAllinit(self):
         """Write bash script 'Allinit' to create mesh
         """
@@ -749,11 +759,11 @@ class SeakeepingMesher( OfMesher ):
         with open(ainit,'w') as f:
             f.write('#! /bin/bash\n')
             f.write('set -x\n\n')
-            
+
             #moveSTL
             f.write('function moveSTL()\n')
             f.write('{\n')
-            fstlin = os.path.join(os.getcwd(),self.stlName+'_tmp.stl')
+            fstlin = os.path.join(self.case,self.stlName+'_tmp.stl')
             fstlout = os.path.join(self.case,'constant','triSurface',self.stlName+'.stl')
             f.write('    mv {:s} {:s}\n'.format(fstlin,fstlout))
             f.write('}\n\n')
@@ -790,7 +800,7 @@ class SeakeepingMesher( OfMesher ):
                 f.write('setSet -latestTime -batch "system/setSet.z"\n')
                 f.write('refineMesh -dict "system/refineMeshDict.z"\n')
             f.write('}\n\n')
-            
+
             #snap
             f.write('function snap()\n')
             f.write('{\n')
@@ -805,7 +815,7 @@ class SeakeepingMesher( OfMesher ):
             else:
                 f.write('    snappyHexMesh\n')
             f.write('}\n\n')
-            
+
             # __main__
             f.write('(\n')
             f.write('    moveSTL\n')
