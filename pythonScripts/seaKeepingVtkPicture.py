@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-from __future__ import print_function
-import vtk
 import os
-
-from tqdm import tqdm
+import numpy as np
+import vtk
 
 try:
     from Pluto.System import Chrono
@@ -28,6 +26,7 @@ def getAvailableTimeData(caseDir, parallel):
 
 
 def getFreeSurfaceActor(vtk_r, scale = [1,1,1], fsRange = None):
+
     aa = vtk.vtkAssignAttribute()
     aa.SetInputConnection(vtk_r.GetOutputPort())
     aa.Assign('alpha.water', "SCALARS", "POINT_DATA")
@@ -90,7 +89,7 @@ def getFreeSurfaceActor(vtk_r, scale = [1,1,1], fsRange = None):
 
 
 
-def getSymPlaneVtkActor(vtk_r, blockIndex, scalarField = "alpha.water"):
+def getSymPlaneVtkActor(vtk_r, blockIndex, scalarField = "alpha.water", scalarRange = None):
     """return symmetry plane colored by field
     """
     #SymmetryPlane
@@ -105,7 +104,8 @@ def getSymPlaneVtkActor(vtk_r, blockIndex, scalarField = "alpha.water"):
     #symPlaneMapper.SetScalarModeToUsePointData()
     symPlaneMapper.SetScalarModeToUseCellFieldData()
     symPlaneMapper.SetUseLookupTableScalarRange(0)
-    symPlaneMapper.SetScalarRange(-10000, 10000)
+    if scalarRange is not None :
+        symPlaneMapper.SetScalarRange(*scalarRange)
 
     symPlaneActor = vtk.vtkActor()
     symPlaneActor.GetProperty().SetEdgeVisibility(1)
@@ -154,18 +154,59 @@ def writerFromExt(ext) :
         print("Picture extension not recognized")
     return writer
 
-def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeList=[0],
-                    startInteractive=False, mag=4, parallel="auto", zoom=1.0, viewAngle = 30,
+
+def printCamera(cam):
+    print("Position" , cam.GetPosition())
+    print("Focal point" , cam.GetFocalPoint())
+    print("Parallel" , cam.GetParallelProjection())
+    print("ParallelScale" , cam.GetParallelScale())
+    print("ViewAngle" , cam.GetViewAngle())
+
+def setCamera( renderer, camPosition=None, targetPosition=None, viewAngle=30., scale=None, fitView = True, viewUp = [0,0,1], reduceFittedDistance = None ):
+
+    camera = renderer.GetActiveCamera()
+
+    if camPosition is not None : camera.SetPosition(camPosition)
+    if targetPosition is not None : camera.SetFocalPoint(targetPosition)
+    camera.SetViewUp(viewUp)
+    if viewAngle is not None :  camera.SetViewAngle(viewAngle)
+
+    if fitView or camPosition is None or targetPosition is None:
+        renderer.ResetCamera()
+
+    if viewAngle is None :
+        if fitView :
+            d = camera.GetDistance()
+            a = camera.GetViewAngle()
+            camera.SetParallelScale(d*np.tan(0.5*(a*np.pi/180)))
+            camera.SetParallelProjection(True)
+        else :
+            camera.SetParallelProjection(True)
+            camera.SetParallelScale(scale)
+
+    printCamera(camera)
+
+    return
+
+
+
+
+def getMeshPicture( meshFile,
+                    pictureFile,
+                    cameraArgs = { "camPosition" : None, "viewAngle" : 30, "scale" : 1.0, "targetPosition" : None, "viewUp" : [0,0,1], "fitView" : True },
+                    timeList=[0],
+                    startInteractive=False, mag=4, parallel="auto",
                     fsArgs = {"scale" : (1, 1, 1), "fsRange" : None },
-                    y0Args = {"scalarField" : "alpha.water", },
+                    y0Args = {"scalarField" : "alpha.water", "scalarRange" : [0,1] },
                     structArgs = {"scalarField" : "p_rgh", },
-                    viewUp = [1,1,1], hullPatch="ship",
+                    hullPatch="ship",
                     ):
     """
     Function to generate picture out of openFoam results
 
     meshFile : mesh file or case directory
     """
+    from tqdm import tqdm
 
     c = Chrono(start=True)
     baseFile, ext = os.path.splitext(pictureFile)[0:2]
@@ -198,7 +239,7 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
         else :
             raise(Exception("time should be 'latest', 'all', or a float iterable"))
 
-    print("Generating picture for : ", timeList)
+    print("Generating picture for : ", ["{:.2f}".format(i) for i in timeList])
 
     #--- Read the openFoam file
     vtk_r = vtk.vtkPOpenFOAMReader()
@@ -206,8 +247,10 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
 
     if parallel:
         vtk_r.SetCaseType(0)
+        print ("Using decomposed case")
     else:
         vtk_r.SetCaseType(1)  # 0 = decomposed case, 1 = reconstructed case
+        print ("Using reconstructed case")
     #vtk_r.ReadZonesOn()
     cdp = vtk.vtkCompositeDataPipeline()
     vtk_r.SetDefaultExecutivePrototype(cdp)
@@ -220,7 +263,10 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
     vtk_r.SetPatchArrayStatus("domainY0", 1)
 
     vtk_r.SetTimeValue(timeList[0])
+
+    print ("Read first")
     vtk_r.Update()  # not mandatory, but just postpone the waiting time
+    print ("Read done")
 
     iter = vtk_r.GetOutput().NewIterator()
     blockDict = {}
@@ -248,9 +294,7 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
         symActor = getSymPlaneVtkActor(vtk_r, blockIndex = blockDict["domainY0"], **y0Args )
         renderer.AddActor(symActor)  # Add the mesh to the view
 
-
     renderer.SetBackground(1, 1, 1)  # White background
-    renderer.GetActiveCamera().SetParallelProjection(0)
 
     #--- Rendering windows
     renWin = vtk.vtkRenderWindow()
@@ -260,16 +304,10 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
         renWin.SetOffScreenRendering(1)
 
     renWin.AddRenderer(renderer)
-    renWin.SetSize(1200, 1000)
+    renWin.SetSize(1650, 1050)
 
     # Set view point
-    camera = renderer.GetActiveCamera()
-    camera.SetPosition(camPosition)
-    camera.SetFocalPoint(targetPosition)
-    camera.SetViewUp(*viewUp)
-    camera.SetViewAngle(viewAngle)
-    renderer.ResetCamera()
-    camera.Zoom(zoom)
+    setCamera( renderer, **cameraArgs )
 
     # To get interactive windows
     if startInteractive:
@@ -299,7 +337,7 @@ def getMeshPicture( meshFile,  camPosition, targetPosition, pictureFile, timeLis
             writer.SetFileName(pictureFile)
             writer.SetInputConnection(w2if.GetOutputPort())
             writer.Write()
-            c.printLap('Chrono t={} {}'.format(time, time))
+            #c.printLap('Chrono t={} {}'.format(time, time))
 
 
 if __name__ == "__main__":
@@ -319,6 +357,16 @@ if __name__ == "__main__":
     if args.time not in ['all', "latest", "latest-1"]:
         args.time = [float(i) for i in args.time.split(',')]
 
-    getMeshPicture(args.case, startInteractive=args.interactive,
-                   camPosition=(600, 600, 300), targetPosition=(0.0, 0.0, 0.0),
-                   timeList=args.time,  pictureFile=args.output, scale=[1., 1., 1.])
+    getMeshPicture( args.case,
+                    pictureFile = args.output,
+                    cameraArgs = {
+                                   "camPosition" : (20., 40, 20),
+                                   "targetPosition" : (2, 2, 2),
+                                   "viewAngle" : 30.,
+                                   "fitView" : True,
+                                  },
+                    timeList = "all", # np.arange(0.5, 2, 0.2),
+                    mag = 6,
+                    fsArgs = { 'fsRange' : [-0.15 , 0.15],  } ,
+                    y0Args = { "scalarField" : "alpha.water", },
+                    startInteractive = args.interactive)
