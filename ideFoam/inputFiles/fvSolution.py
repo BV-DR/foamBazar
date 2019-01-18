@@ -8,7 +8,6 @@ from copy import deepcopy
 """
 
 
-
 GAMG_prec_1 = DictProxy()
 GAMG_prec_1["preconditioner"] = "GAMG"
 GAMG_prec_1["tolerance"] = 1e-7
@@ -51,6 +50,26 @@ GAMG_1["agglomerator"] = "faceAreaPair"
 GAMG_1["mergeLevels"] = 1
 GAMG_1["minIter"] = 2
 
+
+GAMG_2 = DictProxy()
+GAMG_2["solver"] = "GAMG"
+GAMG_2["tolerance"] = 1e-8
+GAMG_2["relTol"] = 0
+GAMG_2["smoother"] = "GaussSeidel"
+GAMG_2["cacheAgglomeration"] = "true"
+GAMG_2["nCellsInCoarsestLevel"] = 10
+GAMG_2["agglomerator"] = "faceAreaPair"
+GAMG_2["mergeLevels"] = 1
+
+
+SMOOTHSOLVER_1 = DictProxy()
+SMOOTHSOLVER_1["solver"] = "smoothSolver"
+SMOOTHSOLVER_1["smoother"] = "GaussSeidel"
+SMOOTHSOLVER_1["tolerance"] = 1e-8
+SMOOTHSOLVER_1["relTol"] = 0
+SMOOTHSOLVER_1["nSweeps"] = 2
+SMOOTHSOLVER_1["minIter"] = 2
+
 PCG_1 = DictProxy()
 PCG_1["solver"] = "PCG"
 PCG_1["preconditioner"] = GAMG_prec_2
@@ -60,18 +79,29 @@ PCG_1["maxIter"] = 1000
 PCG_1["minIter"] = 2
 
 
+linearSolverDict = { 
+                     "PCG_1" : PCG_1,
+                     "GAMG_1" : GAMG_1,
+                     "SMOOTHSOLVER_1" : SMOOTHSOLVER_1,
+                   }
+
+
 class FvSolution(ReadWriteFile) :
     """
         FvSchemes dictionnary
     """
     
     @classmethod
-    def Build(cls , case, fsiTol = 1e-8, useEulerCells=False, nOuterCorrectors=5, nInnerCorrectors = 4, application = "foamStar") :
-        
+    def Build(cls , case, fsiTol = 1e-8, useEulerCells=False, nOuterCorrectors=5, nInnerCorrectors = 4, application = "foamStar",
+                    pressureSolver = "PCG_1",
+                    velocitySolver = "SMOOTHSOLVER_1",
+                    ) :
+
         res = cls( name = join(case, getFilePath("fvSolution") ), read = False )
 
-        #-------- ddtSchemes
         solvers = DictProxy()
+        
+        #Alpha
         alpha = DictProxy()
         alpha["nAlphaCorr"] = 3
         alpha["nAlphaSubCycles"] = 1
@@ -86,33 +116,21 @@ class FvSolution(ReadWriteFile) :
         alpha["minIter"] = 2
         solvers['"alpha.water.*"'] = alpha
         
-        solvers['p_rgh'] = deepcopy(PCG_1)
-        solvers['"(p_rghFinal|pcorr|pcorrFinal)"'] = deepcopy(PCG_1)
-                
-        
-        uke = DictProxy()
-        uke["solver"] = "smoothSolver"
-        uke["smoother"] = "GaussSeidel"
-        uke["tolerance"] = 1e-8
-        uke["relTol"] = 0
-        uke["nSweeps"] = 2
-        uke["minIter"] = 2
-        solvers['"(U|k|epsilon)"'] = uke
-        solvers['"(U|k|epsilon)Final"'] = uke
-        
-        cdisp = DictProxy()
-        cdisp["solver"] = "GAMG"
-        cdisp["tolerance"] = 1e-8
-        cdisp["relTol"] = 0
-        cdisp["smoother"] = "GaussSeidel"
-        cdisp["cacheAgglomeration"] = "true"
-        cdisp["nCellsInCoarsestLevel"] = 10
-        cdisp["agglomerator"] = "faceAreaPair"
-        cdisp["mergeLevels"] = 1
-        solvers['"cellDisplacement.*"'] = cdisp
+        #Pressure
+        solvers['p_rgh'] = deepcopy(linearSolverDict[pressureSolver])
+        solvers['"(p_rghFinal|pcorr|pcorrFinal)"'] = deepcopy(linearSolverDict[pressureSolver])
 
+        #Velocity
+        solvers['"(U|k|epsilon)"'] = deepcopy(linearSolverDict[velocitySolver])
+        solvers['"(U|k|epsilon)Final"'] = deepcopy(linearSolverDict[velocitySolver])
+        
+        #CellDisplacement
+        solvers['"cellDisplacement.*"'] = deepcopy(GAMG_2)
+
+        #Iteration
         pimp = DictProxy()
-        if useEulerCells: pimp["EulerCells"] = "EulerCells"
+        if useEulerCells:
+           pimp["EulerCells"] = "EulerCells"
         pimp["momentumPredictor"] = "yes"
         pimp["nOuterCorrectors"] = nOuterCorrectors
         pimp["fsiTol"] = fsiTol
@@ -121,9 +139,8 @@ class FvSolution(ReadWriteFile) :
         pimp["nNonOrthogonalCorrectors"] = 0
         pimp["correctPhi"] = "no"
         pimp["moveMeshOuterCorrectors"] = "yes"
-        
+
         relax = { "equations" : { "U": 1, "UFinal" : 1, "p_rgh" : 1, "p_rghFinal" : 1 } }
-                
         res["solvers"] = solvers
         res["PIMPLE"] = pimp
         res["relaxationFactors"] = relax
