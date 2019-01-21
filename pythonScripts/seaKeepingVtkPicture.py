@@ -88,6 +88,38 @@ def getFreeSurfaceActor(vtk_r, scale = [1,1,1], fsRange = None):
     return fsActor, scalarBar
 
 
+def colorMapper(mapper, scalarField, scalarRange ):
+    if scalarField is not None :
+        mapper.SelectColorArray(scalarField)
+        #symPlaneMapper.SetScalarModeToUsePointData()
+        mapper.SetScalarModeToUseCellFieldData()
+        mapper.SetUseLookupTableScalarRange(0)
+        if scalarRange is not None :
+            mapper.SetScalarRange(*scalarRange)
+
+
+def getCutActor( vtk_r , origin = [0,0,0], normal= [0,0,1], scalarField=None, scalarRange = None  ) :
+
+    plane = vtk.vtkPlane()
+    plane.SetOrigin(*origin)
+    plane.SetNormal(*normal)
+
+    cutter = vtk.vtkCutter()
+    cutter.GenerateTrianglesOff()
+    cutter.SetCutFunction(plane)
+    cutter.SetInputConnection( vtk_r.GetOutputPort() )
+
+    geoFilter = vtk.vtkCompositeDataGeometryFilter()
+    geoFilter.SetInputConnection(cutter.GetOutputPort())
+
+    cutterMapper = vtk.vtkPolyDataMapper()
+    cutterMapper.SetInputConnection( geoFilter.GetOutputPort())
+    colorMapper(cutterMapper, scalarField, scalarRange)
+
+    cutActor = vtk.vtkActor()
+    cutActor.GetProperty().SetEdgeVisibility(1)
+    cutActor.SetMapper(cutterMapper)
+    return cutActor
 
 def getSymPlaneVtkActor(vtk_r, blockIndex, scalarField = "alpha.water", scalarRange = None):
     """return symmetry plane colored by field
@@ -100,19 +132,14 @@ def getSymPlaneVtkActor(vtk_r, blockIndex, scalarField = "alpha.water", scalarRa
     symPlaneDataFilter.SetInputConnection(symPlane.GetOutputPort())
     symPlaneMapper = vtk.vtkDataSetMapper()
     symPlaneMapper.SetInputConnection(symPlaneDataFilter.GetOutputPort())
-    symPlaneMapper.SelectColorArray(scalarField)
-    #symPlaneMapper.SetScalarModeToUsePointData()
-    symPlaneMapper.SetScalarModeToUseCellFieldData()
-    symPlaneMapper.SetUseLookupTableScalarRange(0)
-    if scalarRange is not None :
-        symPlaneMapper.SetScalarRange(*scalarRange)
+    colorMapper(symPlaneMapper, scalarField, scalarRange)
 
     symPlaneActor = vtk.vtkActor()
     symPlaneActor.GetProperty().SetEdgeVisibility(1)
     symPlaneActor.SetMapper(symPlaneMapper)
     return symPlaneActor
 
-def getStuctureActor(vtk_r, blockIndex, scalarField = "p_rgh"):
+def getStuctureActor(vtk_r, blockIndex, scalarField = "p_rgh", scalarRange = None):
     """Return an actor with the ship structure
     """
     #--------------------------------- Structure
@@ -125,12 +152,7 @@ def getStuctureActor(vtk_r, blockIndex, scalarField = "p_rgh"):
 
     structureMapper = vtk.vtkDataSetMapper()
     structureMapper.SetInputConnection(structureDataFilter.GetOutputPort())
-    structureMapper.SelectColorArray(scalarField)
-    #structureMapper.SetScalarModeToUsePointData()
-    structureMapper.SetScalarModeToUsePointFieldData()
-    structureMapper.SetUseLookupTableScalarRange(0)
-    structureMapper.SetScalarRange(-10000, 10000)
-
+    colorMapper(structureMapper, scalarField, scalarRange)
     structureActor = vtk.vtkActor()
     structureActor.GetProperty().SetEdgeVisibility(0)
     structureActor.SetMapper(structureMapper)
@@ -199,6 +221,7 @@ def getMeshPicture( meshFile,
                     fsArgs = {"scale" : (1, 1, 1), "fsRange" : None },
                     y0Args = {"scalarField" : "alpha.water", "scalarRange" : [0,1] },
                     structArgs = {"scalarField" : "p_rgh", },
+                    sliceArgsList = [],
                     hullPatch="ship",
                     ):
     """
@@ -290,9 +313,15 @@ def getMeshPicture( meshFile,
         structureActor = getStuctureActor(vtk_r, blockIndex = blockDict[hullPatch], **structArgs )
         renderer.AddActor(structureActor)  # Add the mesh to the view
 
+    #------------------------------ Symmetry plane
     if y0Args is not None :
         symActor = getSymPlaneVtkActor(vtk_r, blockIndex = blockDict["domainY0"], **y0Args )
         renderer.AddActor(symActor)  # Add the mesh to the view
+
+    #------------------------------ Slices
+    for cutArgs in sliceArgsList :
+        sActor = getCutActor(vtk_r, **cutArgs )
+        renderer.AddActor(sActor)  # Add the mesh to the view
 
     renderer.SetBackground(1, 1, 1)  # White background
 
@@ -311,6 +340,7 @@ def getMeshPicture( meshFile,
 
     # To get interactive windows
     if startInteractive:
+        vtk_r.UpdateTimeStep(timeList[0])
         vtk_r.Modified()
         iren = vtk.vtkRenderWindowInteractor()
         iren.SetRenderWindow(renWin)
