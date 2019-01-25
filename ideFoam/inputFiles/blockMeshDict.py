@@ -65,7 +65,7 @@ class BlockMeshDict(ReadWriteFile) :
     @classmethod
     def Build(cls , case, ndim = 3, waveMesh=False, xmin=-0.05, xmax=0.05, ymin=None, ymax=None, zmin=None, zmax=None,
                        fsmin=None, fsmax=None, Xcells=None, Ycells=12, Zcells=None, cellRatio=1, Zgrading=None, sym=False,
-                       createPatch=True, patches=None, gridlvl=1, OFversion=5):
+                       createPatch= True, patches=None, gridlvl=1, OFversion=5):
         """Build blockMeshDict file from a few parameters.
 
         Parameters
@@ -165,26 +165,8 @@ class BlockMeshDict(ReadWriteFile) :
         res["edges"]   = '()'
 
         if createPatch:
-            if patches is not None:
-                res["patches"] = patches
-            else:
-                if(waveMesh):
-                    nz = len(zmax)
-                    wave_patches = []
-                    for ps in ['X0','X1','Y0','Y1','Z0','Z1']:
-                        wave_patches.append("{} domain{}".format(ptype[ps],ps))
-                        vert = []
-                        for i in range(nz):
-                            if ps=='X0': vert.append([4*i+ , 4*(i+1)+0, 4*(i+1)+3, 4*i+3])
-                            if ps=='X1': vert.append([4*i+1, 4*(i+1)+1, 4*(i+1)+2, 4*i+2])
-                            if ps=='Y0': vert.append([4*i+0, 4*(i+1)+0, 4*(i+1)+1, 4*i+1])
-                            if ps=='Y1': vert.append([4*i+3, 4*(i+1)+3, 4*(i+1)+2, 4*i+2])
-                        if ps=='Z0': vert.append([0, 1, 2, 3])
-                        if ps=='Z1': vert.append([4*nz+0, 4*nz+1, 4*nz+2, 4*nz+3])
-                    wave_patches.append(vert)
-                    res["patches"] = wave_patches
-                else:
-                    res["patches"] = default_patches
+            if patches is not None: res["patches"] = patches
+            else: res["patches"] = default_patches
         else:
             faces = DictProxy()
             faces["type"] = 'patch'

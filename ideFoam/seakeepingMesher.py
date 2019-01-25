@@ -369,8 +369,8 @@ class SeakeepingMesher( OfMesher ):
             patches.append("{} domain{}".format(ptype[ps],ps))
             vert = []
             for i in range(nz):
-                if ps=='X0': vert.append([4*i+1, 4*(i+1)+1, 4*(i+1)+2, 4*i+2])
-                if ps=='X1': vert.append([4*i+0, 4*(i+1)+0, 4*(i+1)+3, 4*i+3])
+                if ps=='X0': vert.append([4*i+0, 4*(i+1)+0, 4*(i+1)+3, 4*i+3])
+                if ps=='X1': vert.append([4*i+1, 4*(i+1)+1, 4*(i+1)+2, 4*i+2])
                 if ps=='Y0': vert.append([4*i+0, 4*(i+1)+0, 4*(i+1)+1, 4*i+1])
                 if ps=='Y1': vert.append([4*i+3, 4*(i+1)+3, 4*(i+1)+2, 4*i+2])
             if ps=='Z0': vert.append([0, 1, 2, 3])
@@ -392,6 +392,7 @@ class SeakeepingMesher( OfMesher ):
                                             Zcells      = zAllCutNCells,
                                             Zgrading    = zAllCutRatio,
                                             createPatch = True,
+                                            patches     = patches,
                                             OFversion   = OFversion)
 
         # compute x,y data for refBox
