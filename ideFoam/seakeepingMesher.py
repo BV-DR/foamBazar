@@ -392,7 +392,6 @@ class SeakeepingMesher( OfMesher ):
                                             Zcells      = zAllCutNCells,
                                             Zgrading    = zAllCutRatio,
                                             createPatch = True,
-                                            patches     = patches,
                                             OFversion   = OFversion)
 
         # compute x,y data for refBox
