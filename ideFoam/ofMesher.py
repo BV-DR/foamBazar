@@ -9,7 +9,7 @@ class OfMesher( OfCase ):
                         "surfaceFeatureExtractDict"
                         ]
     handledFiles = OfCase.handledFiles + additionalFiles
-        
+
     def __init__(self,   *args, extrudeMeshDict=None,
                                 snappyHexMeshDict=None,
                                 surfaceFeatureExtractDict=None,
@@ -22,25 +22,25 @@ class OfMesher( OfCase ):
         """
 
         OfCase.__init__(self, *args, **kwargs)
-        
+
         self.blockMeshDict = blockMeshDict
         self.snappyHexMeshDict = snappyHexMeshDict
         self.surfaceFeatureExtractDict = surfaceFeatureExtractDict
         self.extrudeMeshDict = extrudeMeshDict
-        
+
         self.refineMeshDicts = refineMeshDicts
         self.setSelections = setSelections
-        
+
     def writeFiles(self):
         OfCase.writeFiles(self)
-        
-        for i in self.refineMeshDicts : 
+
+        for i in self.refineMeshDicts :
             i.writeFile()
-            
-        for i in self.setSelections : 
+
+        for i in self.setSelections :
             i.writeFile()
-        
-        
-        
-        
-        
+
+
+
+
+

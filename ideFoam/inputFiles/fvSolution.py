@@ -79,7 +79,7 @@ PCG_1["maxIter"] = 1000
 PCG_1["minIter"] = 2
 
 
-linearSolverDict = { 
+linearSolverDict = {
                      "PCG_1" : PCG_1,
                      "GAMG_1" : GAMG_1,
                      "SMOOTHSOLVER_1" : SMOOTHSOLVER_1,
@@ -90,17 +90,18 @@ class FvSolution(ReadWriteFile) :
     """
         FvSchemes dictionnary
     """
-    
+
     @classmethod
     def Build(cls , case, fsiTol = 1e-8, useEulerCells=False, nOuterCorrectors=5, nInnerCorrectors = 4, application = "foamStar",
                     pressureSolver = "PCG_1",
                     velocitySolver = "SMOOTHSOLVER_1",
+                    airDamping = 2.5
                     ) :
 
         res = cls( name = join(case, getFilePath("fvSolution") ), read = False )
 
         solvers = DictProxy()
-        
+
         #Alpha
         alpha = DictProxy()
         alpha["nAlphaCorr"] = 3
@@ -115,7 +116,7 @@ class FvSolution(ReadWriteFile) :
         alpha["relTol"] = 0
         alpha["minIter"] = 2
         solvers['"alpha.water.*"'] = alpha
-        
+
         #Pressure
         solvers['p_rgh'] = deepcopy(linearSolverDict[pressureSolver])
         solvers['"(p_rghFinal|pcorr|pcorrFinal)"'] = deepcopy(linearSolverDict[pressureSolver])
@@ -123,7 +124,7 @@ class FvSolution(ReadWriteFile) :
         #Velocity
         solvers['"(U|k|epsilon)"'] = deepcopy(linearSolverDict[velocitySolver])
         solvers['"(U|k|epsilon)Final"'] = deepcopy(linearSolverDict[velocitySolver])
-        
+
         #CellDisplacement
         solvers['"cellDisplacement.*"'] = deepcopy(GAMG_2)
 
@@ -139,13 +140,14 @@ class FvSolution(ReadWriteFile) :
         pimp["nNonOrthogonalCorrectors"] = 0
         pimp["correctPhi"] = "no"
         pimp["moveMeshOuterCorrectors"] = "yes"
+        pimp["airDamping"] = airDamping
 
         relax = { "equations" : { "U": 1, "UFinal" : 1, "p_rgh" : 1, "p_rghFinal" : 1 } }
         res["solvers"] = solvers
         res["PIMPLE"] = pimp
         res["relaxationFactors"] = relax
         return res
-        
+
 
 if __name__ == "__main__" :
    print(FvSolution.Build("test" , application = "foamStar"))

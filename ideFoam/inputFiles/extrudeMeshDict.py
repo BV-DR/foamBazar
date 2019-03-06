@@ -12,7 +12,9 @@ class ExtrudeMeshDict(ReadWriteFile) :
     
     """
     @classmethod
-    def Build(cls , case, sourceCase='"./"', exposedPatchName="inlet", nLayers=1, expansionRatio=1, thickness=0.1, mergeFaces=False, mergeTol=0, version='foamStar'):
+    def Build(cls , case, sourceCase='"./"', sourcePatch = "outlet", exposedPatchName="inlet", nLayers=1,
+                          expansionRatio=1, thickness=0.1, mergeFaces=False, mergeTol=0, version='foamStar',
+                          flipNormals = True):
             
         res = cls(  name = join(case, getFilePath("extrudeMeshDict") ), read = False )
       
@@ -20,11 +22,12 @@ class ExtrudeMeshDict(ReadWriteFile) :
         
         res["constructFrom"] = "patch"
         res["sourceCase"] = sourceCase
-        res["sourcePatches"] = [patch["outlet"]]
-        
+
+        res["sourcePatches"] = [patch[sourcePatch]]
         res["exposedPatchName"] = patch[exposedPatchName]
-        
-        res["flipNormals"] = True
+
+        if flipNormals :
+            res["flipNormals"] = True
         
         res["extrudeModel"] = "linearNormal"
         res["nLayers"] = nLayers

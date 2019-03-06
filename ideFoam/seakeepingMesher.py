@@ -18,7 +18,7 @@ import math as mt
 from pythonScripts.fsTools import findBoundingBox, findSTLPatches, translateStl, rotateStl, simpleGrading, simpleGradingN
 
 from ideFoam.ofMesher import OfMesher
-from ideFoam.inputFiles import ControlDict, FvSchemes, FvSolution, DecomposeParDict
+from ideFoam.inputFiles import ControlDict, FvSchemes, FvSolution, DecomposeParDict,ExtrudeMeshDict
 from ideFoam.inputFiles import BlockMeshDict, SetSelection, RefineMeshDict, SurfaceFeatureExtractDict, SnappyHexMeshDict
 
 class SeakeepingMesher( OfMesher ):
@@ -751,6 +751,15 @@ class SeakeepingMesher( OfMesher ):
 
         return res
 
+
+    def get2DCase(self, case2D=None, step = 10):
+        """Create a 2D mesh (extrusion of the y=0 slice)
+        """
+        if case2D is None :
+            case2D = os.path.join(self.case, "wave2D")
+        #Copy mesh in
+        return ExtrudeMeshWave2D.BuildWave2D(case = case2D, sourceCase= self.case, step = step)
+
     def writeAllinit(self):
         """Write bash script 'Allinit' to create mesh
         """
@@ -859,3 +868,35 @@ class SeakeepingMesher( OfMesher ):
             f.write('eval clean_parallel_mesh\n')
             f.write('eval clean_0\n')
         os.chmod(aclean, 0o755)
+
+
+class ExtrudeMeshWave2D(OfMesher):
+
+    def __init__(self, case, step=None, **kwargs):
+        OfMesher.__init__(self, case, **kwargs)
+        self.sourceCase = self.extrudeMeshDict["sourceCase"]
+        self.step = step
+
+    @classmethod
+    def BuildWave2D(cls, case, sourceCase, step):
+        """ Build 2D mesh from seakeeping mesh
+        """
+        extrudeMeshDict = ExtrudeMeshDict.Build( case = case, sourceCase = sourceCase, sourcePatch = "side1",  exposedPatchName = "side2")
+        controlDict = ControlDict.Build(case = case, deltaT=1, endTime = 100)
+        return cls( case, extrudeMeshDict = extrudeMeshDict, controlDict = controlDict, step = step )
+
+    def writeAllinit(self):
+
+        #Copy required step in step "1000"
+        str_ = "#! /bin/bash\n"
+        if self.step is not None :
+            str_ += "cp -r {} {}\n".format( os.path.join(self.sourceCase, str(self.step) ), os.path.join(self.sourceCase, "1000" ) )
+        str_ += "extrudeMesh"
+        with open( os.path.join(self.case, "Allinit"), "w" ) as fil:
+            fil.write(str_)
+
+
+
+
+
+

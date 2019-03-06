@@ -157,10 +157,16 @@ class OfCase(object):
         if not exists( "Allinit" ): self.writeAllinit()
 
     def runInit(self) :
-        #run Allclean and Allinit script
-        p = subprocess.Popen(['./Allclean'], cwd=self.case)
-        p.wait()
 
+        if os.path.exists( join(self.case, "Allclean") ):
+            os.chmod(os.path.join(self.case, "Allclean"), 0o755)
+            p = subprocess.Popen(['./Allclean'], cwd=self.case)
+            p.wait()
+
+        if not os.path.exists( join(self.case, "Allinit") ):
+            raise(FileNotFoundError(0, "Allinit", "not found in {}".format(self.case) ))
+
+        #os.chmod(os.path.join(self.case, "Allinit"), 0o777)
         p = subprocess.Popen(['./Allinit'], cwd=self.case)
         p.wait()
 
@@ -177,7 +183,7 @@ class OfCase(object):
 
     def writeAllclean(self):
         """To be implemented in subclass"""
-        raise(NotImplementedError)
+        print ("Info : no AllClean available for this case")
 
     def writeRun(self):
         """To be implemented in subclass"""
@@ -185,18 +191,19 @@ class OfCase(object):
 
     def copyMesh(self, meshDir, meshTime, overwrite=False):
         meshTime = str(meshTime)
-        if meshTime=='latestTime':
+        if meshTime == 'latestTime':
             timeFolders = getFoamTimeFolders(meshDir)
             meshTimeFolder = timeFolders[-1]
-        elif meshTime=='constant':
+        elif meshTime == 'constant':
             meshTimeFolder = 'constant'
         else:
             meshTimeFolder = meshTime
 
         print('Copy mesh from folder ' + meshTimeFolder)
-
         shutil.copytree( join( meshDir , meshTimeFolder ,'polyMesh') , join( self.case , "constant/polyMesh"))
-        shutil.copytree( join( meshDir , "constant" ,'triSurface') , join( self.case  , "constant/triSurface"))
+
+        if os.path.exists(join( meshDir , "constant" ,'triSurface')):
+            shutil.copytree( join( meshDir , "constant" ,'triSurface') , join( self.case  , "constant/triSurface"))
 
     def writeSbatch(self):
         #run.sh
