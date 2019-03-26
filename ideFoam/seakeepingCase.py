@@ -678,14 +678,6 @@ class SeakeepingCase(OfRun):
             f.write('eval clean_0\n')
         os.chmod(aclean, 0o755)
 
-    def writeRun(self):
-        """To be implemented in subclass"""
-        with open(os.path.join(self.case, "Allrun"), "w") as f:
-            if self.nProcs > 1:
-                f.write("mpirun -n {} {} -parallel 2>&1 | tee foamStar.log".format(self.nProcs, self.executable))
-            else:
-                f.write("{} 2>&1 | tee foamStar.log".format(self.executable))
-
     def runInit(self):
         import subprocess
         print("Run initialization")

@@ -22,7 +22,7 @@ def cleanCase(case, clean):
             print('Overwriting case "{}"'.format(case))
             shutil.rmtree(case)
         elif clean == "i" :
-            res = input('Case "{}" already exists, do you want to overwrite ? (y (yes) / n (no) / a (abord)'.format(case)).lower()
+            res = input('Case "{}" already exists, do you want to overwrite ? (y (yes) / n (no) / a (abort)'.format(case)).lower()
             if res[0] == "y" :
                 shutil.rmtree(case)
             elif res[0] == "n" :
@@ -89,7 +89,7 @@ class OfCase(object):
         self.constfolder_ = join(self.case,"constant")
 
         self.executable = executable
-        if self.executable is None :
+        if self.executable is None:
             self.executable = self.application
 
 
@@ -172,8 +172,7 @@ class OfCase(object):
 
     def run(self) :
         #run Allrun script
-        if not exists( "Allrun" ):
-            self.writeRun()
+        if not exists( "Allrun" ): self.writeAllrun()
         p = subprocess.Popen(['./Allrun'], cwd=self.case)
         p.wait()
 
@@ -185,9 +184,13 @@ class OfCase(object):
         """To be implemented in subclass"""
         print ("Info : no AllClean available for this case")
 
-    def writeRun(self):
-        """To be implemented in subclass"""
-        raise(NotImplementedError)
+    def writeAllrun(self):
+        with open(os.path.join(self.case, "Allrun"), "w") as f:
+            f.write('#! /bin/bash\n')
+            if self.nProcs > 1:
+                f.write("mpirun -n {} {} -parallel 2>&1 | tee log.run".format(self.nProcs, self.executable))
+            else:
+                f.write("{} 2>&1 | tee log.run".format(self.executable))
 
     def copyMesh(self, meshDir, meshTime, overwrite=False):
         meshTime = str(meshTime)
@@ -220,7 +223,7 @@ class OfCase(object):
                 f.write('#SBATCH -t 3-00:00:00\n')
             f.write('#SBATCH -n {:d}\n'.format(self.nProcs))
             f.write('#SBATCH -o log.run-%j\n\n')
-            f.write('module load gcc/4.9.3 openmpi/1.8.4-gcc lapack/3.6.1/gcc/4.9.3 hdf5/1.8.15/gcc-4.9.3 cmake/3.7.1/gcc/4.9.3\n')
+            f.write('module load gcc/4.9.3 openmpi/1.8.4-gcc lapack/3.6.1/gcc/4.9.3\n')
             f.write('export FOAM_INST_DIR=/data/I1608251/OpenFOAM;\n')
             if   self.OFversion == 2 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-2.4.x/etc/bashrc;\n')
             elif self.OFversion == 3 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-3.0.x/etc/bashrc;\n')

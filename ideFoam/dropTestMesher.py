@@ -49,24 +49,21 @@ class DropTestMesher( OfMesher ):
     >>>     case = r'mesh/section_{}'.format(isect)
     >>>     myParams = {'OFversion' : 'P',
     >>>                 'nProcs' : 1,
-    >>>                 'sectionsFile' : 'Slamming_sections.out',
     >>>                 'section' : isect,
     >>>                 'symmetry' : False,
     >>>                 'rot' : [0.0,0.0,0.0],
-    >>>                 'zBounds' : [-6.,4.],
+    >>>                 'domain' : [-0.5,0.5,-9.,9.,-6.,3.],
     >>>                 'nRefBoxes' : 3,
     >>>                 'zRefineBox' : [-2.0,-1.7,-1.5,3.0,2.5,2.0],
-    >>>                 'zRefineBox' : [-2.0,-2.0,-2.0,3.5,3.5,3.5],
     >>>                 'nfsRefBoxes' : 3,
     >>>                 'fsRefineBox' : [-1.0,-0.7,-0.5,2.0,1.7,1.5],
     >>>                 'refineLength' : [0.15,0.375,0.675],
     >>>                 'cellRatio' : 2,
-    >>>                 'layerLength' : 0.004,
-    >>>                 'onLiger' : True
+    >>>                 'layerLength' : 0.004
     >>>                 }
     >>> #
     >>> # Call routines for meshing here
-    >>> drop = DropTestMesher.BuildFromAllParameters( case, **myParams )
+    >>> drop = DropTestMesher.BuildFromParams( case, **myParams )
     >>> fname = os.path.join(case,'log.input')
     >>> with open(fname,'w') as f: f.write(str(myParams))
     >>> drop.runInit()
@@ -127,9 +124,8 @@ class DropTestMesher( OfMesher ):
                              fsRefineBox      = [-1.5,-1.0,-0.5,-0.3,-0.2,2.5,2.0,1.5,1.3,1.2],
                              refineLength     = [0.1],
                              layerLength      = 0.005,
-                             solver           = "snappyHexMesh",
+                             application      = "snappyHexMesh",
                              OFversion        = 5,
-                             onLiger          = False,
                              clean            = False
                              ):
         """Build mesh for CFD drop test mesk from a few parameters.
@@ -329,7 +325,7 @@ class DropTestMesher( OfMesher ):
                           snappyHexMeshDict=snappyHexMeshDict,
                           surfaceFeatureExtractDict=surfaceFeatureExtractDict,
                           blockMeshDict=blockMeshDict,
-                          solver = solver,
+                          application = application,
                           isMesher = True,
                           clean = clean
                           )
