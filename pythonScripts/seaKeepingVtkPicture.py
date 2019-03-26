@@ -231,7 +231,7 @@ def getMeshPicture( meshFile,
     """
     from tqdm import tqdm
 
-    c = Chrono(start=True)
+    #c = Chrono(start=True)
     baseFile, ext = os.path.splitext(pictureFile)[0:2]
     Writer = writerFromExt(ext)
     pathPic = os.path.abspath(os.path.dirname(pictureFile))

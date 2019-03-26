@@ -343,11 +343,9 @@ class SeakeepingCase(OfRun):
             donName = None
 
         wpList = None
-        if outputWave:
+        if len(waveProbes) > 0:
             print('WARNING: Wave probes cannot be included yet')
-            wpList = []
-            for wp in waveProbes:
-                wpList += createLinearWaveProbesList(*wp)
+            wpList = waveProbes
 
         if outputForces and (forcesPatch is None): forcesPatch = [hullPatch]
         if outputPressures and (pressuresPatch is None): pressuresPatch = [hullPatch]
@@ -696,6 +694,6 @@ class SeakeepingCase(OfRun):
 
     def run(self):
         import subprocess
-        print("Run initialization")
+        print("Run")
         os.chdir(self.case)
         subprocess.call(["/bin/bash", "Allrun"], shell=False)

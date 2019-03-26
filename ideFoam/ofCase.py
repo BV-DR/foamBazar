@@ -89,7 +89,7 @@ class OfCase(object):
         self.constfolder_ = join(self.case,"constant")
 
         self.executable = executable
-        if self.executable :
+        if self.executable is None :
             self.executable = self.application
 
 
@@ -172,9 +172,9 @@ class OfCase(object):
 
     def run(self) :
         #run Allrun script
-        if not exists( "run" ):
+        if not exists( "Allrun" ):
             self.writeRun()
-        p = subprocess.Popen(['./run'], cwd=self.case)
+        p = subprocess.Popen(['./Allrun'], cwd=self.case)
         p.wait()
 
     def writeAllinit(self):
@@ -220,7 +220,7 @@ class OfCase(object):
                 f.write('#SBATCH -t 3-00:00:00\n')
             f.write('#SBATCH -n {:d}\n'.format(self.nProcs))
             f.write('#SBATCH -o log.run-%j\n\n')
-            f.write('module load gcc/4.9.3 openmpi/1.8.4-gcc lapack/3.6.1/gcc/4.9.3\n')
+            f.write('module load gcc/4.9.3 openmpi/1.8.4-gcc lapack/3.6.1/gcc/4.9.3 hdf5/1.8.15/gcc-4.9.3 cmake/3.7.1/gcc/4.9.3\n')
             f.write('export FOAM_INST_DIR=/data/I1608251/OpenFOAM;\n')
             if   self.OFversion == 2 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-2.4.x/etc/bashrc;\n')
             elif self.OFversion == 3 : f.write('source /data/I1608251/OpenFOAM/OpenFOAM-3.0.x/etc/bashrc;\n')
