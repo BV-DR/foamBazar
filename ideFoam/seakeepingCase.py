@@ -285,8 +285,6 @@ class SeakeepingCase(OfRun):
             Number of processors used to build the mesh
         OFversion : int or str, default 5
             OpenFOAM version
-        onLiger : boolean, default False
-            Logical defining if case is run on Liger cluster
         clean : boolean, default False
             Logical to force case overwrite
 

@@ -196,8 +196,6 @@ class DropTestCase( OfRun ) :
             Application to run 
         OFversion : int or str, default 5
             OpenFOAM version
-        onLiger : boolean, default False
-            Logical defining if case is run on Liger cluster
         clean : boolean, default False
             Logical to force case overwrite
      

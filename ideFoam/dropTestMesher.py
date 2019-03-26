@@ -126,6 +126,7 @@ class DropTestMesher( OfMesher ):
                              layerLength      = 0.005,
                              application      = "snappyHexMesh",
                              OFversion        = 5,
+                             onLiger          = False,
                              clean            = False
                              ):
         """Build mesh for CFD drop test mesk from a few parameters.
