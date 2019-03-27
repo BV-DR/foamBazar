@@ -117,6 +117,7 @@ class DropTestCase( OfRun ) :
                              scheme           = "Euler",
                              nProcs           = 4,
                              nOuterCorrectors = 5,
+                             airDamping       = 2.5,
                              inletRelaxZone   = None,
                              outletRelaxZone  = None,
                              sideRelaxZone    = None,
@@ -169,7 +170,9 @@ class DropTestCase( OfRun ) :
             Define interval at wich simualtion results are written
         purgeWrite : int, default 0
             Define number of results time steps after wich results are erased
-        scheme, str, default 'Euler'
+        scheme: str, default 'Euler'
+            TODO
+        airDamping: float, default 2.5
             TODO
         
         inletRelaxZone : float, default None
@@ -227,7 +230,8 @@ class DropTestCase( OfRun ) :
 
         #fvSolution
         fvSolution = FvSolution.Build(case          = case,
-                                      application   = application )
+                                      application   = application,
+                                      airDamping    = airDamping)
 
         #decomposeParDict
         decomposeParDict = DecomposeParDict.Build(case   = case,
