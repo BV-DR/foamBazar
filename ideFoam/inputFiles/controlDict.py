@@ -13,8 +13,8 @@ class ControlDict( ReadWriteFile ) :
     def Build(cls, case, deltaT, endTime, startFrom="latestTime", startTime=0., autoDeltaTCo=None, writeControl="timeStep",
               writeInterval=1, purgeWrite=0, writePrecision=7, writeCompression="compressed", runTimeModifiable="no",
               writeProbesInterval=None,  waveProbesList=None, adjustTimeStep=None, outputInterval=1, writeFormat = "ascii",
-              outputMotions=False, vbmPatch=None, forcesPatch=None, pressuresPatch=None, outputLocalMotions=False, rhoWater = 1000,
-              OFversion=5, application="foamStar"):
+              outputMotions=False, vbmPatch=None, forcesPatch=None, pressuresPatch=None, pressureFields=['p','p_rgh'], outputLocalMotions=False,
+               rhoWater = 1000, OFversion=5, application="foamStar"):
         """Build controlDict file from a few parameters.
 
         Parameters
@@ -60,6 +60,8 @@ class ControlDict( ReadWriteFile ) :
             List of patches names to compute forces
         pressuresPatch :  list of str
             List of patches names to compute pressure
+        pressureFields : list of str, default ['p','p_rgh']
+            Pressure type to use for pressure and force output. Values can include 'p' or 'p_rgh'.
         outputLocalMotions : bool, default False
             Logical defining if local motions shoudl be output
 
@@ -142,27 +144,28 @@ class ControlDict( ReadWriteFile ) :
         #Get forces on patch list
         if forcesPatch is not None :
             for fpatch in forcesPatch:
-                forcesDict = DictProxy()
-                forcesDict["type"]               = "forces"
-                forcesDict["functionObjectLibs"] = ['"libforces.so"']
-                forcesDict["patches"]            = [fpatch]
-                if OFversion==5:
-                    forcesDict["rhoInf"]         = rhoWater
-                    forcesDict["rhoName"]        = "rho"
-                    forcesDict["pName"]          = "p"
-                    forcesDict["UName"]          = "U"
-                    forcesDict["writeControl"]   = "timeStep"
-                    forcesDict["writeInterval"]  = outputInterval
-                else:
-                    forcesDict["rhoInf"]         = rhoWater
-                    forcesDict["rhoName"]        = "rho"
-                    forcesDict["pName"]          = "p"
-                    forcesDict["UName"]          = "U"
-                    forcesDict["outputControl"]  = "timeStep"
-                    forcesDict["outputInterval"] = outputInterval
-                forcesDict["CofR"]               = "( 0 0 0 )"
-                forcesDict["log"]                = True
-                fDict["forces_"+fpatch] = forcesDict
+                for pField in pressureFields:
+                    forcesDict = DictProxy()
+                    forcesDict["type"]               = "forces"
+                    forcesDict["functionObjectLibs"] = ['"libforces.so"']
+                    forcesDict["patches"]            = [fpatch]
+                    if OFversion==5:
+                        forcesDict["rhoInf"]         = rhoWater
+                        forcesDict["rho"]            = "rho"
+                        forcesDict["p"]              = pField
+                        forcesDict["U"]              = "U"
+                        forcesDict["writeControl"]   = "timeStep"
+                        forcesDict["writeInterval"]  = outputInterval
+                    else:
+                        forcesDict["rhoInf"]         = rhoWater
+                        forcesDict["rhoName"]        = "rho"
+                        forcesDict["pName"]          = pField
+                        forcesDict["UName"]          = "U"
+                        forcesDict["outputControl"]  = "timeStep"
+                        forcesDict["outputInterval"] = outputInterval
+                    forcesDict["CofR"]               = "( 0 0 0 )"
+                    forcesDict["log"]                = True
+                    fDict["forces_"+fpatch+"_"+pField] = forcesDict
 
         #Get forces on patch list
         if pressuresPatch is not None :
@@ -188,7 +191,7 @@ class ControlDict( ReadWriteFile ) :
 
             pressuresDict["operation"]          = "none"
             pressuresDict["log"]                = True
-            pressuresDict["fields"]             = ['p','p_rgh']
+            pressuresDict["fields"]             = pressureFields
             fDict["pressures"] = pressuresDict
 
         # localMotion
