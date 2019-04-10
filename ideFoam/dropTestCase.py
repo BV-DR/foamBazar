@@ -117,7 +117,7 @@ class DropTestCase( OfRun ) :
                              scheme           = "Euler",
                              nProcs           = 4,
                              nOuterCorrectors = 5,
-                             airDamping       = 2.5,
+                             airDamping       = 0.0,
                              inletRelaxZone   = None,
                              outletRelaxZone  = None,
                              sideRelaxZone    = None,
