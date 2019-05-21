@@ -132,6 +132,7 @@ void Foam::directionalInverseDistanceDiffusivity::correct()
         bbmax = max(bb.max()[cmpt_], bbmax);
     }
 
+    reduce(minVal, minOp<scalar>());
     reduce(bbmin, minOp<scalar>());
     reduce(bbmax, maxOp<scalar>());
 
