@@ -1,0 +1,4 @@
+/* extrudeModel/multiLayers/multiLayers.C */
+motionDiffusivity/directionalInverseDistance/directionalInverseDistanceDiffusivity.C
+
+LIB = $(FOAM_USER_LIBBIN)/libfoamBazar
