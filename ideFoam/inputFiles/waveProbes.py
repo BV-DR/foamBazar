@@ -7,14 +7,20 @@ from PyFoam.RunDictionary.ParsedParameterFile import WriteParameterFile
 from PyFoam.Basics.DataStructures import DictProxy
 
 
-def setWaveProbes( waveProbesList , application = "foamStar" , writeProbesInterval = 0.1 ) :
+def setWaveProbes( waveProbesList , application = "foamStar" , writeProbesInterval = 0.1, OFversion = 5 ) :
     d =DictProxy()
     d["type"] = "surfaceElevation"
     d["fields"] = "({})".format(alpha[application])
     d["writePrecision"] = 6
     d["interpolationScheme"] = "cellPointFace"
-    d["outputControl"] = "timeStep"
-    d["outputInterval"] = 1
+    
+    if OFversion==5:
+        d["writeControl"]      = "timeStep"
+        d["writeInterval"]     = 1
+    else:
+        d["outputControl"]      = "timeStep"
+        d["outputInterval"]     = 1
+
 
     if application != "foamStar" :  # navalFoam ?
         d["file"] =   "surfaceElevation.dat"

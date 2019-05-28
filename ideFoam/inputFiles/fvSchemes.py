@@ -46,22 +46,23 @@ class FvSchemes(ReadWriteFile) :
         #-------- divSchemes
         if simType=="steady": bounded = "bounded"
         else: bounded = ""
+
         div = DictProxy()
-        div["div(rhoPhi,U)"] = "{} Gauss linearUpwind GradU".format(bounded)
+        div["div(rhoPhi,U)"] = "{} Gauss linearUpwindV GradU".format(bounded)  #Better steep-wave propagation
 
         if application == "foamStar" :
             div["div(phi,alpha)"]   = "Gauss vanLeer"            #vanLeer01DC not in openCFD application
             div["div(phirb,alpha)"] = "Gauss interfaceCompression" #From Vuko's opinion "Gauss linear" should not be used
             if limitedGrad:
-                div["div(phi,k)"] = "Gauss linearUpwind limitedGrad"
-                div["div(phi,omega)"] = "Gauss linearUpwind limitedGrad"
+                div["div(phi,k)"] = "Gauss linearUpwindV limitedGrad"
+                div["div(phi,omega)"] = "Gauss linearUpwindV limitedGrad"
             div["div((muEff*dev(T(grad(U)))))"] = "Gauss linear"
             div["div(((rho*nuEff)*dev2(T(grad(U)))))"] = "Gauss linear"
         else :
             div["div(phi,alpha)"]   = "Gauss vanLeer01DC"
             div["div(phirb,alpha)"] = "Gauss vofCompression" #From Vuko's opinion "Gauss linear" should not be used
             if application == "swenseFoam" :
-                div["div(phi,UDiff)"]        = "Gauss linearUpwind Gauss linear"
+                div["div(phi,UDiff)"]        = "Gauss linearUpwindV Gauss linear"
                 div["div(phi,levelSetDiff)"] = "Gauss vanLeerDC"
                 div["div(phi,UInc)"]         = "Gauss linear"
                 div["div(phi,levelSetInc)"]  = "Gauss linear"

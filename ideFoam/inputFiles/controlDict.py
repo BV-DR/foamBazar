@@ -109,7 +109,9 @@ class ControlDict( ReadWriteFile ) :
             res["maxDeltaT"]      = 1.
 
         if application == "foamStar" :
-            res ["libs"] =  ['"libfoamStar.so"' , '"libBVtabulated6DoFMotion.so"', ]
+            res ["libs"] =  ['"libfoamStar.so"' ,
+                             #'"libBVtabulated6DoFMotion.so"',
+                              ]
         elif application == "snappyHexMesh" :
             pass
         else :
