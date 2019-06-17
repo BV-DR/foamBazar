@@ -124,6 +124,8 @@ class SeakeepingCase(OfRun):
                              mass               = None,
                              inertia            = None,
                              COG                = None,
+                             mecaRampTime       = 0.1,
+                             mecaReleaseTime    = 0.0,    
 
                              wave               = None,
                              waveType           = None,
@@ -234,6 +236,10 @@ class SeakeepingCase(OfRun):
             If Homer is not used, ship inertias.
         COG : list of floats, dimension(3), default None
             If Homer is not used, ship center of grativty
+        mecaRampTime: float, default 0.1
+            Ramp time for mechanics
+        mecaReleaseTime: float, default 0.
+            Release time of ship
 
         wave : ideFoam.waveProperties.WaveCondition, default None
             Wave condition defined by ideFoam.waveProperties.WaveCondition object. Otherwise, define wave condition with the following arguments (waveType, waveH, waveT, ... )
@@ -465,8 +471,8 @@ class SeakeepingCase(OfRun):
                                                          mass           = mass,
                                                          cog            = COG,
                                                          inertia        = inertia,
-                                                         rampTime       = 0.1,
-                                                         releaseTime    = 0.0,
+                                                         rampTime       = mecaRampTime,
+                                                         releaseTime    = mecaReleaseTime,
                                                          hullPatch      = "(ship)",
                                                          meshMotion     = meshMotion,
                                                          innerDistance  = innerDistance,
