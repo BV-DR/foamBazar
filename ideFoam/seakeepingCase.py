@@ -681,9 +681,11 @@ class SeakeepingCase(OfRun):
         print("Run initialization")
         os.chdir(self.case)
         subprocess.call(["/bin/bash", "Allinit"], shell=False)
+        os.chdir("..")
 
     def run(self):
         import subprocess
         print("Run")
         os.chdir(self.case)
         subprocess.call(["/bin/bash", "Allrun"], shell=False)
+        os.chdir("..")
