@@ -208,13 +208,16 @@ class OfCase(object):
         if os.path.exists(join( meshDir , "constant" ,'triSurface')):
             shutil.copytree( join( meshDir , "constant" ,'triSurface') , join( self.case  , "constant/triSurface"))
 
-    def writeSbatch(self):
+    def writeSbatch(self, batchName='None'):
         #run.sh
        	print('Write run.sh batch file')
         run = os.path.join(self.case,'run.sh')
         with open(run,'w') as f:
             f.write('#!/bin/bash -l\n')
-            f.write('#SBATCH -J {}\n\n'.format(self.case))
+            if batchName=='None':        
+                f.write('#SBATCH -J {}\n\n'.format(self.case))
+            else:
+                f.write('#SBATCH -J {}\n\n'.format(batchName))                
             f.write('# 5 hour wall-clock\n')
             f.write('#SBATCH --account I1608251\n')
             if self.isMesher:
