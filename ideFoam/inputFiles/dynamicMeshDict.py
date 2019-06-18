@@ -21,26 +21,26 @@ dynamicFvMesh       multiBodyFvMesh;
 multiBodyFvMeshCoeffs
 {
     meshMotion TOFILL;
+    motionPatches TOFILL;
     
     solver          RKCK45;
     absTol          1e-8;
     relTol          0;
 
-    rampTime        -1;
-    releaseTime     -1;
-
     ship
     {
     type rigidBody;
-    
+    motionPatches TOFILL;
     innerDistance       TOFILL;  // For cpMorphing only
     outerDistance       TOFILL;  // For cpMorphing only
     
-    motionPatches TOFILL;
-    
+   
     mass                TOFILL;
     momentOfInertia     (-1 -1 -1 -1 -1 -1);
     CoRInitial          (-1 -1 -1); 
+
+    rampTime        -1;
+    releaseTime     -1;
 
         loads
         {
@@ -73,7 +73,7 @@ class DynamicMeshDict( ReadWriteFile ):
         return res
      
     @classmethod
-    def Build_free( cls, case, mass, cog, inertia, rampTime, releaseTime, hullPatch="(ship)", meshMotion = "cpMorphing", innerDistance=None, outerDistance=None, OFversion=5, application="foamStar"):
+    def Build_free( cls, case, mass, cog, inertia, rampTime, releaseTime, meshMotion, hullPatch="(ship)", innerDistance=None, outerDistance=None, OFversion=5, application="foamStar"):
         """Build dynamicMeshDict for standard rigid seakeeping
         """
         res = cls( name = join(case, getFilePath("dynamicMeshDict") ), read = False )
@@ -91,11 +91,11 @@ class DynamicMeshDict( ReadWriteFile ):
         if meshMotion == "cpMorphing":
             res["multiBodyFvMeshCoeffs"]["ship"]["innerDistance"] = innerDistance
             res["multiBodyFvMeshCoeffs"]["ship"]["outerDistance"] = outerDistance
-        else : 
-            raise(Exception(meshMotion + " Not implented yet (in scripts)"))
+        #else : #if meshMotion == "morphing"
+         #   raise(Exception(meshMotion + " Not implented yet (in scripts)"))
             
-        res["multiBodyFvMeshCoeffs"]["rampTime"] = rampTime
-        res["multiBodyFvMeshCoeffs"]["releaseTime"] = releaseTime
+        res["multiBodyFvMeshCoeffs"]["ship"]["rampTime"] = rampTime
+        res["multiBodyFvMeshCoeffs"]["ship"]["releaseTime"] = releaseTime
         
         return res
         
@@ -172,6 +172,7 @@ class DynamicMeshDict( ReadWriteFile ):
         self["multiBodyFvMeshCoeffs"]["ship"]["CoRInitial"] = Vector(*cog)
         self["multiBodyFvMeshCoeffs"]["ship"]["momentOfInertia"] = tuple(inertia).__str__().replace(",", " ")
         self["multiBodyFvMeshCoeffs"]["ship"]["motionPatches"] = hullPatch
+        self["multiBodyFvMeshCoeffs"]["motionPatches"] = hullPatch      #Sopheak: "it's safer to put it at both locations!"
         self["multiBodyFvMeshCoeffs"]["ship"]["loads"]["fluid"]["patches"] = hullPatch
        
         
