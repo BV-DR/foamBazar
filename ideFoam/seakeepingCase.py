@@ -145,6 +145,8 @@ class SeakeepingCase(OfRun):
 
                              ddtScheme          = 'Euler',
                              fsiTol             = 1e-6,
+                             nOuterCorrectors   = 10,
+                             nInnerCorrectors   = 4,
                              rhoWater           = 1025.,
                              nProcs             = 1,
                              OFversion          = 5,
@@ -278,6 +280,8 @@ class SeakeepingCase(OfRun):
             TODO
         fsiTol : TODO, default 1e-6
             TODO
+        nOuterCorrectors: float, default 10
+        nInnerCorrectors: float, default 4        
         rhoWater : float, default 1025.
             Water density
         nProcs : int, default 1
@@ -286,6 +290,7 @@ class SeakeepingCase(OfRun):
             OpenFOAM version number
         application : str, default 'foamStar'
             Application to run
+
 
         nProcs : int, default 4
             Number of processors used to build the mesh
@@ -383,6 +388,8 @@ class SeakeepingCase(OfRun):
         fvSolution = FvSolution.Build(case          = case,
                                       fsiTol        = fsiTol,
                                       useEulerCells = (EulerCellsDist is not None),
+                                      nOuterCorrectors = nOuterCorrectors,
+                                      nInnerCorrectors = nInnerCorrectors,
                                       application   = application )
 
         #decomposeParDict
@@ -412,7 +419,7 @@ class SeakeepingCase(OfRun):
             relaxZones += [relaxSide]
         if outletRelaxZone is not None:
             if outletRelaxTarget == "still":
-                relaxOutlet = RelaxZone( "outlet", relax=True, waveCondition=noWaves, origin=[bBox[0][0], 0., 0.], orientation = [  1. ,  0. , 0.], length=outletRelaxZone)
+                relaxOutlet = RelaxZone( "outlet", relax=True, waveCondition=waveCond, origin=[bBox[0][0], 0., 0.], orientation = [  1. ,  0. , 0.], length=outletRelaxZone)
             elif outletRelaxTarget == "incident":
                 relaxOutlet = RelaxZone( "outlet", relax=True, waveCondition=waveCond, origin=[bBox[0][0], 0., 0.], orientation = [  1. ,  0. , 0.], length=outletRelaxZone)
             else:

@@ -92,10 +92,10 @@ class FvSolution(ReadWriteFile) :
     """
 
     @classmethod
-    def Build(cls , case, fsiTol = 1e-8, useEulerCells=False, nOuterCorrectors=5, nInnerCorrectors = 4, application = "foamStar",
+    def Build(cls , case, fsiTol = 1e-8, useEulerCells=False, nOuterCorrectors=10, nInnerCorrectors = 4, application = "foamStar",
                     pressureSolver = "PCG_1",
                     velocitySolver = "SMOOTHSOLVER_1",
-                    airDamping = 2.5
+                    airDamping = 0.0
                     ) :
 
         res = cls( name = join(case, getFilePath("fvSolution") ), read = False )
