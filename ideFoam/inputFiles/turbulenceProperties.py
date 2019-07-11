@@ -5,7 +5,7 @@ from os.path import join
   Convenience class to simply write "TurbulenceProperties" and RASModel
 """
 
-RASturbulenceModel = ["kOmegaSST" , ]  #navalFoam rhoKomegaSST
+RASturbulenceModel = ["kOmegaSST" , "fsKOmegaSST"]  #navalFoam rhoKomegaSST
 
 class TurbulenceProperties(ReadWriteFile) :
     """
