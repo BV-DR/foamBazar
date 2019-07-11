@@ -453,11 +453,8 @@ class simpleSeakeepingMesher( OfMesher ):
         res.stlName = stlName
         res.refBox4Snap = refBox4Snap
 #        res.nxy = nxy
-#        res.refBoxBB = refBoxBB
-        res.refFS = refFS
         res.refBow = refBow
         res.refStern = refStern
-        res.refSurfExtra = refSurfExtra
         res.OFversion = OFversion
         res.onLiger = onLiger
 
