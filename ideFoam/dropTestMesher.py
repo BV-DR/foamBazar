@@ -268,7 +268,7 @@ class DropTestMesher( OfMesher ):
         stlName = os.path.splitext(os.path.basename(stlFile))[0]
         referenceLength = min(Beam*0.5,Depth)
         snappyHexMeshDict = SnappyHexMeshDict.Build(case                = case,
-                                                    addLayers           = True,
+                                                    addLayers           = layerLength>0.0,
                                                     stlname             = stlName+'.stl',
                                                     patchName           = hullPatch,
                                                     stlPatches          = stlPatches,
