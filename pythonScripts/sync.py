@@ -18,7 +18,7 @@ if args.showConfig:
     with open('sync.me','w') as f:
         f.write('[sync]\n')
         f.write('server = username@liger.ec-nantes.fr\n')
-        f.write('sshkey = /root/.ssh/id_rsa\n') 
+        f.write('sshkey = ~/.ssh/id_rsa\n') 
         f.write('src = /scratch/username/mycase\n')
     os._exit(1)
 
@@ -33,7 +33,7 @@ src = str(config['sync']['src'])
 if args.updateTree or (not os.path.isfile('.filetree')):
     print('Read and update folders to synchronize')
     with open('.filetree','w') as ftree:
-        sub.call('ssh '+server+' "cd '+src+'; find . -type d -name postProcessing"', stdout=ftree, shell=True)
+        sub.call('ssh -a '+server+' "cd '+src+'; find . -type d -name postProcessing"', stdout=ftree, shell=True)
 
 #Read folders to download
 with open('.filetree') as f:
@@ -46,8 +46,8 @@ for f in tree:
     directory = os.path.dirname(f)
     if len(directory)>0:
         if not (os.path.exists(directory)): os.makedirs(directory)
-        #string = '( cd '+directory+'; scp -r '+server+':'+os.path.join(src,f)+' .; )'
-        string = '( cd '+directory+'; rsync --recursive --times --progress --links --backup --itemize-changes -s -e "ssh -q -i '+sshkey+'" '+server+':'+os.path.join(src,f)+' ./ ;)'
+        string = '( cd '+directory+'; scp -r '+server+':'+os.path.join(src,f)+' .; )'
+        string = '( cd '+directory+'; rsync --recursive --times --progress --links --backup --itemize-changes -s -e "ssh -a -q -i '+sshkey+'" '+server+':'+os.path.join(src,f)+' ./ ;)'
     else:
-        string = '(rsync --recursive --times --progress --links --backup --itemize-changes -s -e "ssh -q -i '+sshkey+'" '+server+':'+os.path.join(src,f)+' ./ ;)'
+        string = '(rsync --recursive --times --progress --links --backup --itemize-changes -s -e "ssh -a -q -i '+sshkey+'" '+server+':'+os.path.join(src,f)+' ./ ;)'
     sub.call(string,shell=True)
